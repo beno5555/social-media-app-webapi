@@ -18,6 +18,7 @@ riderModule.iml
 *.user
 *.userosscache
 *.sln.docstates
+*.sln.dotsettings.user
 
 # User-specific files (MonoDevelop/Xamarin Studio)
 *.userprefs
@@ -486,3 +487,6 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+appsettings.json
+appsettings.Development.json

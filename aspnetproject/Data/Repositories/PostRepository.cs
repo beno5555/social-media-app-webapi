@@ -1,16 +1,19 @@
-﻿using aspnetproject.Data;
-using aspnetproject.Data.Repositories.Base;
+﻿using aspnetproject.Data.Repositories.Base;
 using aspnetproject.Models;
-using aspnetproject.Repositories.Base;
 using Microsoft.EntityFrameworkCore;
 
-namespace aspnetproject.Repositories;
+namespace aspnetproject.Data.Repositories;
 
 public class PostRepository : BaseEntityRepository<Post>
 {
     public PostRepository(ApplicationDbContext dbContext) : base(dbContext)
     {
         
+    }
+
+    public async Task<Post?> GetPostByIdAsync(int id)
+    {
+        return await GetFirstAsync(post => post.Id == id);
     }
 
     public async Task<List<Post>> GetByUserIdAsync(int userId, int? pageNumber = null, int? pageSize = null)

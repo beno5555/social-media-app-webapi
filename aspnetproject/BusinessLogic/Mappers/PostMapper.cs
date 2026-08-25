@@ -1,29 +1,63 @@
 ﻿using aspnetproject.BusinessLogic.Dtos.CommentDtos;
-using aspnetproject.BusinessLogic.Dtos.PostDtos;
+using aspnetproject.BusinessLogic.Dtos.Posts;
 using aspnetproject.BusinessLogic.Mappers.Base;
 using aspnetproject.Models;
 
 namespace aspnetproject.BusinessLogic.Mappers;
 
-public class PostMapper : IMapper<Post, CreatePostDto, DisplayPostDto>
+public class PostMapper
 {
-    public Post ToEntity(CreatePostDto createPostDto)
+    public Post ToEntity(int userId, CreatePostDto createPostDto)
     {
         return new Post
         {
-            UserId = createPostDto.UserId,
+            UserId = userId,
             PostTitle = createPostDto.PostTitle,
             PostContent = createPostDto.PostContent,
         };
     }
 
-    public DisplayPostDto ToDisplay(Post post)
+    public DetailedPostDisplayDto ToDisplay(Post post)
     {
-        return new DisplayPostDto(post.Id, post.User!.Username, post.PostTitle, post.PostContent, post.CreatedAt);
+        return new DetailedPostDisplayDto
+        {
+            Id = post.Id,
+            Title = post.PostTitle,
+
+            UserId = post.UserId,
+            Username = post.User!.Username,
+
+            PostContent = post.PostContent,
+            UploadedAt = post.CreatedAt,
+        };
+    }
+    
+    public DetailedPostDisplayDto ToDisplay(Post post, List<DisplayCommentDto> commentDtos)
+    {
+        return new DetailedPostDisplayDto
+        {
+            Id = post.Id,
+            Title = post.PostTitle,
+
+            UserId = post.UserId,
+            Username = post.User!.Username,
+
+            PostContent = post.PostContent,
+            UploadedAt = post.CreatedAt,
+            
+            Comments = commentDtos
+        };
     }
 
-    public DisplayPostDto ToDisplay(Post post, List<DisplayCommentDto> commentDtos)
+    public SummarizedPostDisplayDto ToSummarizedDisplay(Post post)
     {
-        return new DisplayPostDto(post.Id, post.User!.Username, post.PostTitle, post.PostContent, post.CreatedAt, commentDtos);
+        return new SummarizedPostDisplayDto
+        {
+            Id = post.Id,
+            Title = post.PostTitle,
+            UserId = post.UserId,
+            UploadedAt = post.CreatedAt,
+        };
     }
+
 }

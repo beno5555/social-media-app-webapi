@@ -71,21 +71,6 @@ public class UserRepository : BaseEntityRepository<User>
         );
     }
 
-    /// <summary>
-    /// messages and friends aren't loaded from users.
-    /// 
-    /// </summary>
-    /// <returns></returns>
-    protected override IQueryable<User> Query(bool track = true)
-    {
-        var query = _dbSet
-            .Include(user => user.Posts)
-                .ThenInclude(post => post.Comments)
-            .Include(user => user.Comments);
-
-        return track ? query : query.AsNoTracking();
-    }
-
     public async Task UpdateBioAsync(User userToUpdate, string bio)
     {
         userToUpdate.Bio = bio;

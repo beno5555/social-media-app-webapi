@@ -1,13 +1,16 @@
 ﻿using aspnetproject.BusinessLogic.Dtos.UserDtos;
 using aspnetproject.BusinessLogic.Responses;
 using aspnetproject.BusinessLogic.Services.Main;
+using aspnetproject.Controllers.Base;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace aspnetproject.Controllers;
 
 [ApiController]
 [Route("api/users")]
-public class UserController : ControllerBase
+[Authorize]
+public class UserController : BaseController
 {
     private readonly AccountService _accountService;
 
@@ -20,6 +23,6 @@ public class UserController : ControllerBase
     [Route("{id:int}")]
     public async Task<ActionResult<ApplicationResponse<DisplayUserDto>>> GetUser(int id)
     {
-        return Ok();
+        return Ok("successful");
     }
 }

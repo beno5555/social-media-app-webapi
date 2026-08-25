@@ -15,9 +15,10 @@ public class ApplicationResponse<T> : ApplicationResponse
 {
     public T? Data { get; set; }
     
-    public void Ok(T data)
+    public void Ok(T data, string? message = null)
     {
         Succeeded = true;
+        Message = message;
         Data = data;
     }
 

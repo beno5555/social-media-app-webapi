@@ -1,8 +1,7 @@
 ﻿using System.Linq.Expressions;
-using aspnetproject.Data;
 using Microsoft.EntityFrameworkCore;
 
-namespace aspnetproject.Repositories.Base;
+namespace aspnetproject.Data.Repositories.Base;
 
 public class BaseRepository<T> where T : class
 {
@@ -45,6 +44,24 @@ public class BaseRepository<T> where T : class
         }
 
         return await query.ToListAsync();
+    }
+
+    public async Task<List<T>> GetPaginatedAsync(int? pageNumber, int? pageSize)
+    {
+        List<T> list;
+        if (pageNumber is not null && pageSize is not null)
+        {
+            list = await _dbSet
+                .Skip((pageNumber.Value - 1) * pageSize.Value)
+                .Take(pageSize.Value)
+                .ToListAsync();
+        }
+        else
+        {
+            list = await _dbSet.ToListAsync();
+        }
+
+        return list;
     }
 
     protected async Task DeleteWhereAsync(Expression<Func<T, bool>> predicate)

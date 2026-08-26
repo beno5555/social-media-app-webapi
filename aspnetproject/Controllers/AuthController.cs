@@ -1,6 +1,7 @@
 ﻿using aspnetproject.BusinessLogic.Dtos.UserDtos;
 using aspnetproject.BusinessLogic.Services.Main;
 using aspnetproject.Common.Responses;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace aspnetproject.Controllers;
@@ -61,10 +62,10 @@ public class AuthController : ControllerBase
                 return Ok(new { accessToken = response.Data!.AccessToken });
             }
 
-            return Unauthorized(response.Message);
+            return BadRequest(response.Message);
         }
 
-        return Unauthorized("No refresh token provided");
+        return BadRequest("No refresh token provided");
     }
 
     [HttpPost]

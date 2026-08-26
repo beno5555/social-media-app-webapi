@@ -1,10 +1,9 @@
-﻿using aspnetproject.Data;
-using aspnetproject.Data.Repositories.Base;
+﻿using aspnetproject.Data.Repositories.Base;
 using aspnetproject.Models;
 using aspnetproject.ProjectConstants.Enums;
 using Microsoft.EntityFrameworkCore;
 
-namespace aspnetproject.Repositories;
+namespace aspnetproject.Data.Repositories;
 
 public class FriendshipRepository : BaseRepository<Friendship>
 {
@@ -75,14 +74,12 @@ public class FriendshipRepository : BaseRepository<Friendship>
     /// </summary>
     public async Task<Friendship?> GetRelationshipAsync(int requesterId, int addresseeId, bool orderMatters = false)
     {
-        if (orderMatters)
-        {
-            return await GetFirstAsync(friendship => 
-                friendship.RequesterUserId == requesterId && friendship.AddresseeUserId == addresseeId);
-        }
-        return await GetFirstAsync(friendship =>
-            (friendship.RequesterUserId == requesterId || friendship.RequesterUserId == addresseeId) &&
-            (friendship.AddresseeUserId == requesterId || friendship.AddresseeUserId == addresseeId));
+        return await GetFirstAsync(friendship => orderMatters
+            ? friendship.RequesterUserId == requesterId && friendship.AddresseeUserId == addresseeId
+            
+            : (friendship.RequesterUserId == requesterId || friendship.RequesterUserId == addresseeId) &&
+              (friendship.AddresseeUserId == requesterId || friendship.AddresseeUserId == addresseeId)
+        );
     }
 
     public async Task<bool> ExistsAsync(int userIdA, int userIdB, FriendshipStatus? status)

@@ -1,31 +1,41 @@
-﻿using aspnetproject.BusinessLogic.Dtos.UserDtos;
-using aspnetproject.BusinessLogic.Mappers;
+﻿using aspnetproject.BusinessLogic.Mappers;
+using aspnetproject.Common.Dtos.Friendships;
 using aspnetproject.Common.Responses;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Models;
 using aspnetproject.ProjectConstants.Enums;
 using aspnetproject.Repositories;
 
-namespace aspnetproject.BusinessLogic.Services;
+namespace aspnetproject.BusinessLogic.Services.Main;
 
 public class FriendshipService
 {
     private readonly FriendshipRepository _friendshipRepository;
     private readonly MessageRepository    _messageRepository;
     private readonly UserRepository       _userRepository;
-    private readonly UserMapper           _userMapper;
+    
+    private readonly UserMapper       _userMapper;
+    private readonly FriendshipMapper _friendshipMapper;
 
-    public FriendshipService(FriendshipRepository friendshipRepository, MessageRepository messageRepository, UserMapper userMapper, UserRepository userRepository)
+    public FriendshipService(
+        FriendshipRepository friendshipRepository,
+        MessageRepository messageRepository,
+        UserMapper userMapper,
+        UserRepository userRepository,
+        FriendshipMapper friendshipMapper
+        )
     {
         _friendshipRepository = friendshipRepository;
         _messageRepository = messageRepository;
         _userRepository = userRepository;
+        
         _userMapper = userMapper;
+        _friendshipMapper = friendshipMapper;
     }
 
-    public async Task<ApplicationResponse> SendRequest(int requesterId, int addresseeId)
+    public async Task<ApplicationResponse<MinimalFriendshipDto>> SendRequest(int requesterId, int addresseeId)
     {
-        var response = new ApplicationResponse();
+        var response = new ApplicationResponse<MinimalFriendshipDto>();
 
         if (requesterId != addresseeId)
         {
@@ -39,10 +49,13 @@ public class FriendshipService
                 {
                     var friendship = _userMapper.ToFriendship(requesterId, addresseeId);
                     await _friendshipRepository.AddAsync(friendship);
+
+                    var friendshipDto = _friendshipMapper.ToMinimalDisplay(friendship);
+                    response.Ok(friendshipDto, "Friend request send successfully");
                 }
                 else
                 {
-                    response = await HandleExistingRelationship(relationship, requesterId);
+                    response = await HandleExistingRelationship(relationship);
                 }
             }
             else
@@ -58,9 +71,9 @@ public class FriendshipService
         return response;
     }
 
-    private async Task<ApplicationResponse> HandleExistingRelationship(Friendship relationship, int requesterId)
+    private async Task<ApplicationResponse<MinimalFriendshipDto>> HandleExistingRelationship(Friendship relationship)
     {
-        var response = new ApplicationResponse();
+        var response = new ApplicationResponse<MinimalFriendshipDto>();
         
         if (relationship.FriendshipStatus == FriendshipStatus.Accepted)
         {
@@ -73,14 +86,21 @@ public class FriendshipService
         else if (relationship.FriendshipStatus == FriendshipStatus.Declined)
         {
             await _friendshipRepository.UpdateStatusAsync(relationship, FriendshipStatus.Pending);
+            
+            relationship.SentAt = DateTime.UtcNow;
+            relationship.LastUpdatedAt = DateTime.UtcNow;
+            await _friendshipRepository.SaveChangesAsync();
+
+            var friendshipDto = _friendshipMapper.ToMinimalDisplay(relationship);
+            response.Ok(friendshipDto, "Friend request send successfully");
         }
 
         return response;
     }
 
-    public async Task<ApplicationResponse> RespondToRequestAsync(int requesterId, int addresseeId, FriendshipStatus status)
+    public async Task<ApplicationResponse<StandardFriendshipDto>> RespondToRequestAsync(int requesterId, int addresseeId, FriendshipStatus status)
     {
-        var response = new ApplicationResponse();
+        var response = new ApplicationResponse<StandardFriendshipDto>();
 
         if (ValidRequestResponse(status))
         {
@@ -91,10 +111,13 @@ public class FriendshipService
                 if (friendship is not null && friendship.FriendshipStatus == FriendshipStatus.Pending)
                 {
                     await _friendshipRepository.UpdateStatusAsync(friendship, status);
+                    
+                    var friendshipDto = _friendshipMapper.ToStandardDisplay(friendship, friendship.RequesterUser!);
+                    response.Ok(friendshipDto, "Responded Sent!");
                 }
                 else
                 {
-                    response.Fail("No pending requests found");
+                    response.Fail("No pending request found");
                 }
             }
             else
@@ -110,7 +133,7 @@ public class FriendshipService
     {
         var response = new ApplicationResponse();
 
-        var friendship = await _friendshipRepository.GetRelationshipAsync(userId, friendId);
+        var friendship = await _friendshipRepository.GetRelationshipAsync(userId, friendId, false);
 
         if (friendship is not null)
         {
@@ -125,44 +148,82 @@ public class FriendshipService
         return response;
     }
 
-    public async Task<List<DisplayUserDto>> GetFriendsAsync(int userId, int? pageNumber = null, int? pageSize = null)
+    public async Task<ListResponse<StandardFriendshipDto>> GetFriendshipsAsync(int userId, int? pageNumber = null, int? pageSize = null)
     {
-        return await FetchRelationshipsAsync(userId, _friendshipRepository.GetFriendshipsAsync, pageNumber, pageSize);
+        return await FetchRelationshipsAsync(userId, _friendshipRepository.GetFriendshipsAsync, pageNumber, pageSize, "Friendships");
     }
 
-    public async Task<List<DisplayUserDto>> GetPendingRequestUsersAsync(int userId, int? pageNumber,
-        int?                                                                      pageSize)
+    public async Task<ListResponse<StandardFriendshipDto>> GetPendingRequestsAsync(int userId, int? pageNumber, int? pageSize)
     {
-        return await FetchRelationshipsAsync(userId, _friendshipRepository.GetPendingRequestsAsync, pageNumber, pageSize);
+        return await FetchRelationshipsAsync(userId, _friendshipRepository.GetPendingRequestsAsync, pageNumber, pageSize, "Pending Requests");
     }
     
-    public async Task<List<DisplayUserDto>> GetSentRequestUsersAsync(int userId, int? pageNumber, int? pageSize)
+    public async Task<ListResponse<StandardFriendshipDto>> GetSentRequestsAsync(int userId, int? pageNumber, int? pageSize)
     {
-        return await FetchRelationshipsAsync(userId, _friendshipRepository.GetSentRequestsAsync, pageNumber, pageSize);
+        return await FetchRelationshipsAsync(userId, _friendshipRepository.GetSentRequestsAsync, pageNumber, pageSize, "Sent Requests");
     }
 
-    private async Task<List<DisplayUserDto>> FetchRelationshipsAsync(int userId, Func<int, int?, int?, Task<List<Friendship>>> getAsync, int? pageNumber, int? pageSize)
+    private async Task<ListResponse<StandardFriendshipDto>> FetchRelationshipsAsync(
+        int userId,
+        Func<int, int?, int?, Task<List<Friendship>>> getAsync,
+        int? pageNumber,
+        int? pageSize,
+        string friendshipType = ""
+        )
     {
-        var relationships = await getAsync(userId, pageNumber, pageSize);
+        var response   = new ListResponse<StandardFriendshipDto>();
+        
+        var userExists = await _userRepository.ExistsByIdAsync(userId);
+        
+        if (userExists)
+        {
+            var friendships = await getAsync(userId, pageNumber, pageSize);
 
-        var friends = relationships
-            .Select(relationship =>
-                relationship.RequesterUserId == userId ? relationship.AddresseeUser : relationship.RequesterUser)
-            .OfType<User>()
-            .ToList();
-    
-        var userDtos =  friends.Select(_userMapper.ToDisplay).ToList();
+            var friendshipDtos = friendships
+                .Select(friendship =>
+                {
+                    var otherUser = friendship.RequesterUserId == userId
+                        ? friendship.AddresseeUser
+                        : friendship.RequesterUser;
 
-        return userDtos;
+                    var friendshipDto = _friendshipMapper.ToStandardDisplay(friendship, otherUser!);
+                    return friendshipDto;
+                })
+                .ToList();
+            
+            string friendshipTypeMessage = string.IsNullOrEmpty(friendshipType) ? "Friendships"  : friendshipType;
+            response.Ok(friendshipDtos, $"{friendshipTypeMessage} retrieved successfully");
+        }
+        else
+        {
+            response.Fail("User not found");
+        }
+        return response;
     }
 
     private bool ValidRequestResponse(FriendshipStatus status) =>
         status is FriendshipStatus.Accepted or FriendshipStatus.Declined;
     
-    // wrapper
-    public async Task<Friendship?> GetRelationshipAsync(int userA, int userB, bool orderMatters = false)
+    public async Task<ApplicationResponse<StandardFriendshipDto>> GetRelationshipAsync(int currentUserId, int otherUserId, bool orderMatters = false)
     {
-        return await _friendshipRepository.GetRelationshipAsync(userA, userB, orderMatters);
+        var response = new ApplicationResponse<StandardFriendshipDto>();
+        
+        var relationship = await _friendshipRepository.GetRelationshipAsync(currentUserId, otherUserId, orderMatters);
+        if (relationship is not null)
+        {
+            var otherUser = relationship.RequesterUserId == otherUserId
+                ? relationship.RequesterUser
+                : relationship.AddresseeUser;
+            
+            var relationshipDto = _friendshipMapper.ToStandardDisplay(relationship, otherUser!);
+            response.Ok(relationshipDto, "Relationship Fetched Successfully!");
+        }
+        else
+        {
+            response.Fail("Relationship not found");
+        }
+
+        return response;
     }
 
     public async Task<bool> AreFriendsAsync(int userA, int userB)

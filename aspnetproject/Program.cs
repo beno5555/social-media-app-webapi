@@ -58,6 +58,7 @@ public class Program
         builder.Services.AddScoped<MessageMapper>();
         builder.Services.AddScoped<PostMapper>();
         builder.Services.AddScoped<UserMapper>();
+        builder.Services.AddScoped<FriendshipMapper>();
         
         builder.Services.AddScoped<AccountService>();
         builder.Services.AddScoped<CommentService>();

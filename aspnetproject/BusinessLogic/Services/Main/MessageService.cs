@@ -1,6 +1,7 @@
 ﻿using aspnetproject.BusinessLogic.Dtos.MessageDtos;
 using aspnetproject.BusinessLogic.Dtos.UserDtos;
 using aspnetproject.BusinessLogic.Mappers;
+using aspnetproject.Common.Dtos.Messages;
 using aspnetproject.Common.Responses;
 using aspnetproject.Data.Repositories;
 using aspnetproject.ProjectConstants.Enums;
@@ -33,17 +34,15 @@ public class MessageService
     /// <summary>
     /// Assumes that senderId is valid since the method should only be called when a logged-in user tries to send a message
     /// </summary>
-    /// <param name="createMessageDto"></param>
-    /// <returns></returns>
-    public async Task<ApplicationResponse> SendMessageAsync(CreateMessageDto createMessageDto)
+    public async Task<ApplicationResponse> SendMessageAsync(int senderId, CreateMessageDto createMessageDto)
     {
         var response = new ApplicationResponse();
         
-        var friendshipCheck = await ValidFriendship(createMessageDto.SenderId, createMessageDto.ReceiverId);
+        var friendshipCheck = await ValidFriendship(senderId, createMessageDto.ReceiverId);
         
         if (friendshipCheck.Succeeded)
         {
-            var messageToAdd = _messageMapper.ToEntity(createMessageDto);
+            var messageToAdd = _messageMapper.ToEntity(senderId, createMessageDto);
             await _messageRepository.AddAsync(messageToAdd);
         }
         else

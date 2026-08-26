@@ -1,3 +1,12 @@
-﻿namespace aspnetproject.BusinessLogic.Dtos.CommentDtos;
+﻿using System.ComponentModel.DataAnnotations;
+using aspnetproject.ProjectConstants;
 
-public record CreateCommentDto(string CommentContent, int CommenterUserId, int PostId);
+namespace aspnetproject.Common.Dtos.Comments;
+    
+public class CreateCommentDto
+{
+    [MaxLength(Constants.CommentMaxLength)]
+    public string Content  { get; set; } = string.Empty;
+    
+    public int      PostId        { get; set; }
+}

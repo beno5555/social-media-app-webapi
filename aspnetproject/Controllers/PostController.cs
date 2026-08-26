@@ -19,67 +19,6 @@ public class PostController : BaseController
     {
         _postService = postService;
     }
-
-    [HttpGet]
-    [Route("{id:int}")]
-    [AllowAnonymous]
-    public async Task<ActionResult<ApplicationResponse<FullPostDisplayDto>>> GetPostById(int id)
-    {
-        var response = await _postService.GetPostByIdAsync(id);
-
-        if (response.Succeeded)
-        {
-            return Ok(response);
-        }
-
-        return NotFound(response);
-    }
-
-    [HttpGet]
-    public async Task<ActionResult<ListResponse<MinimalPostDisplayDto>>> GetAll([FromQuery] PageQuery query)
-    {
-        var result = await _postService.GetAllPostsAsync(query.PageNumber, query.PageSize);
-        return Ok(result);
-    }
-
-    [HttpGet]
-    [Route("feed")]
-    public async Task<ActionResult<ListResponse<StandardPostDisplayDto>>> GetFeed([FromQuery] PageQuery query)
-    {
-        int userId = GetUserId();
-        var result = await _postService.GetFeedAsync(userId, query.PageNumber, query.PageSize);
-        return Ok(result);
-    }
-
-    [HttpGet]
-    [Route("mine")]
-    public async Task<ActionResult<ListResponse<StandardPostDisplayDto>>> GetOwnPosts([FromQuery] PageQuery query)
-    {
-        int userId = GetUserId();
-        var response = await _postService.GetByUserIdAsync(userId, query.PageNumber, query.PageSize);
-
-        if (response.Succeeded)
-        {
-            return Ok(response);
-        }
-
-        return BadRequest(response);
-    }
-
-    [HttpGet]
-    [Route("user/{userId:int}")]
-    [AllowAnonymous]
-    public async Task<ActionResult<ListResponse<StandardPostDisplayDto>>> GetPostsByUser(int userId, [FromQuery] PageQuery                                                                query)
-    {
-        var response = await _postService.GetByUserIdAsync(userId, query.PageNumber, query.PageSize);
-
-        if (response.Succeeded)
-        {
-            return Ok(response);
-        }
-
-        return BadRequest(response);
-    }
     
     [HttpPost]
     public async Task<ActionResult<ApplicationResponse<FullPostDisplayDto>>> CreatePost([FromBody] CreatePostDto createPostDto)
@@ -97,6 +36,67 @@ public class PostController : BaseController
         }
 
         return BadRequest(createPostDto);
+    }
+    
+    [HttpGet]
+    public async Task<ActionResult<ListResponse<MinimalPostDisplayDto>>> GetAll([FromQuery] PageQuery query)
+    {
+        var result = await _postService.GetAllPostsAsync(query.PageNumber, query.PageSize);
+        return Ok(result);
+    }
+    
+    [HttpGet]
+    [Route("feed")]
+    public async Task<ActionResult<ListResponse<StandardPostDisplayDto>>> GetFeed([FromQuery] PageQuery query)
+    {
+        int userId = GetUserId();
+        var result = await _postService.GetFeedAsync(userId, query.PageNumber, query.PageSize);
+        return Ok(result);
+    }
+    
+    [HttpGet]
+    [Route("mine")]
+    public async Task<ActionResult<ListResponse<StandardPostDisplayDto>>> GetOwnPosts([FromQuery] PageQuery query)
+    {
+        int userId   = GetUserId();
+        var response = await _postService.GetByUserIdAsync(userId, query.PageNumber, query.PageSize);
+
+        if (response.Succeeded)
+        {
+            return Ok(response);
+        }
+
+        return BadRequest(response);
+    }
+
+    [HttpGet]
+    [Route("{id:int}")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ApplicationResponse<FullPostDisplayDto>>> GetPostById(int id)
+    {
+        var response = await _postService.GetPostByIdAsync(id);
+
+        if (response.Succeeded)
+        {
+            return Ok(response);
+        }
+
+        return NotFound(response);
+    }
+
+    [HttpGet]
+    [Route("user/{userId:int}")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ListResponse<StandardPostDisplayDto>>> GetPostsByUser(int userId, [FromQuery] PageQuery                                                                query)
+    {
+        var response = await _postService.GetByUserIdAsync(userId, query.PageNumber, query.PageSize);
+
+        if (response.Succeeded)
+        {
+            return Ok(response);
+        }
+
+        return BadRequest(response);
     }
     
     [HttpPut]

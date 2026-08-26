@@ -13,6 +13,11 @@ riderModule.iml
 # dotenv files
 .env
 
+#postman
+*.postman_environment.json
+/postman/
+/.postman/
+
 # User-specific files
 *.rsuser
 *.suo

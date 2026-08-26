@@ -1,17 +1,18 @@
 ﻿using aspnetproject.BusinessLogic.Dtos.MessageDtos;
 using aspnetproject.BusinessLogic.Mappers.Base;
+using aspnetproject.Common.Dtos.Messages;
 using aspnetproject.Models;
 
 namespace aspnetproject.BusinessLogic.Mappers;
 
-public class MessageMapper : IMapper<Message, CreateMessageDto, DisplayMessageDto>
+public class MessageMapper 
 {
-    public Message ToEntity(CreateMessageDto createMessageDto)
+    public Message ToEntity(int senderId, CreateMessageDto createMessageDto)
     {
         return new Message
         {
             ReceiverUserId = createMessageDto.ReceiverId,
-            SenderUserId = createMessageDto.SenderId,
+            SenderUserId = senderId,
             MessageContent = createMessageDto.MessageContent
         };
     }

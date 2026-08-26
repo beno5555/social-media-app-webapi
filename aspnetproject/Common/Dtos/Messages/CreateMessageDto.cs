@@ -1,3 +1,12 @@
-﻿namespace aspnetproject.BusinessLogic.Dtos.MessageDtos;
+﻿using System.ComponentModel.DataAnnotations;
+using aspnetproject.ProjectConstants;
 
-public record CreateMessageDto(int SenderId, int ReceiverId, string MessageContent);
+namespace aspnetproject.Common.Dtos.Messages;
+
+public class CreateMessageDto
+{
+    public int ReceiverId { get; set; }
+
+    [MaxLength(Constants.MessageMaxLength)]
+    public string MessageContent { get; set; } = string.Empty;
+}

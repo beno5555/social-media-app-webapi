@@ -19,6 +19,9 @@ public class FriendshipConfiguration : IEntityTypeConfiguration<Friendship>
         builder.Property(friendship => friendship.LastUpdatedAt)
             .HasDefaultValueSql("GETUTCDATE()");
         
+        builder.Property(friendship => friendship.SentAt)
+            .HasDefaultValueSql("GETUTCDATE()");
+        
         builder.HasOne(friendship => friendship.RequesterUser)
             .WithMany(requesterUser => requesterUser.SentFriendRequests)
             .HasForeignKey(friendship => friendship.RequesterUserId)

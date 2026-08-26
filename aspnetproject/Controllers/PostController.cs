@@ -1,7 +1,7 @@
-﻿using aspnetproject.BusinessLogic.Dtos.Common;
-using aspnetproject.BusinessLogic.Dtos.Posts;
-using aspnetproject.BusinessLogic.Responses;
+﻿using aspnetproject.BusinessLogic.Dtos.Posts;
 using aspnetproject.BusinessLogic.Services.Main;
+using aspnetproject.Common.Dtos.Common;
+using aspnetproject.Common.Dtos.Posts;
 using aspnetproject.Common.Responses;
 using aspnetproject.Controllers.Base;
 using Microsoft.AspNetCore.Authorization;
@@ -10,7 +10,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace aspnetproject.Controllers;
 
 [Route("api/posts")]
-// [Authorize]
+[Authorize]
 public class PostController : BaseController
 {
     private readonly PostService _postService;
@@ -23,7 +23,7 @@ public class PostController : BaseController
     [HttpGet]
     [Route("{id:int}")]
     [AllowAnonymous]
-    public async Task<ActionResult<ApplicationResponse<DetailedPostDisplayDto>>> GetPostById(int id)
+    public async Task<ActionResult<ApplicationResponse<FullPostDisplayDto>>> GetPostById(int id)
     {
         var response = await _postService.GetPostByIdAsync(id);
 
@@ -36,7 +36,7 @@ public class PostController : BaseController
     }
 
     [HttpGet]
-    public async Task<ActionResult<ListResponse<SummarizedPostDisplayDto>>> GetAll([FromQuery] PageQuery query)
+    public async Task<ActionResult<ListResponse<MinimalPostDisplayDto>>> GetAll([FromQuery] PageQuery query)
     {
         var result = await _postService.GetAllPostsAsync(query.PageNumber, query.PageSize);
         return Ok(result);
@@ -44,77 +44,88 @@ public class PostController : BaseController
 
     [HttpGet]
     [Route("feed")]
-    public async Task<ActionResult<ListResponse<SummarizedPostDisplayDto>>> GetFeed([FromQuery] PageQuery query)
+    public async Task<ActionResult<ListResponse<StandardPostDisplayDto>>> GetFeed([FromQuery] PageQuery query)
     {
-        var userId = GetUserId();
-        if (userId is not null)
+        int userId = GetUserId();
+        var result = await _postService.GetFeedAsync(userId, query.PageNumber, query.PageSize);
+        return Ok(result);
+    }
+
+    [HttpGet]
+    [Route("mine")]
+    public async Task<ActionResult<ListResponse<StandardPostDisplayDto>>> GetOwnPosts([FromQuery] PageQuery query)
+    {
+        int userId = GetUserId();
+        var response = await _postService.GetByUserIdAsync(userId, query.PageNumber, query.PageSize);
+
+        if (response.Succeeded)
         {
-            // var result = await _postService.GetFeedAsync(userId.Value, query.PageNumber, query.PageSize);
-            // return Ok(result);
-            return Ok(userId);
+            return Ok(response);
         }
 
-        return Unauthorized("userId: " + userId);
+        return BadRequest(response);
     }
-    //
-    // [HttpPost]
-    // [Route("create")]
-    // public async Task<ActionResult<ApplicationResponse<DetailedPostDisplayDto>>> CreatePost(
-    //     [FromBody] CreatePostDto createPostDto)
-    // {
-    //     var userId   = GetUserId();
-    //     if (userId is not null)
-    //     {
-    //         var response = await _postService.UploadPost(userId.Value, createPostDto);
-    //
-    //         if (response.Succeeded)
-    //         {
-    //             return CreatedAtAction(nameof(GetPostById), new { response.Data!.Id }, response);
-    //         }
-    //
-    //         return BadRequest(response);
-    //     }
-    //
-    //     return Unauthorized();
-    // }
-    //
-    // [HttpPut]
-    // [Route("{id:int}")]
-    // public async Task<ActionResult<ApplicationResponse<DetailedPostDisplayDto>>> UpdatePost(int id, [FromBody] UpdatePostDto updatePostDto)
-    // {
-    //     var userId   = GetUserId();
-    //     if (userId is not null)
-    //     {
-    //         var response = await _postService.UpdatePost(id, userId.Value, updatePostDto);
-    //
-    //         if (response.Succeeded)
-    //         {
-    //             return Ok(response);
-    //         }
-    //
-    //         return BadRequest(response);
-    //     }
-    //
-    //     return Unauthorized();
-    // }
-    //
-    // [HttpDelete]
-    // [Route("{id:int}")]
-    // public async Task<ActionResult<ApplicationResponse>> DeletePost(int id)
-    // {
-    //     var userId   = GetUserId();
-    //     if (userId is not null)
-    //     {
-    //         var response = await _postService.DeletePostAsync(userId.Value, id);
-    //     
-    //         if (response.Succeeded)
-    //         {
-    //             return Ok(response);
-    //         }
-    //
-    //         return BadRequest(response);
-    //     }
-    //
-    //     return Unauthorized();
-    // }
+
+    [HttpGet]
+    [Route("user/{userId:int}")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ListResponse<StandardPostDisplayDto>>> GetPostsByUser(int userId, [FromQuery] PageQuery                                                                query)
+    {
+        var response = await _postService.GetByUserIdAsync(userId, query.PageNumber, query.PageSize);
+
+        if (response.Succeeded)
+        {
+            return Ok(response);
+        }
+
+        return BadRequest(response);
+    }
+    
+    [HttpPost]
+    public async Task<ActionResult<ApplicationResponse<FullPostDisplayDto>>> CreatePost([FromBody] CreatePostDto createPostDto)
+    {
+        if (string.IsNullOrEmpty(createPostDto.PostTitle))
+        {
+            return BadRequest(createPostDto);
+        }
+        var userId   = GetUserId();
+        var response = await _postService.UploadPost(userId, createPostDto);
+
+        if (response.Succeeded)
+        {
+            return CreatedAtAction(nameof(GetPostById), new { response.Data!.Id }, response);
+        }
+
+        return BadRequest(createPostDto);
+    }
+    
+    [HttpPut]
+    [Route("{id:int}")]
+    public async Task<ActionResult<ApplicationResponse<FullPostDisplayDto>>> UpdatePost(int id, [FromBody] UpdatePostDto updatePostDto)
+    {
+        var userId   = GetUserId();
+        var response = await _postService.UpdatePost(id, userId, updatePostDto);
+
+        if (response.Succeeded)
+        {
+            return Ok(response);
+        }
+
+        return BadRequest(response);
+    }
+    
+    [HttpDelete]
+    [Route("{id:int}")]
+    public async Task<ActionResult<ApplicationResponse>> DeletePost(int id)
+    {
+        var userId   = GetUserId();
+        var response = await _postService.DeletePostAsync(userId, id);
+    
+        if (response.Succeeded)
+        {
+            return Ok(response);
+        }
+
+        return BadRequest(response);
+    }
 }

@@ -14,22 +14,17 @@ public class BaseRepository<T> where T : class
         _dbSet = _dbContext.Set<T>();
     }
 
-    /// <summary>
-    /// opt for querying in batches if the db set is too large
-    /// </summary>
-    public async Task<List<T>> GetAllAsync()
-    {
-        return await _dbSet.ToListAsync();
-    }
-
     protected async Task<List<T>> GetWhereAsync(
-        Expression<Func<T, bool>> predicate,
+        Expression<Func<T, bool>>? predicate,
         int? pageNumber = null,
         int? pageSize = null,
-        Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
-        bool track = true)
+        Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null)
     {
-        var query = Query(track).Where(predicate);
+        var query = Query();
+        if (predicate is not null)
+        {
+            query = query.Where(predicate);
+        }
 
         if (orderBy is not null)
         {
@@ -46,7 +41,7 @@ public class BaseRepository<T> where T : class
         return await query.ToListAsync();
     }
 
-    public async Task<List<T>> GetPaginatedAsync(int? pageNumber, int? pageSize)
+    public async Task<List<T>> GetAllAsync(int? pageNumber, int? pageSize)
     {
         List<T> list;
         if (pageNumber is not null && pageSize is not null)
@@ -101,5 +96,10 @@ public class BaseRepository<T> where T : class
         await using var transaction = await _dbContext.Database.BeginTransactionAsync();
         await operation();
         await transaction.CommitAsync();
-    }   
+    }
+
+    public async Task SaveChangesAsync()
+    {
+        await _dbContext.SaveChangesAsync();
+    }
 }

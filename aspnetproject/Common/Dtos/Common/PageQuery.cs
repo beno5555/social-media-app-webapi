@@ -1,4 +1,4 @@
-﻿namespace aspnetproject.BusinessLogic.Dtos.Common;
+﻿namespace aspnetproject.Common.Dtos.Common;
 
 public class PageQuery
 {

@@ -1,13 +1,12 @@
 ﻿using aspnetproject.BusinessLogic.Dtos.UserDtos;
-using aspnetproject.BusinessLogic.Responses;
 using aspnetproject.BusinessLogic.Services.Main;
+using aspnetproject.Common.Responses;
 using aspnetproject.Controllers.Base;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace aspnetproject.Controllers;
 
-[ApiController]
 [Route("api/users")]
 [Authorize]
 public class UserController : BaseController

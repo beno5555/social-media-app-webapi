@@ -1,6 +1,6 @@
 ﻿using aspnetproject.BusinessLogic.Dtos.UserDtos;
-using aspnetproject.BusinessLogic.Responses;
 using aspnetproject.BusinessLogic.Services.Main;
+using aspnetproject.Common.Responses;
 using Microsoft.AspNetCore.Mvc;
 
 namespace aspnetproject.Controllers;

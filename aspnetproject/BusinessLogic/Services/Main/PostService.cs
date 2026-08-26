@@ -1,6 +1,6 @@
 ﻿using aspnetproject.BusinessLogic.Dtos.Posts;
 using aspnetproject.BusinessLogic.Mappers;
-using aspnetproject.BusinessLogic.Responses;
+using aspnetproject.Common.Dtos.Posts;
 using aspnetproject.Common.Responses;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Repositories;
@@ -15,7 +15,13 @@ public class PostService
     private readonly CommentRepository    _commentRepository;
     private readonly PostMapper           _postMapper;
 
-    public PostService(PostRepository postRepository, FriendshipRepository friendshipRepository, UserRepository userRepository, CommentRepository commentRepository, PostMapper postMapper)
+    public PostService(
+        PostRepository postRepository,
+        FriendshipRepository friendshipRepository,
+        UserRepository userRepository,
+        CommentRepository commentRepository,
+        PostMapper postMapper
+        )
     {
         _postRepository = postRepository;
         _friendshipRepository = friendshipRepository;
@@ -24,14 +30,14 @@ public class PostService
         _postMapper = postMapper;
     }
 
-    public async Task<ApplicationResponse<DetailedPostDisplayDto>> GetPostByIdAsync(int id)
+    public async Task<ApplicationResponse<FullPostDisplayDto>> GetPostByIdAsync(int id)
     {
-        var response = new ApplicationResponse<DetailedPostDisplayDto>();
+        var response = new ApplicationResponse<FullPostDisplayDto>();
 
         var post = await _postRepository.GetPostByIdAsync(id);
         if (post is not null)
         {
-            var postDisplay = _postMapper.ToDisplay(post);
+            var postDisplay = _postMapper.ToFullDisplay(post);
             response.Ok(postDisplay, "Post retrieved successfully");
         }
         else
@@ -45,18 +51,18 @@ public class PostService
     /// We do not check whether user with userId exists in the database or not, since the only source of userId is the userId of the currently logged-in user.
     /// Proper id checking will be implemented if we decide to add admin role that would be able to upload/update the post under someone else's name
     /// </summary>
-    public async Task<ApplicationResponse<DetailedPostDisplayDto>> UploadPost(int userId, CreatePostDto createPostDto)
+    public async Task<ApplicationResponse<StandardPostDisplayDto>> UploadPost(int userId, CreatePostDto createPostDto)
     {
-        var response = new ApplicationResponse<DetailedPostDisplayDto>();
+        var response = new ApplicationResponse<StandardPostDisplayDto>();
         
-        if (!string.IsNullOrWhiteSpace(createPostDto.PostTitle))
+        if (!string.IsNullOrEmpty(createPostDto.PostTitle))
         {
             if (!string.IsNullOrWhiteSpace(createPostDto.PostContent))
             {
                 var post = _postMapper.ToEntity(userId, createPostDto);
-                await _postRepository.AddAsync(post);
+                var addedPost = await _postRepository.AddPostAsync(post);
 
-                var postDisplay = _postMapper.ToDisplay(post);
+                var postDisplay = _postMapper.ToStandardDisplay(addedPost);
                 response.Ok(postDisplay, "Post uploaded successfully");
             }
             else
@@ -72,11 +78,11 @@ public class PostService
         return response;
     }
 
-    public async Task<ApplicationResponse<DetailedPostDisplayDto>> UpdatePost(int id, int userId, UpdatePostDto updatePostDto)
+    public async Task<ApplicationResponse<FullPostDisplayDto>> UpdatePost(int id, int userId, UpdatePostDto updatePostDto)
     {
-        var response = new ApplicationResponse<DetailedPostDisplayDto>();
+        var response = new ApplicationResponse<FullPostDisplayDto>();
 
-        var post = await _postRepository.GetByIdAsync(id);
+        var post = await _postRepository.GetPostByIdAsync(id);
         if (post is not null)
         {
             bool belongsToCaller = post.UserId == userId;
@@ -84,8 +90,11 @@ public class PostService
             {
                 post.PostTitle = updatePostDto.Title;
                 post.PostContent = updatePostDto.Content;
+                post.LastUpdatedAt = DateTime.UtcNow;
+
+                await _postRepository.SaveChangesAsync();
                 
-                var postDisplayDto = _postMapper.ToDisplay(post);
+                var postDisplayDto = _postMapper.ToFullDisplay(post);
                 response.Ok(postDisplayDto, "Post updated successfully");
             }
             else
@@ -101,60 +110,53 @@ public class PostService
         return response;
     }
 
-    public async Task<ListResponse<SummarizedPostDisplayDto>> GetAllPostsAsync(int? pageNumber, int? pageSize)
+    public async Task<ListResponse<MinimalPostDisplayDto>> GetAllPostsAsync(int? pageNumber, int? pageSize)
     {
-        var response = new ListResponse<SummarizedPostDisplayDto>();
+        var response = new ListResponse<MinimalPostDisplayDto>();
         
-        var posts    = await _postRepository.GetPaginatedAsync(pageNumber, pageSize);
+        var posts    = await _postRepository.GetAllAsync(pageNumber, pageSize);
         var postDtos = posts
             .Select(_postMapper
-                .ToSummarizedDisplay)
+                .ToMinimalDisplay)
             .ToList();
 
-        response.Data = postDtos;
+        response.Ok(postDtos);
 
         return response;
     }
 
-    public async Task<ListResponse<DetailedPostDisplayDto>> GetFeedAsync(int userId, int? pageNumber, int? pageSize)
+    public async Task<ListResponse<StandardPostDisplayDto>> GetFeedAsync(int userId, int? pageNumber, int? pageSize)
     {
-        var response = new ListResponse<DetailedPostDisplayDto>();
+        var response = new ListResponse<StandardPostDisplayDto>();
         
         var friends  = await _friendshipRepository.GetFriendshipsAsync(userId);
         List<int> friendIds = friends.Select(friend =>
             friend.RequesterUserId == userId ? friend.AddresseeUserId : friend.RequesterUserId).ToList();
 
         var posts = await _postRepository.GetFeedAsync(friendIds, pageNumber, pageSize);
-        var postDtos = posts.Select(_postMapper.ToDisplay).ToList();
+        var postDtos = posts.Select(_postMapper.ToStandardDisplay).ToList();
 
-        response.Data = postDtos;
+        response.Ok(postDtos);
 
         return response;
     }
 
-    public async Task<ApplicationResponse<List<DetailedPostDisplayDto>>> GetByUserIdAsync(int userId, int? pageNumber, int? pageSize)
+    public async Task<ListResponse<StandardPostDisplayDto>> GetByUserIdAsync(int userId, int? pageNumber, int? pageSize)
     {
-        var response = new ApplicationResponse<List<DetailedPostDisplayDto>>();
+        var response = new ListResponse<StandardPostDisplayDto>();
 
         bool userExists = await _userRepository.ExistsByIdAsync(userId);
 
         if (userExists)
         {
             var posts = await _postRepository.GetByUserIdAsync(userId, pageNumber, pageSize);
+            var postDtos = posts.Select(_postMapper.ToStandardDisplay).ToList();
             
-            if (posts.Count > 0)
-            {
-                var postDtos = posts.Select(_postMapper.ToDisplay).ToList();
-                response.Ok(postDtos);
-            }
-            else
-            {
-                response.Fail("No posts.");
-            }
+            response.Ok(postDtos);
         }
         else
         {
-            response.Fail("Invalid user id");
+            response.Fail("User not found");
         }
         
         return  response;
@@ -175,6 +177,8 @@ public class PostService
                     await _commentRepository.DeletePostCommentsAsync(post.Id);
                     await _postRepository.DeleteWithoutChangeTrackingAsync(post.Id);
                 });
+
+                response.Ok("Post deleted successfully");
             }
             else
             {

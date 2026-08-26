@@ -1,8 +1,9 @@
 ﻿using aspnetproject.BusinessLogic.Dtos.CommentDtos;
+using aspnetproject.Common.Dtos.Comments;
 
-namespace aspnetproject.BusinessLogic.Dtos.Posts;
+namespace aspnetproject.Common.Dtos.Posts;
 
-public class DetailedPostDisplayDto
+public class FullPostDisplayDto
 {
     public int    Id    { get; set; }
     public string Title { get; set; } = string.Empty;

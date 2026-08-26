@@ -1,5 +1,6 @@
 ﻿using aspnetproject.BusinessLogic.Dtos.CommentDtos;
 using aspnetproject.BusinessLogic.Mappers.Base;
+using aspnetproject.Common.Dtos.Comments;
 using aspnetproject.Models;
 
 namespace aspnetproject.BusinessLogic.Mappers;
@@ -18,6 +19,12 @@ public class CommentMapper : IMapper<Comment, CreateCommentDto, DisplayCommentDt
 
     public DisplayCommentDto ToDisplay(Comment comment)
     {
-        return new DisplayCommentDto(comment.Id, comment.CommenterUser!.Username, comment.CommentContent, comment.CreatedAt);
+        return new DisplayCommentDto
+        {
+            Id = comment.Id,
+            AuthorUsername = comment.CommenterUser!.Username,
+            Content = comment.CommentContent,
+            UploadedAt = comment.CreatedAt
+        };
     }
 }

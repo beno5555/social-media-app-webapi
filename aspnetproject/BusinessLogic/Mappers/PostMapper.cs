@@ -1,6 +1,8 @@
 ﻿using aspnetproject.BusinessLogic.Dtos.CommentDtos;
 using aspnetproject.BusinessLogic.Dtos.Posts;
 using aspnetproject.BusinessLogic.Mappers.Base;
+using aspnetproject.Common.Dtos.Comments;
+using aspnetproject.Common.Dtos.Posts;
 using aspnetproject.Models;
 
 namespace aspnetproject.BusinessLogic.Mappers;
@@ -17,9 +19,9 @@ public class PostMapper
         };
     }
 
-    public DetailedPostDisplayDto ToDisplay(Post post)
+    public FullPostDisplayDto ToFullDisplay(Post post)
     {
-        return new DetailedPostDisplayDto
+        return new FullPostDisplayDto
         {
             Id = post.Id,
             Title = post.PostTitle,
@@ -29,12 +31,20 @@ public class PostMapper
 
             PostContent = post.PostContent,
             UploadedAt = post.CreatedAt,
+            
+            Comments = post.Comments.Select(comment => new DisplayCommentDto
+            {
+                Id = comment.Id,
+                AuthorUsername = comment.CommenterUser!.Username,
+                Content = comment.CommentContent,
+                UploadedAt = comment.CreatedAt
+            }).ToList()
         };
     }
     
-    public DetailedPostDisplayDto ToDisplay(Post post, List<DisplayCommentDto> commentDtos)
+    public FullPostDisplayDto ToFullDisplay(Post post, List<DisplayCommentDto> commentDtos)
     {
-        return new DetailedPostDisplayDto
+        return new FullPostDisplayDto
         {
             Id = post.Id,
             Title = post.PostTitle,
@@ -48,10 +58,25 @@ public class PostMapper
             Comments = commentDtos
         };
     }
-
-    public SummarizedPostDisplayDto ToSummarizedDisplay(Post post)
+    
+    public StandardPostDisplayDto ToStandardDisplay(Post post)
     {
-        return new SummarizedPostDisplayDto
+        return new StandardPostDisplayDto
+        {
+            Id = post.Id,
+            Title = post.PostTitle,
+
+            UserId = post.UserId,
+            Username = post.User!.Username,
+
+            PostContent = post.PostContent,
+            UploadedAt = post.CreatedAt,
+        };
+    }
+    
+    public MinimalPostDisplayDto ToMinimalDisplay(Post post)
+    {
+        return new MinimalPostDisplayDto
         {
             Id = post.Id,
             Title = post.PostTitle,

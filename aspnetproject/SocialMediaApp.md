@@ -6,7 +6,7 @@ An ASP.NET Core Web API, migrated from an earlier C# console application that si
 
 ## Migration Context
 
-This project began as a console application (see prior `SocialMediaApp` docs) using EF Core code-first, layered architecture, and manual DI. The console app's job was learning-focused: build the domain and data layers correctly, with a hand-rolled menu system standing in for a UI.
+This project began as a console application using EF Core code-first, layered architecture, and manual DI. The console app's job was learning-focused: build the domain and data layers correctly, with a hand-rolled menu system standing in for a UI.
 
 Moving to a Web API meant replacing the presentation layer, not the domain. The menu system was doing the same job controllers do — routing user actions to services and rendering results — but shaped around a single-user, stateful console session. That shape doesn't fit a stateless, multi-client API.
 
@@ -26,10 +26,6 @@ Moving to a Web API meant replacing the presentation layer, not the domain. The 
 - `PaginatedInput`, `ConversationInput` — console input shapes; pagination now comes from query parameters
 - `NavigateToRootException`, `AccountDeletedException` — solved stack-unwinding in a console menu loop; no equivalent in a stateless request/response cycle
 - `SessionUser` in its original form — was a scoped, mutable object tied to a persistent login session; being reworked around reading claims from `HttpContext.User` per request
-
-### Renamed
-
-- `Response<T>` / `Response` → `ApplicationResponse<T>` / `ApplicationResponse` (naming only, behavior unchanged)
 
 ### New
 
@@ -57,13 +53,9 @@ Swashbuckle.AspNetCore.Filters
 Swashbuckle.AspNetCore
 ```
 
-Carried over unchanged from the console app: the four `EntityFrameworkCore*` packages. `JwtBearer` is now confirmed in use (JWT auth implemented). `Swashbuckle` (Swagger) remains a guess based on typical Web API setup — not yet confirmed as installed.
-
 ---
 
 ## Folder Structure
-
-> **Guess — reconstructed from the console app's structure minus dropped layers, plus a guessed `Controllers` folder and `Log` entity files. Needs correcting to match the actual project.**
 
 ```
 /Models
@@ -98,16 +90,7 @@ Carried over unchanged from the console app: the four `EntityFrameworkCore*` pac
         LogRepository.cs
         RefreshTokenRepository.cs
 /BusinessLogic
-    /Dtos
-        /Auth
-        /Comments
-        /Messages
-        /Posts
-        /Users
     /Mappers
-    /Responses
-        ApplicationResponse.cs
-        ApplicationResponse<T>.cs
     /Services
         /Main
             AuthService.cs
@@ -122,7 +105,22 @@ Carried over unchanged from the console app: the four `EntityFrameworkCore*` pac
             PasswordHasher.cs
         /Logging
             SystemLogger.cs
+           
+/Common
+    /Dtos
+        /Auth
+        /Comments
+        /Common
+        /Messages
+        /Posts
+        /Users
+    /Responses
+        ApplicationResponse.cs
+        ApplicationResponse<T>.cs : ApplicationResponse
+        ListResponse<T>.cs : ApplicationResponse
 /Controllers
+    /Base
+        BaseController.cs
     AuthController.cs
     UsersController.cs
     PostsController.cs
@@ -134,16 +132,13 @@ Carried over unchanged from the console app: the four `EntityFrameworkCore*` pac
 Program.cs
 ```
 
-`SessionUser` (in its original console-app form) and its conversion methods have been removed entirely — no longer carried over, no longer reworked; superseded by JWT claims read per-request from `HttpContext.User`.
-
 ---
 
 ## Architecture
 
 ```
 Models
-Data (DbContext + Configurations)
-Repositories
+Data (DbContext + Configurations + Repositories)
 BusinessLogic (Dtos, Mappers, Responses, Services)
 Controllers
 Program.cs
@@ -163,8 +158,6 @@ Program.cs
 
 ## Coding Style
 
-Style differs by layer, deliberately:
-
 - **Controllers** — early returns are used freely for validation/failure branching, in line with typical ASP.NET Core controller conventions.
 - **Everywhere else** (services, repositories, mappers) — the console app's style is retained: no early returns, single `return` at the end of a method, branching via `if`/`else`.
 
@@ -172,7 +165,7 @@ Other retained conventions:
 
 - No interfaces — concrete repository, service, and mapper classes only.
 - `BaseRepository<T>` / `BaseEntityRepository<T>` split — composite-key entities (e.g. `Friendship`) share base methods without forcing an integer PK.
-- `Query()` virtual override per repository for default `Include` chains.
+- `Query()` virtual override per repository for default `Include` chains. (moving away from this and using manual includes per business operation as they become different as they become more and more specific)
 - `DeleteWhereAsync` uses `ExecuteDeleteAsync`, bypassing the change tracker, for bulk cleanup.
 - `ApplicationResponse` wrapper omitted where no failure state is possible.
 
@@ -185,8 +178,8 @@ Other retained conventions:
 ### `BaseRepository<T> where T : class`
 
 - `Query()` — `protected virtual IQueryable<T>`; override to apply default `Include` chains
-- `GetAllAsync()`
-- `GetWhereAsync(predicate, page?, pageSize?, orderBy?, track?)`
+- `GetAllAsync(page? pageSize?)` - simple method to fetch all data with optional pagination
+- `GetWhereAsync(predicate?, page?, pageSize?, orderBy?, track?)` — composes the three steps; `predicate` is now optional (was required), so pagination-only or order-only calls don't need a no-op filter
 - `GetFirstAsync(predicate)` — returns `T?`
 - `AddAsync(T entity)`
 - `DeleteAsync(T entity)`
@@ -206,6 +199,7 @@ Extends `BaseRepository<T>`. Adds:
 ### Pagination
 
 `GetWhereAsync` accepts optional `page` and `pageSize`. `Skip`/`Take` is applied and translated to SQL when both are provided. In the API, these values come from query parameters rather than the console app's `PaginatedInput`.
+`GetAllAsync` also accepts optional `page` and `pageSize` parameters, applied accordingly.
 
 ### SaveChanges Strategy
 
@@ -213,11 +207,67 @@ Extends `BaseRepository<T>`. Adds:
 
 ---
 
+## Controllers Layer
+
+### `BaseController`
+
+Abstract, carries `[ApiController]` (inherited automatically by every derived controller — no need to repeat it) and `[Authorize]` is instead applied per-controller, not here, so controllers with mostly-public endpoints can invert it.
+
+```csharp
+[ApiController]
+public abstract class BaseController : ControllerBase
+{
+    protected int GetUserId()
+    {
+        var userIdRaw = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
+        return int.Parse(userIdRaw);
+    }
+}
+```
+
+`GetUserId()` reads the caller's own id from JWT claims. Note: claims are populated by `UseAuthentication` on every request regardless of whether the hit endpoint carries `[Authorize]` — `[Authorize]` only gates rejection of unauthenticated requests, it doesn't control whether `HttpContext.User` gets parsed.
+
+### `PageQuery`
+
+Shared query-binding DTO for paginated list endpoints, in `/Common/Dtos/Common/`:
+
+```csharp
+public class PageQuery
+{
+    public int? Page { get; set; }
+    public int? PageSize { get; set; }
+}
+```
+
+Bound via `[FromQuery]`. Properties are defaulted, deliberately: several service methods (e.g. `GetFeedAsync`) treat `null` page/size as "no pagination, return everything," a mode used by internal/non-API callers (cascade cleanup, seeding). Controllers unpack `PageQuery` into the individual `page`/`pageSize` primitives before calling a service — the service layer does not take a dependency on `PageQuery` itself. No size clamping/validation yet.
+
+### `PostsController`
+
+Route: `/posts`. Inherits `BaseController`. `[Authorize]` at the controller level, with `[AllowAnonymous]` on the public-read endpoints — most actions require auth, so this reads better than tagging most methods individually.
+
+| Method | Route | Auth | Notes |
+|---|---|---|---|
+| GET | `/posts/{id}` | Anonymous | Single post |
+| GET | `/posts` | Anonymous | Paginated list |
+| GET | `/posts/feed` | Required | Friends-only, via `PostService.GetFeedAsync` |
+| GET | `/posts/mine` | Required | Caller's own posts, `userId` from JWT |
+| GET | `/posts/user/{userId}` | Anonymous | Any user's posts — public-profile-style visibility, mirrors platforms where post history is public even to logged-out viewers; not gated by friendship |
+| POST | `/posts` | Required | Create |
+| PUT | `/posts/{id}` | Required | Update, ownership-scoped |
+| DELETE | `/posts/{id}` | Required | Delete, ownership-scoped |
+
+Route ordering (`feed`, `mine`, `user/{id}` vs `{id}`) resolves correctly without explicit constraints — a literal segment always wins over a route parameter in ASP.NET Core's routing.
+
+`GetOwnPosts` (`/mine`) and `GetPostsByUser` (`/user/{userId}`) share one service method, `PostService.GetByUserAsync(userId, page, pageSize)` — they differ only in whether `userId` comes from `GetUserId()` or the route.
+
+**Ownership checks** (`Update`/`Delete`) are done via a scoped query in the service — `WHERE Id = @id AND UserId = @userId` — rather than a separate resource-based authorization step. A dedicated authorization check (`IAuthorizationService.AuthorizeAsync` against a pre-fetched entity) would cleanly separate "is this allowed" from "do the update," but costs an extra DB round-trip to fetch the entity before the service call that touches it again; not worth it for a project this size. Both failure paths return `NotFound`, not `Forbidden`/`Unauthorized`, so a caller can't distinguish "post doesn't exist" from "post exists but isn't yours" — same oracle-avoidance reasoning as the auth failure messages.
+
+**Visibility model, and the inconsistency it creates:** `feed`/`mine` are friends-gated (via `GetFeedAsync`'s friendship lookup); `GetById`/`GetAll`/`GetPostsByUser` are fully public. This isn't a bug — it mirrors real platforms where the home feed is curated but profile pages are public — but it means "who can see a post" currently depends on which endpoint is hit, not a single rule on the `Post` resource. Revisit if/when private accounts become a feature; that check would live in `GetPostsByUser`.
+
+---
+
 ## DI Setup
 
-> **Guess — the console app registered everything as `Scoped` inside `Program.cs`; a Web API's `Program.cs` needs the same registrations plus ASP.NET-specific setup (controllers, auth, Swagger). Actual code not yet confirmed.**
-
-JWT authentication is now implemented; DI/middleware wiring below reflects it, still worth confirming against the actual `Program.cs`.
 
 ```csharp
 using Microsoft.AspNetCore.Authentication.JwtBearer;
@@ -228,18 +278,11 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<AppDbContext>();
 
-// Repositories
-builder.Services.AddScoped<UserRepository>();
-builder.Services.AddScoped<PostRepository>();
-builder.Services.AddScoped<CommentRepository>();
-builder.Services.AddScoped<FriendshipRepository>();
-builder.Services.AddScoped<MessageRepository>();
-builder.Services.AddScoped<RefreshTokenRepository>();
+// AddScoped per repository
 
-// Mappers
 // AddScoped per mapper
 
-// Services
+// AddScoped per service
 builder.Services.AddScoped<AuthService>();
 builder.Services.AddScoped<AccountService>();
 builder.Services.AddScoped<PostService>();
@@ -276,8 +319,6 @@ builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-app.UseExceptionHandler(/* see Global exception handling, under Authentication & Authorization */);
-
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -301,7 +342,7 @@ app.MapControllers();
 app.Run();
 ```
 
-`ValidateIssuer`/`ValidateAudience` are deliberately `false` for now — single-client setup, no immediate need to distinguish token audiences. `SessionUser` is gone; claims are read from `HttpContext.User` per request, no DI registration needed for that.
+`ValidateIssuer`/`ValidateAudience` are deliberately `false` for now — single-client setup, no immediate need to distinguish token audiences. claims are read from `HttpContext.User` per request, no DI registration needed for that.
 
 ---
 
@@ -315,7 +356,7 @@ app.Run();
 | Friendship | RequesterId, AddresseeId, Status (enum: Pending/Accepted/Declined), CreatedAt                  |
 | Message    | SenderId, ReceiverId, MessageContent, IsRead, SentAt                                           |
 | Log        | *(in progress)* — inherits `BaseEntity`; `LastUpdatedAt` present but unused                    |
-| RefreshToken | UserId (FK, cascade delete), TokenHash (MaxLength 44, unique-indexed), ExpiresAt, RevokedAt (nullable) — inherits `BaseEntity`; `LastUpdatedAt` present but unused |
+| RefreshToken | UserId (FK, cascade delete), TokenHash (MaxLength 44, unique-indexed), ExpiresAt, RevokedAt (nullable) — inherits `BaseEntity`; `LastUpdatedAt` |
 
 `BaseEntity`:
 
@@ -381,9 +422,7 @@ Password hashing/salting is retained from the console app. JWT access tokens + r
 
 ## Features
 
-> **Guess — rewritten from the console app's feature list to drop console-specific framing (menus, keypresses). Endpoint shape and exact scope not yet confirmed.**
-
-- Register and log in (password hashing retained; JWT issuance pending)
+- Register and log in 
 - Create, view, update, and delete posts
 - Comment on posts; delete own comments
 - Send, accept, decline, and cancel friend requests; view friends list; remove friends; browse/search users
@@ -416,10 +455,16 @@ New to the API version:
 - Controllers use early returns, unlike the rest of the codebase — matches typical ASP.NET Core convention and keeps validation/failure branching readable at the routing layer.
 - `LastUpdatedAt` on `BaseEntity`, defaulted via `HasDefaultValueSql("GETUTCDATE()")` in configuration rather than relying on the C# property initializer, so existing/new rows get a DB-level default.
 - JWT access tokens + rotating refresh tokens, `AuthController`, and global exception handling — see Authentication & Authorization above for full detail.
-- `SessionUser`'s replacement is settled: claims read from `HttpContext.User` per request; `SessionUser` itself removed.
+- `BaseController` (with `[ApiController]`, inherited by all derived controllers) centralizes `GetUserId()`, avoiding per-controller duplication.
+- `PageQuery` (nullable `Page`/`PageSize`) standardizes list-endpoint pagination binding, without forcing the service layer to depend on an API-layer DTO.
+- Controller-level `[Authorize]` with `[AllowAnonymous]` overrides, rather than tagging every action, used where most of a controller's actions require auth.
+
+### Bugs debugged this session
+
+- JWT claims appearing empty on endpoints without `[Authorize]` when testing via Swagger — not a server bug. Swagger's "Authorize" button only attaches the bearer token to operations it detects as requiring auth (via `SecurityRequirementsOperationFilter` reading `[Authorize]`); endpoints without it never receive the token from Swagger UI even after global authorization, though `HttpContext.User` is in fact populated correctly server-side.
 
 ---
 
 ## Status
 
-Actively in progress. Domain and data layers are migrated; JWT access + refresh token authentication is implemented (login/refresh/logout, `AuthController`, global exception handling). Not yet manually tested by running the API — next step. Role/permission scheme, remaining controllers, and logging (`Log`/`ActionLog`) remain to be built out incrementally.
+Actively in progress. Domain and data layers are migrated. JWT access + refresh token authentication is implemented and manually tested end-to-end (login/refresh/logout all confirmed working). `PostsController` is complete (list/detail/feed/own/by-user/create/update/delete). Next: remaining controllers (Comments, Friendships, Messages), following the same patterns established in `PostsController` (`BaseController`, `PageQuery`, controller-level `[Authorize]` with `[AllowAnonymous]` overrides, service-scoped ownership checks). Logging (`Log`/`ActionLog`) to follow once controllers are done — the two aren't dependent on each other, but controllers take priority. Role/permission scheme and registration auto-login are deliberately deferred, not tracked as pending TODOs.

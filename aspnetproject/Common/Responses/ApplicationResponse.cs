@@ -1,11 +1,17 @@
-﻿namespace aspnetproject.BusinessLogic.Responses;
+﻿namespace aspnetproject.Common.Responses;
 
 public class ApplicationResponse
 {
     public bool    Succeeded { get; set; } = true;
     public string? Message { get; set; }
 
-    public virtual void Fail(string? message)
+    public void Ok(string? message = null)
+    {
+        Succeeded = true;
+        Message = message;
+    }
+
+    public virtual void Fail(string? message = null)
     {
         Succeeded = false;
         Message = message;
@@ -22,10 +28,9 @@ public class ApplicationResponse<T> : ApplicationResponse
         Data = data;
     }
 
-    public override void Fail(string? message)
+    public override void Fail(string? message = null)
     {
-        Succeeded = false;
-        Message = message;
+        base.Fail(message);
         Data = default;
     }
 }

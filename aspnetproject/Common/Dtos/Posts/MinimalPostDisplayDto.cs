@@ -1,6 +1,6 @@
-﻿namespace aspnetproject.BusinessLogic.Dtos.Posts;
+﻿namespace aspnetproject.Common.Dtos.Posts;
 
-public class SummarizedPostDisplayDto
+public class MinimalPostDisplayDto
 {
     public int    Id    { get; set; }
     public string Title { get; set; } = string.Empty;

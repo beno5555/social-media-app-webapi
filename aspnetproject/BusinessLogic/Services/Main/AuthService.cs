@@ -2,8 +2,8 @@
 using aspnetproject.BusinessLogic.Dtos.Auth;
 using aspnetproject.BusinessLogic.Dtos.UserDtos;
 using aspnetproject.BusinessLogic.Mappers;
-using aspnetproject.BusinessLogic.Responses;
 using aspnetproject.BusinessLogic.Services.Helpers;
+using aspnetproject.Common.Responses;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Models;
 using aspnetproject.Repositories;

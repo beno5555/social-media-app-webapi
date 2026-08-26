@@ -11,9 +11,21 @@ public class PostRepository : BaseEntityRepository<Post>
         
     }
 
+    public async Task<Post> AddPostAsync(Post post)
+    {
+        await AddAsync(post);
+        return (await _dbSet
+            .Include(postFromDb => postFromDb.User)
+            .FirstOrDefaultAsync(postFromDb => postFromDb.Id == post.Id))!;
+    }
+
     public async Task<Post?> GetPostByIdAsync(int id)
     {
-        return await GetFirstAsync(post => post.Id == id);
+        return await _dbSet.Include(post => post.User)
+            .Include(post => post.Comments)
+                .ThenInclude(comment => comment.CommenterUser)
+            .AsSplitQuery()
+            .FirstOrDefaultAsync(post => post.Id == id);
     }
 
     public async Task<List<Post>> GetByUserIdAsync(int userId, int? pageNumber = null, int? pageSize = null)

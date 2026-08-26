@@ -1,6 +1,6 @@
 ﻿using aspnetproject.BusinessLogic.Dtos.UserDtos;
 using aspnetproject.BusinessLogic.Mappers;
-using aspnetproject.BusinessLogic.Responses;
+using aspnetproject.Common.Responses;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Repositories;
 

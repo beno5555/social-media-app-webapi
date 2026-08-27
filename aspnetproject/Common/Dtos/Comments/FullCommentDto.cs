@@ -11,5 +11,5 @@ public class FullCommentDto
     public int              PostId      { get; set; }
 
     public DateTime UploadedAt { get; set; }
-    public DateTime LastUpdatedAt { get; set; }
+    public DateTime? LastUpdatedAt { get; set; }
 }

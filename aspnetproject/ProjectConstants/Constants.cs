@@ -26,6 +26,8 @@ public static class Constants
     public const int    DefaultPageSize             = 10;
     public const int    DefaultConversationPageSize = 10;
 
+    public static readonly TimeSpan EditMessageWindow = TimeSpan.FromMinutes(20);
+
     public const int  ChatWidth  = 80;
     public const char ChatBorder = '|';
     

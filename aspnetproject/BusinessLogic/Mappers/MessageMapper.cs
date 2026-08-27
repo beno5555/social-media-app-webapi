@@ -32,7 +32,8 @@ public class MessageMapper
             ReceiverId = message.ReceiverUserId,
             
             SentAt = message.CreatedAt,
-            IsRead = message.IsRead
+            IsRead = message.IsRead,
+            IsEdited = message.IsEdited
         };
     }
     

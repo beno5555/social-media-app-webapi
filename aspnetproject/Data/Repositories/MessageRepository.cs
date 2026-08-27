@@ -11,21 +11,16 @@ public class MessageRepository : BaseEntityRepository<Message>
         
     }
 
+    public async Task<Message?> GetMessageByIdAsync(int id)
+    {
+        return await GetFirstAsync(message => message.Id == id);
+    }
+
     public async Task<Message> AddMessageAsync(Message messageToAdd)
     {
         await AddAsync(messageToAdd);
         return (await _dbSet.FirstOrDefaultAsync(message => message.Id == messageToAdd.Id))!;
     }
-
-    // public async Task<Message?> GetLatestMessageAsync(int userA, int userB)
-    // {
-    //     return await _dbSet
-    //         .AsNoTracking()
-    //         .Where(message => (message.SenderUserId == userA && message.ReceiverUserId == userB) ||
-    //                           (message.ReceiverUserId == userA && message.SenderUserId == userB))
-    //         .OrderByDescending(message => message.CreatedAt)
-    //         .FirstOrDefaultAsync();
-    // }
 
     protected override IQueryable<Message> Query(bool track = true)
     {

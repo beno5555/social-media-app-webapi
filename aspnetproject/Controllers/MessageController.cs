@@ -90,4 +90,34 @@ public class MessageController : BaseController
 
         return BadRequest(response);
     }
+
+    [HttpPut]
+    [Route("{id:int}")]
+    public async Task<ActionResult<ApplicationResponse<StandardMessageDto>>> EditMessage(int id, EditMessageDto editMessageDto)
+    {
+        var userId   = GetUserId();
+        var response = await _messageService.EditMessage(id, editMessageDto, userId);
+
+        if (response.Succeeded)
+        {
+            return Ok(response);
+        }
+
+        return BadRequest(response);
+    }
+
+    [HttpDelete]
+    [Route("{id:int}")]
+    public async Task<ActionResult<ApplicationResponse>> DeleteMessage(int id)
+    {
+        var userId   = GetUserId();
+        var response = await _messageService.DeleteMessage(id, userId);
+
+        if (response.Succeeded)
+        {
+            return Ok(response);
+        }
+
+        return BadRequest(response);
+    }
 }

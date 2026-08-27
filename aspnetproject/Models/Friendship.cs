@@ -1,4 +1,6 @@
-﻿using aspnetproject.ProjectConstants.Enums;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+using aspnetproject.Migrations;
+using aspnetproject.ProjectConstants.Enums;
 
 namespace aspnetproject.Models;
 
@@ -8,7 +10,7 @@ public class Friendship
     
     public DateTime CreatedAt     { get; set; } = DateTime.UtcNow;
     public DateTime SentAt        { get; set; } = DateTime.UtcNow;
-    public DateTime LastUpdatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? LastUpdatedAt { get; set; } = DateTime.UtcNow;
 
     public int   RequesterUserId { get; set; }
     public User? RequesterUser   { get; set; }

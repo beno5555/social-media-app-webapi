@@ -196,3 +196,70 @@ public class StandardFriendshipDto
     public DateTime LastUpdatedAt { get; set; }
 }
 ```
+### `MessageController`
+
+Route: `/messages`. Inherits `BaseController`. 
+
+No `Update`/`Delete` actions — not supported by the service; deferred, not designed.
+
+No `GetMessage(id)` action — no real chat UX fetches a single message by id (conversations are bulk-loaded per page; per-message "details" are fields already present in the row, not a new fetch). `SendMessage`'s `Created()` response uses a manually built location string instead of `CreatedAtAction`, so no phantom endpoint exists just to support it.
+
+| Method | Route                                  | Notes                                                                                                                                                                                                                                                                                                                                                                            |
+|--------|----------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| POST   | `/messages/{receiverId}`               | Send a message. Receiver in the route, not the DTO — same convention as `FriendshipController.SendRequest`. Body: `CreateMessageDto` (`MessageContent` only). Response: `SentMessageDto`                                                                                                                                                                                         |
+| GET    | `/messages/conversation/{otherUserId}` | Paginated (`PageQuery`), returns `ListResponse<StandardMessageDto>`. Fetching also marks the caller's unread incoming messages as read (reference-type mutation off `MarkAsReadAsync`, no separate loop needed). `ValidFriendship` failures collapse to `BadRequest` — same as `FriendshipController.SendRequest`, can't distinguish failure meanings from `ApplicationResponse` |
+| GET    | `/messages/conversations`              | Caller's friends with an existing conversation (chat list). Returns `List<ConversationFriendDto>`                                                                                                                                                                                                                                                                                |
+| GET    | `/messages/friends/no-conversation`    | Caller's friends with no conversation yet (start-new-chat picker). Returns `List<UserSummaryDto>` directly — no dedicated DTO, no relationship metadata exists yet for this pairing                                                                                                                                                                                              |
+| GET    | `/messages/unread`                     | Unread conversation count (int), via `GetUnreadConversationsCount`                                                                                                                                                                                                                                                                                                               |
+
+**`GetConversationFriends`/`GetNonConversationFriends` live here despite returning user-shaped DTOs** — controller placement follows which service backs the logic, not the response DTO's shape. Same reasoning as `GetPostsByUser` living under `/posts`.
+
+**Repository note:** conversation-friends query uses raw SQL (`SqlQueryRaw<T>`), not LINQ — grouped latest-message-per-partner plus a conditional join key was judged too high-risk for silent EF translation failure/client-eval fallback. Projection type is flat (`FriendId`, `FriendUsername`, ...) — `SqlQueryRaw<T>` can't map onto nested/owned types; nesting into `UserSummaryDto` happens in the mapper afterward.
+
+### Message Display DTOs
+
+No `MinimalMessageDto` — no unscoped bulk-list use case for messages (unlike comments), so no tier leaner than Standard is needed.
+
+**`StandardMessageDto`** — per-message row in `GetConversation`.
+
+```csharp
+public class StandardMessageDto
+{
+    public int Id { get; set; }
+    public string MessageContent { get; set; } = string.Empty;
+    public UserSummaryDto Sender { get; set; } = null!;
+    public int ReceiverUserId { get; set; }
+    public DateTime SentAt { get; set; }
+    public bool IsRead { get; set; }
+}
+```
+
+Sender nested, receiver bare — sender varies per row (needed to determine bubble alignment), receiver is constant within one conversation and already known from context.
+
+**`SentMessageDto`** — `SendMessage` response.
+
+```csharp
+public class SentMessageDto
+{
+    public int Id { get; set; }
+    public string MessageContent { get; set; } = string.Empty;
+    public DateTime SentAt { get; set; }
+}
+```
+
+**`ConversationFriendDto`** — chat list row.
+
+```csharp
+public class ConversationFriendDto
+{
+    public UserSummaryDto Friend { get; set; } = null!;
+    public string LastMessageContent { get; set; } = string.Empty;
+    public DateTime LastMessageSentAt { get; set; }
+    public int LastMessageSenderId { get; set; }
+    public int UnreadCount { get; set; }
+}
+```
+
+No bio/presence fields — not tracked in the data model, not messaging content. `LastMessageSenderId` needed for "You: ..." prefix rendering.
+
+**Principle established this session:** service shape follows controller needs, not the reverse.

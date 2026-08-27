@@ -12,5 +12,8 @@ public class StandardMessageDto
     public int            ReceiverId { get; set; }
 
     public DateTime SentAt { get; set; }
-    public bool     IsRead { get; set; } = false;
+    
+    public bool IsRead { get; set; }
+    public bool IsEdited { get; set; }
+
 }

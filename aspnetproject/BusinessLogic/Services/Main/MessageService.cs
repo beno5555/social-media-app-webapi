@@ -4,6 +4,8 @@ using aspnetproject.Common.Dtos.Users;
 using aspnetproject.Common.Responses;
 using aspnetproject.Data.Repositories;
 using aspnetproject.ProjectConstants.Enums;
+using Microsoft.VisualBasic;
+using Constants = aspnetproject.ProjectConstants.Constants;
 
 namespace aspnetproject.BusinessLogic.Services.Main;
 
@@ -165,5 +167,79 @@ public class MessageService
         return await _messageRepository.HaveMessages(userAId, userBId);
     }
 
-    
+    public async Task<ApplicationResponse<StandardMessageDto>> EditMessage(int id, EditMessageDto editMessageDto, int userId)
+    {
+        var response = new ApplicationResponse<StandardMessageDto>();
+
+        var message = await _messageRepository.GetMessageByIdAsync(id);
+
+        if (message is not null)
+        {
+            bool belongsToCaller = message.SenderUserId == userId;
+            if (belongsToCaller)
+            {
+                bool canEdit = DateTime.UtcNow - message.CreatedAt > Constants.EditMessageWindow;
+
+                if (canEdit)
+                {
+                    message.MessageContent = editMessageDto.NewContent;
+                    message.LastUpdatedAt = DateTime.UtcNow;
+
+                    await _messageRepository.SaveChangesAsync();
+                    
+                    var messageDto = _messageMapper.ToStandardDisplay(message);
+                    response.Ok(messageDto, "Message edited successfully");
+                }
+                else
+                {
+                    response.Fail("Edit window has expired");
+                }
+            }
+            else
+            {
+                bool isCallerInConversation = message.ReceiverUserId == userId;
+                if (isCallerInConversation)
+                {
+                    response.Fail("You do not have permission to edit this message");
+                }
+                else
+                {
+                    response.Fail("Invalid request");
+                }
+            }
+        }
+        else
+        {
+            response.Fail("Message not found");
+        }
+
+        return response;
+    }
+
+    public async Task<ApplicationResponse> DeleteMessage(int id, int userId)
+    {
+        var response = new ApplicationResponse();
+        
+        var message = await _messageRepository.GetByIdAsync(id);
+
+        if (message is not null)
+        {
+            bool belongsToCaller = message.SenderUserId == userId;
+            if (belongsToCaller)
+            {
+                await _messageRepository.DeleteAsync(message);
+                response.Ok("Message deleted");
+            }
+            else
+            {
+                response.Fail("Delete request declined");
+            }
+        }
+        else
+        {
+            response.Fail("Message not found");
+        }
+
+        return response;
+    }
 }

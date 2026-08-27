@@ -9,5 +9,5 @@ public class BaseEntity
     public DateTime CreatedAt     { get; set; } = DateTime.UtcNow;
     
     [Column(TypeName = "datetime2(3)")]
-    public DateTime LastUpdatedAt { get; set; }  = DateTime.UtcNow;
+    public DateTime? LastUpdatedAt { get; set; }  = DateTime.UtcNow;
 }

@@ -16,6 +16,8 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
             .IsRequired()
             .HasMaxLength(Constants.MessageMaxLength);
 
+        builder.HasIndex(message => new { message.SenderUserId, message.ReceiverUserId, message.CreatedAt });
+
         // service implementation must manually delete the user's messages before deleting the user.
         builder.HasOne(message => message.SenderUser)
             .WithMany(senderUser => senderUser.SentMessages)

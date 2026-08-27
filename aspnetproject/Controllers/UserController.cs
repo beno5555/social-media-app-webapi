@@ -1,5 +1,6 @@
 ﻿using aspnetproject.BusinessLogic.Dtos.UserDtos;
 using aspnetproject.BusinessLogic.Services.Main;
+using aspnetproject.Common.Dtos.Users;
 using aspnetproject.Common.Responses;
 using aspnetproject.Controllers.Base;
 using Microsoft.AspNetCore.Authorization;
@@ -20,7 +21,7 @@ public class UserController : BaseController
         
     [HttpGet]
     [Route("{id:int}")]
-    public async Task<ActionResult<ApplicationResponse<DisplayUserDto>>> GetUser(int id)
+    public async Task<ActionResult<ApplicationResponse<StandardUserDto>>> GetUser(int id)
     {
         return Ok("successful");
     }

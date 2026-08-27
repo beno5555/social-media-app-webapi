@@ -3,10 +3,10 @@ using aspnetproject.BusinessLogic.Dtos.Auth;
 using aspnetproject.BusinessLogic.Dtos.UserDtos;
 using aspnetproject.BusinessLogic.Mappers;
 using aspnetproject.BusinessLogic.Services.Helpers;
+using aspnetproject.Common.Dtos.Users;
 using aspnetproject.Common.Responses;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Models;
-using aspnetproject.Repositories;
 
 namespace aspnetproject.BusinessLogic.Services.Main;
 
@@ -45,9 +45,9 @@ public class AuthService
         _configuration = configuration;
     }
 
-    public async Task<ApplicationResponse<DisplayUserDto>> RegisterAsync(RegisterDto registerDto)
+    public async Task<ApplicationResponse<StandardUserDto>> RegisterAsync(RegisterDto registerDto)
     {
-        var response = new ApplicationResponse<DisplayUserDto>();
+        var response = new ApplicationResponse<StandardUserDto>();
         var      emailExists      = await _userRepository.ExistsByEmailAsync(registerDto.Email);
 
         if (!emailExists)
@@ -61,7 +61,7 @@ public class AuthService
             
                 await _userRepository.AddAsync(userToRegister);
 
-                var displayDto = _userMapper.ToDisplay(userToRegister);
+                var displayDto = _userMapper.ToStandardDisplay(userToRegister);
                 response.Data = displayDto;
                 response.Message = "User registered successfully";
             }

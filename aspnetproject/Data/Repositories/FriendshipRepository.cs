@@ -93,7 +93,9 @@ public class FriendshipRepository : BaseRepository<Friendship>
     public async Task UpdateStatusAsync(Friendship friendship, FriendshipStatus status)
     {
         friendship.FriendshipStatus = status;
-        await _dbContext.SaveChangesAsync();
+        friendship.LastUpdatedAt = DateTime.UtcNow;
+        
+        // await _dbContext.SaveChangesAsync();
     }
 
     public async Task DeleteUserFriendshipsAsync(int userId)

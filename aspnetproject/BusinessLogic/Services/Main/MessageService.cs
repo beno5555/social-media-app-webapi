@@ -1,11 +1,9 @@
-﻿using aspnetproject.BusinessLogic.Dtos.MessageDtos;
-using aspnetproject.BusinessLogic.Dtos.UserDtos;
-using aspnetproject.BusinessLogic.Mappers;
+﻿using aspnetproject.BusinessLogic.Mappers;
 using aspnetproject.Common.Dtos.Messages;
+using aspnetproject.Common.Dtos.Users;
 using aspnetproject.Common.Responses;
 using aspnetproject.Data.Repositories;
 using aspnetproject.ProjectConstants.Enums;
-using aspnetproject.Repositories;
 
 namespace aspnetproject.BusinessLogic.Services.Main;
 
@@ -34,45 +32,19 @@ public class MessageService
     /// <summary>
     /// Assumes that senderId is valid since the method should only be called when a logged-in user tries to send a message
     /// </summary>
-    public async Task<ApplicationResponse> SendMessageAsync(int senderId, CreateMessageDto createMessageDto)
+    public async Task<ApplicationResponse<SentMessageDto>> SendMessageAsync(int senderId, int receiverId, CreateMessageDto createMessageDto)
     {
-        var response = new ApplicationResponse();
+        var response = new ApplicationResponse<SentMessageDto>();
         
-        var friendshipCheck = await ValidFriendship(senderId, createMessageDto.ReceiverId);
+        var friendshipCheck = await ValidFriendship(senderId, receiverId);
         
         if (friendshipCheck.Succeeded)
         {
-            var messageToAdd = _messageMapper.ToEntity(senderId, createMessageDto);
-            await _messageRepository.AddAsync(messageToAdd);
-        }
-        else
-        {
-            response = friendshipCheck;
-        }
+            var messageToAdd = _messageMapper.ToEntity(senderId, receiverId, createMessageDto);
+            var message = await _messageRepository.AddMessageAsync(messageToAdd);
 
-        return response;
-    }
-
-
-    public async Task<ApplicationResponse<List<DisplayMessageDto>>> GetConversationAsync(
-        int currentUserId,     
-        int  responderUserId,
-        int? pageNumber = null,
-        int? pageSize = null)
-    {
-        var response = new ApplicationResponse<List<DisplayMessageDto>>();
-        var friendshipCheck = await ValidFriendship(currentUserId, responderUserId);
-
-        if (friendshipCheck.Succeeded)
-        {
-            var messages = await _messageRepository.GetConversationAsync(currentUserId, responderUserId, pageNumber, pageSize);
-            messages
-                // .Where(message => !message.IsRead && message.ReceiverUserId == currentUserId)
-                .Reverse(); // Repository fetches the messages in descending order to fetch the latest ones. we should reverse it.
-            await _messageRepository.MarkAsReadAsync(messages);
-            
-            var messageDtos = messages.Select(_messageMapper.ToDisplay).ToList();
-            response.Ok(messageDtos);
+            var messageDto = _messageMapper.ToSentMessageDisplay(message);
+            response.Ok(messageDto);
         }
         else
         {
@@ -82,24 +54,73 @@ public class MessageService
         return response;
     }
 
-    public async Task<List<DisplayUserDto>> GetConversationFriendsAsync(int userId, int? pageNumber, int? pageSize) =>
-        await GetFriendsByConversationStatusAsync(userId, true, pageNumber, pageSize);
 
-    public async Task<List<DisplayUserDto>> GetNonConversationFriendsAsync(int userId, int? pageNumber, int? pageSize) =>
-        await GetFriendsByConversationStatusAsync(userId, false, pageNumber, pageSize);
-    
-    private async Task<List<DisplayUserDto>> GetFriendsByConversationStatusAsync(int userId, bool shouldHaveConversation, int? pageNumber, int? pageSize)
+    public async Task<ListResponse<StandardMessageDto>> GetConversationAsync(
+        int currentUserId,     
+        int  responderUserId,
+        int? pageNumber = null,
+        int? pageSize = null)
     {
-        var friends =
-            await _userRepository.GetFriendsByConversationStatusAsync(userId, shouldHaveConversation, pageNumber, pageSize);
-        var userDtos = friends.Select(_userMapper.ToDisplay).ToList();
+        var response = new ListResponse<StandardMessageDto>();
+        var friendshipCheck = await ValidFriendship(currentUserId, responderUserId);
 
-        return userDtos;
+        if (friendshipCheck.Succeeded)
+        {
+            var messages = await _messageRepository.GetConversationAsync(currentUserId, responderUserId, pageNumber, pageSize);
+            messages.Reverse(); // Repository fetches the messages in descending order to fetch the latest ones. we should reverse it.
+            
+            var unreadMessages = messages
+                .Where(message => !message.IsRead && message.ReceiverUserId == currentUserId)
+                .ToList();
+            await _messageRepository.MarkAsReadAsync(unreadMessages);
+            
+            var messageDtos = messages.Select(_messageMapper.ToStandardDisplay).ToList();
+            response.Ok(messageDtos, "Conversation retrieved successfully!");
+        }
+        else
+        {
+            response.Fail(friendshipCheck.Message);
+        }
+
+        return response;
     }
 
-    public async Task<bool> HasUnreadAsync(int userId)
+    public async Task<ListResponse<ConversationFriendDto>> GetConversationFriendsAsync(int userId, int? pageNumber, int? pageSize)
     {
-        return await _messageRepository.HasUnreadAsync(userId);
+        var response = new ListResponse<ConversationFriendDto>();
+        
+        var friends = await _userRepository.GetConversationFriendsAsync(userId, pageNumber, pageSize);
+        
+        var userDtos = friends.Select(_userMapper.ToConversationFriendDisplay).ToList();
+        response.Ok(userDtos);
+
+        return response;
+    }
+    public async Task<ListResponse<MinimalUserDto>> GetNonConversationFriendsAsync(int userId, int? pageNumber, int? pageSize) 
+    {
+        var response = new ListResponse<MinimalUserDto>();
+        
+        var friends =
+            await _userRepository.GetFriendsByConversationStatusAsync(userId, shouldHaveConversation: false, pageNumber, pageSize);
+        var userDtos = friends.Select(_userMapper.ToMinimalDisplay).ToList();
+        
+        response.Ok(userDtos, "Friends with no conversation retrieved successfully");
+
+        return response;
+    }
+    
+    // private async Task<ListResponse<StandardUserDto>> GetFriendsByConversationStatusAsync(int userId, bool shouldHaveConversation, int? pageNumber, int? pageSize)
+    // {
+    //     var friends =
+    //         await _userRepository.GetFriendsByConversationStatusAsync(userId, shouldHaveConversation, pageNumber, pageSize);
+    //     var userDtos = friends.Select(_userMapper.ToStandardDisplay).ToList();
+    //
+    //     return userDtos;
+    // }
+
+    public async Task<int> GetUnreadConversationsCount(int userId)
+    {
+        return await _messageRepository.GetUnreadConversationsCount(userId);
     }
     
     /// <summary>
@@ -117,7 +138,11 @@ public class MessageService
             {
                 var areFriends = await _friendshipRepository.ExistsAsync(senderId, receiverId, FriendshipStatus.Accepted);
 
-                if (!areFriends)
+                if (areFriends)
+                {
+                    response.Ok();   
+                }
+                else
                 {
                     response.Fail("You can only send messages to your friends");
                 }
@@ -139,4 +164,6 @@ public class MessageService
     {
         return await _messageRepository.HaveMessages(userAId, userBId);
     }
+
+    
 }

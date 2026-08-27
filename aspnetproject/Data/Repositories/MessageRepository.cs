@@ -1,9 +1,8 @@
-﻿using aspnetproject.Data;
-using aspnetproject.Data.Repositories.Base;
+﻿using aspnetproject.Data.Repositories.Base;
 using aspnetproject.Models;
 using Microsoft.EntityFrameworkCore;
 
-namespace aspnetproject.Repositories;
+namespace aspnetproject.Data.Repositories;
 
 public class MessageRepository : BaseEntityRepository<Message>
 {
@@ -11,6 +10,22 @@ public class MessageRepository : BaseEntityRepository<Message>
     {
         
     }
+
+    public async Task<Message> AddMessageAsync(Message messageToAdd)
+    {
+        await AddAsync(messageToAdd);
+        return (await _dbSet.FirstOrDefaultAsync(message => message.Id == messageToAdd.Id))!;
+    }
+
+    // public async Task<Message?> GetLatestMessageAsync(int userA, int userB)
+    // {
+    //     return await _dbSet
+    //         .AsNoTracking()
+    //         .Where(message => (message.SenderUserId == userA && message.ReceiverUserId == userB) ||
+    //                           (message.ReceiverUserId == userA && message.SenderUserId == userB))
+    //         .OrderByDescending(message => message.CreatedAt)
+    //         .FirstOrDefaultAsync();
+    // }
 
     protected override IQueryable<Message> Query(bool track = true)
     {
@@ -80,9 +95,13 @@ public class MessageRepository : BaseEntityRepository<Message>
             .ExecuteUpdateAsync(setter => setter.SetProperty(message => message.IsRead, true));
     }
 
-    public async Task<bool> HasUnreadAsync(int userId)
+    public async Task<int> GetUnreadConversationsCount(int userId)
     {
-        return await ExistsAsync(message => message.ReceiverUserId == userId && !message.IsRead);
+        return await _dbSet
+            .Where(message => message.ReceiverUserId == userId && !message.IsRead)
+            .Select(message => message.SenderUserId)
+            .Distinct()
+            .CountAsync();
     }
 
     public async Task<bool> HaveMessages(int userAId, int userBId)

@@ -3,7 +3,6 @@ using aspnetproject.BusinessLogic.Mappers;
 using aspnetproject.Common.Dtos.Posts;
 using aspnetproject.Common.Responses;
 using aspnetproject.Data.Repositories;
-using aspnetproject.Repositories;
 
 namespace aspnetproject.BusinessLogic.Services.Main;
 

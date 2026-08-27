@@ -4,7 +4,6 @@ using aspnetproject.Common.Responses;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Models;
 using aspnetproject.ProjectConstants.Enums;
-using aspnetproject.Repositories;
 
 namespace aspnetproject.BusinessLogic.Services.Main;
 
@@ -55,7 +54,7 @@ public class FriendshipService
                 }
                 else
                 {
-                    response = await HandleExistingRelationship(relationship);
+                    response = await HandleExistingRelationship(relationship, requesterId);
                 }
             }
             else
@@ -71,7 +70,7 @@ public class FriendshipService
         return response;
     }
 
-    private async Task<ApplicationResponse<MinimalFriendshipDto>> HandleExistingRelationship(Friendship relationship)
+    private async Task<ApplicationResponse<MinimalFriendshipDto>> HandleExistingRelationship(Friendship relationship, int requesterId)
     {
         var response = new ApplicationResponse<MinimalFriendshipDto>();
         
@@ -85,14 +84,28 @@ public class FriendshipService
         }
         else if (relationship.FriendshipStatus == FriendshipStatus.Declined)
         {
-            await _friendshipRepository.UpdateStatusAsync(relationship, FriendshipStatus.Pending);
+            Friendship finalRelationship;
             
-            relationship.SentAt = DateTime.UtcNow;
-            relationship.LastUpdatedAt = DateTime.UtcNow;
-            await _friendshipRepository.SaveChangesAsync();
+            if (relationship.RequesterUserId != requesterId)
+            {
+                await _friendshipRepository.DeleteAsync(relationship);
+                
+                int oldRequesterId = relationship.RequesterUserId;
 
-            var friendshipDto = _friendshipMapper.ToMinimalDisplay(relationship);
-            response.Ok(friendshipDto, "Friend request send successfully");
+                finalRelationship = _userMapper.ToFriendship(requesterId, oldRequesterId);
+                await _friendshipRepository.AddAsync(finalRelationship);
+            }
+            else
+            {
+                await _friendshipRepository.UpdateStatusAsync(relationship, FriendshipStatus.Pending);
+                relationship.SentAt = DateTime.UtcNow;
+
+                finalRelationship = relationship;
+                await _friendshipRepository.SaveChangesAsync();
+            }
+            
+            var friendshipDto = _friendshipMapper.ToMinimalDisplay(finalRelationship);
+            response.Ok(friendshipDto, "Friend request sent successfully");
         }
 
         return response;
@@ -104,25 +117,20 @@ public class FriendshipService
 
         if (ValidRequestResponse(status))
         {
-            if (requesterId != addresseeId)
-            {
-                var friendship = await _friendshipRepository.GetRelationshipAsync(requesterId, addresseeId, true);
+            var friendship = await _friendshipRepository.GetRelationshipAsync(requesterId, addresseeId, true);
 
-                if (friendship is not null && friendship.FriendshipStatus == FriendshipStatus.Pending)
-                {
-                    await _friendshipRepository.UpdateStatusAsync(friendship, status);
-                    
-                    var friendshipDto = _friendshipMapper.ToStandardDisplay(friendship, friendship.RequesterUser!);
-                    response.Ok(friendshipDto, "Responded Sent!");
-                }
-                else
-                {
-                    response.Fail("No pending request found");
-                }
+            if (friendship is not null && friendship.FriendshipStatus == FriendshipStatus.Pending)
+            {
+                await _friendshipRepository.UpdateStatusAsync(friendship, status);
+                
+                var friendshipDto = _friendshipMapper.ToStandardDisplay(friendship, friendship.RequesterUser!);
+                await _friendshipRepository.SaveChangesAsync();
+                
+                response.Ok(friendshipDto, "Response Sent!");
             }
             else
             {
-                response.Fail("Cannot respond to a self-request");
+                response.Fail("No pending request found");
             }
         }
 
@@ -139,10 +147,12 @@ public class FriendshipService
         {
             await _messageRepository.DeleteConversationAsync(userId, friendId);
             await _friendshipRepository.DeleteAsync(friendship);
+            
+            response.Ok("Relationship removed successfully");
         }
         else
         {
-            response.Fail("Friendships not found");
+            response.Fail("Friendship not found");
         }
 
         return response;

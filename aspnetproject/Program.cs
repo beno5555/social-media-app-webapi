@@ -6,7 +6,6 @@ using aspnetproject.BusinessLogic.Services.Logging;
 using aspnetproject.BusinessLogic.Services.Main;
 using aspnetproject.Data;
 using aspnetproject.Data.Repositories;
-using aspnetproject.Repositories;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;

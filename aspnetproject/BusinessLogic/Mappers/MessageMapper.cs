@@ -1,28 +1,48 @@
-﻿using aspnetproject.BusinessLogic.Dtos.MessageDtos;
-using aspnetproject.BusinessLogic.Mappers.Base;
+﻿using aspnetproject.BusinessLogic.Mappers.Base;
 using aspnetproject.Common.Dtos.Messages;
+using aspnetproject.Common.Dtos.Users;
 using aspnetproject.Models;
 
 namespace aspnetproject.BusinessLogic.Mappers;
 
 public class MessageMapper 
 {
-    public Message ToEntity(int senderId, CreateMessageDto createMessageDto)
+    public Message ToEntity(int senderId, int receiverId, CreateMessageDto createMessageDto)
     {
         return new Message
         {
-            ReceiverUserId = createMessageDto.ReceiverId,
             SenderUserId = senderId,
+            ReceiverUserId = receiverId,
             MessageContent = createMessageDto.MessageContent
         };
     }
 
-    public DisplayMessageDto ToDisplay(Message message)
+    public StandardMessageDto ToStandardDisplay(Message message)
     {
-        return new DisplayMessageDto(
-            message.MessageContent,
-            message.SenderUser!.Username,
-            message.CreatedAt,
-            message.IsRead);
+        return new StandardMessageDto
+        {
+            Id = message.Id,
+            Content = message.MessageContent,
+            
+            Sender = new MinimalUserDto
+            {
+                Id = message.SenderUserId,
+                Username = message.SenderUser!.Username
+            },
+            ReceiverId = message.ReceiverUserId,
+            
+            SentAt = message.CreatedAt,
+            IsRead = message.IsRead
+        };
+    }
+    
+    public SentMessageDto ToSentMessageDisplay(Message message)
+    {
+        return new SentMessageDto
+        {
+            Id = message.Id,
+            Content = message.MessageContent,
+            SentAt = message.CreatedAt,
+        };
     }
 }

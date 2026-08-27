@@ -13,7 +13,7 @@ public class FriendshipMapper
             AddresseeId = friendship.AddresseeUserId,
             RequesterId = friendship.RequesterUserId,
             SentAt = friendship.SentAt,
-            Status = friendship.FriendshipStatus
+            Status = friendship.FriendshipStatus.ToString()
         };
     }
 
@@ -27,7 +27,7 @@ public class FriendshipMapper
                 Username = otherUser.Username
             },
             
-            Status =  friendship.FriendshipStatus,
+            Status =  friendship.FriendshipStatus.ToString(),
             SentAt = friendship.SentAt,
             LastUpdatedAt = friendship.LastUpdatedAt,
         };

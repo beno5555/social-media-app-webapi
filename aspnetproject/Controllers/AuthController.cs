@@ -1,5 +1,6 @@
 ﻿using aspnetproject.BusinessLogic.Dtos.UserDtos;
 using aspnetproject.BusinessLogic.Services.Main;
+using aspnetproject.Common.Dtos.Users;
 using aspnetproject.Common.Responses;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -21,7 +22,7 @@ public class AuthController : ControllerBase
     
     [HttpPost]
     [Route("register")]
-    public async Task<ActionResult<ApplicationResponse<DisplayUserDto>>> Register(RegisterDto registerDto)
+    public async Task<ActionResult<ApplicationResponse<StandardUserDto>>> Register(RegisterDto registerDto)
     {
         var response = await _authService.RegisterAsync(registerDto);
         if (response.Succeeded)

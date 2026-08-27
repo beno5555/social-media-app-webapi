@@ -1,7 +1,9 @@
 ﻿using System.Linq.Expressions;
 using aspnetproject.Data.Repositories.Base;
+using aspnetproject.Data.Repositories.Dtos;
 using aspnetproject.Models;
 using aspnetproject.ProjectConstants.Enums;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace aspnetproject.Data.Repositories;
@@ -38,13 +40,55 @@ public class UserRepository : BaseEntityRepository<User>
         return await GetWhereAsync(user => user.Username.Contains(usernameInput), pageNumber, pageSize);
     }
 
+    public async Task<List<ConversationFriendProjection>> GetConversationFriendsAsync(int userId, int? pageNumber, int? pageSize)
+    {
+        const string sql = """
+           SELECT 
+                u.Id AS FriendId,
+                u.Username AS FriendUsername,
+                lm.MessageContent AS LastMessageContent,
+                lm.CreatedAt AS LastMessageSentAt,
+                lm.SenderUserId AS LastMessageSenderId,
+                (SELECT COUNT(*) FROM Messages um
+                WHERE um.SenderUserId = u.Id AND um.ReceiverUserId = @userId AND um.IsRead = 0) AS UnreadCount
+           FROM Users u
+           JOIN Friendships f
+                ON (f.AddresseeUserId = @userId AND f.RequesterUserId = u.Id)
+                OR (f.RequesterUserId = @userId AND f.AddresseeUserId = u.Id)
+           CROSS APPLY (
+                SELECT TOP 1 m.MessageContent, m.CreatedAt, m.SenderUserId
+                FROM Messages m
+                WHERE (m.SenderUserId = @userId AND m.ReceiverUserId = u.Id)
+                    OR (m.ReceiverUserId = @userId AND m.SenderUserId = u.Id)
+                ORDER BY m.CreatedAt DESC
+           ) lm
+           WHERE f.FriendshipStatus = 'Accepted'
+           """;
+
+        var query = _dbContext.Database
+            .SqlQueryRaw<ConversationFriendProjection>(sql, new SqlParameter("@userId", userId))
+            .OrderByDescending(friendProj => friendProj.LastMessageSentAt);
+
+        if (pageNumber.HasValue && pageSize.HasValue)
+        {
+            var list = await query
+                .Skip((pageNumber.Value - 1) * pageSize.Value)
+                .Take(pageSize.Value)
+                .ToListAsync();
+
+            return list;
+        }
+
+        return await query.ToListAsync();
+    }
+
     /// <summary>
     /// fetches friends with whom the user has conversations if shouldHaveConversation is true
     /// fetches friends with whom the user does not have a conversation if shouldHaveConversation is false
     /// </summary>
     public async Task<List<User>> GetFriendsByConversationStatusAsync(int userId, bool shouldHaveConversation, int? pageNumber, int? pageSize)
     {
-        Expression<Func<User, bool>> areFriendsAndHaveConversationPredicate = user =>
+        Expression<Func<User, bool>> areFriendsAndHaveConversation = user =>
             _dbContext.Friendships.Any(friendship =>
                 ((friendship.AddresseeUserId == userId  && friendship.RequesterUserId == user.Id) ||
                  (friendship.AddresseeUserId == user.Id && friendship.RequesterUserId == userId)) &&
@@ -64,7 +108,7 @@ public class UserRepository : BaseEntityRepository<User>
             : null;
 
         return await GetWhereAsync(
-            areFriendsAndHaveConversationPredicate,
+            areFriendsAndHaveConversation,
             pageNumber,
             pageSize,
             latest

@@ -88,10 +88,6 @@ Backed by `CommentService`.
 
 ### Comment Display DTOs
 
-Location: `/Common/Dtos/Comments/`.
-
-Three tiers, mapped from `Comment` per-endpoint rather than via inheritance (each tier's shape genuinely diverges — not a strict superset of the one below — so manual typing keeps each response contract explicit and avoids polymorphic-serialization risk):
-
 **`MinimalCommentDisplayDto`** — large/unscoped lists.
 
 ```csharp
@@ -140,4 +136,63 @@ public class UserSummaryDto
 }
 ```
 
-Introduced to replace the manual `userId`/`username` prop pattern used in `Post`'s DTOs — a single reusable shape for "who did this" that can grow (avatar, display name) without touching every DTO that references a user. `Post`'s existing DTOs were not retrofitted to use it.
+Introduced to replace the manual `userId`/`username` prop pattern used in `Post`'s DTOs — a single reusable shape for "who did this" that can grow (avatar, display name) without touching every DTO that references a user. 
+
+### `FriendshipController`
+
+Route: `/friendships`. Inherits `BaseController`. `[Authorize]` at the controller level, with **no** `[AllowAnonymous]` overrides — unlike `PostsController`/`CommentController`, friendship data has no public-read case; every action requires an authenticated caller.
+
+| Method | Route | Notes |
+|---|---|---|
+| GET | `/friendships/{otherUserId}` | Caller's relationship with a specific user, order-independent |
+| GET | `/friendships/mine` | Caller's own accepted friends |
+| GET | `/friendships/pending-requests` | Incoming requests (caller is addressee) |
+| GET | `/friendships/sent-requests` | Outgoing requests (caller is requester) |
+| GET | `/friendships/user/{userId}` | Any user's accepted friends, public-profile-style view |
+| POST | `/friendships/{addresseeId}` | Send a friend request |
+| PUT | `/friendships/{requesterId}/accept` | Accept a pending request |
+| PUT | `/friendships/{requesterId}/decline` | Decline a pending request |
+| DELETE | `/friendships/{friendId}` | Remove an existing relationship |
+
+**No `{id}` route, by design.** `Friendship` has a composite PK (`RequesterId`, `AddresseeId`) and doesn't inherit `BaseEntity`, so there's no single `Id` to route on the way `PostsController`/`CommentController` do. Every mutating route instead identifies the relationship by *the other user's id*, with the caller's own id always coming from `GetUserId()`. This also makes ownership implicit rather than a separate check: passing `GetUserId()` as `addresseeId` in `RespondToRequestAsync`, for example, means only the actual addressee can accept/decline a given `requesterId` — the service's own "is this pending, for this pair" lookup fails to match otherwise.
+
+**`GetFriends` lives at `/mine`, not the bare route.** Matches the `-mine` convention already used on Posts/Comments. Unlike Posts, there's no legitimate "list every friendship in the system" use case for Friendships (privacy, not just scale), so the bare `/friendships` route is simply unused rather than repurposed for something else.
+
+**Self-request guards live in the service, not the controller.** 
+
+**Status-code mapping.** `ApplicationResponse` carries only a bool + message, no error-type enum, so the controller can only safely distinguish HTTP statuses when a service method's failure paths share one meaning:
+- `RemoveRelationship` — single failure path ("not found") → `NotFound`.
+- `SendRequest` — three different failure meanings share one `Fail(...)` call (addressee not found / already friends / pending exists already), indistinguishable without parsing `Message` text → all collapse to `BadRequest`.
+- `RespondToRequest` — similarly collapses to `BadRequest` since self-request and no-pending-request failures aren't told apart.
+  **No 2-user-id admin lookup.** An endpoint letting any caller check the relationship between two *arbitrary* other users was considered and rejected — without a role/permission system (deferred indefinitely for this project), it's a straightforward privacy leak. Revisit only if an admin panel with real roles gets built.
+
+---
+
+### Friendship Display DTOs
+
+Location: `/Common/Dtos/Friendships/`.
+
+**`MinimalFriendshipDto`** — flat, no nested user. Used only for `SendRequest`'s creation response, since the caller already knows both ids (their own, and the one they just targeted).
+
+```csharp
+public class MinimalFriendshipDto
+{
+    public int RequesterId { get; set; }
+    public int AddresseeId { get; set; }
+    public string Status { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+}
+```
+
+**`StandardFriendshipDto`** — nested `UserSummaryDto` for the *other* user (never both — the caller's own id is redundant to echo back on every row), plus full relationship metadata. Used for the caller's own `GetFriends`/`GetPendingRequests`/`GetSentRequests`/`RespondToRequest`/`GetRelationship` — anywhere the caller is entitled to see the relationship's own history.
+
+```csharp
+public class StandardFriendshipDto
+{
+    public UserSummaryDto User { get; set; } = null!;
+    public string Status { get; set; } = string.Empty;
+    public DateTime CreatedAt { get; set; }
+    public DateTime SentAt { get; set; }
+    public DateTime LastUpdatedAt { get; set; }
+}
+```

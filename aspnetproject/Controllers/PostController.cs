@@ -1,9 +1,9 @@
 ﻿using aspnetproject.BusinessLogic.Dtos.Posts;
-using aspnetproject.BusinessLogic.Services.Main;
 using aspnetproject.Common.Dtos.Common;
 using aspnetproject.Common.Dtos.Posts;
 using aspnetproject.Common.Responses;
 using aspnetproject.Controllers.Base;
+using aspnetproject.Infrastructure.Services.BusinessLogic;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

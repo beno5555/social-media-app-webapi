@@ -1,9 +1,9 @@
-﻿using aspnetproject.BusinessLogic.Services.Main;
-using aspnetproject.Common.Dtos.Common;
+﻿using aspnetproject.Common.Dtos.Common;
 using aspnetproject.Common.Dtos.Friendships;
 using aspnetproject.Common.Dtos.Users;
 using aspnetproject.Common.Responses;
 using aspnetproject.Controllers.Base;
+using aspnetproject.Infrastructure.Services.BusinessLogic;
 using aspnetproject.ProjectConstants.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -19,6 +19,21 @@ public class FriendshipController : BaseController
     public FriendshipController(FriendshipService friendshipService)
     {
         _friendshipService = friendshipService;
+    }
+
+    [HttpPost]
+    [Route("{addresseeId:int}")]
+    public async Task<ActionResult<ApplicationResponse<MinimalFriendshipDto>>> SendRequest(int addresseeId) // added
+    {
+        var userId   = GetUserId();
+        var response = await _friendshipService.SendRequest(userId, addresseeId);
+
+        if (response.Succeeded)
+        {
+            return CreatedAtAction(nameof(GetRelationship), new { friendId = response.Data!.AddresseeId }, response);
+        }
+        
+        return BadRequest(response);
     }
 
     [HttpGet]
@@ -95,21 +110,6 @@ public class FriendshipController : BaseController
         return NotFound(response);
     }
     
-    [HttpPost]
-    [Route("{addresseeId:int}")]
-    public async Task<ActionResult<ApplicationResponse<MinimalFriendshipDto>>> SendRequest(int addresseeId) // added
-    {
-        var userId = GetUserId();
-        var response = await _friendshipService.SendRequest(userId, addresseeId);
-
-        if (response.Succeeded)
-        {
-            return CreatedAtAction(nameof(GetRelationship), new { friendId = response.Data!.AddresseeId }, response);
-        }
-        
-        return BadRequest(response);
-    }
-
     [HttpPut]
     [Route("{requesterId:int}/accept")]
     public async Task<ActionResult<ApplicationResponse<StandardFriendshipDto>>> AcceptRequest(int requesterId) // added

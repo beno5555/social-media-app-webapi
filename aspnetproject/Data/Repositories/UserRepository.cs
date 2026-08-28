@@ -50,7 +50,7 @@ public class UserRepository : BaseEntityRepository<User>
                 lm.CreatedAt AS LastMessageSentAt,
                 lm.SenderUserId AS LastMessageSenderId,
                 (SELECT COUNT(*) FROM Messages um
-                WHERE um.SenderUserId = u.Id AND um.ReceiverUserId = @userId AND um.IsRead = 0) AS UnreadCount
+                WHERE um.SenderUserId = u.Id AND um.ReceiverUserId = @userId AND um.Seen = 0) AS UnreadCount
            FROM Users u
            JOIN Friendships f
                 ON (f.AddresseeUserId = @userId AND f.RequesterUserId = u.Id)

@@ -1,8 +1,8 @@
 ﻿using aspnetproject.BusinessLogic.Dtos.UserDtos;
-using aspnetproject.BusinessLogic.Services.Main;
 using aspnetproject.Common.Dtos.Users;
 using aspnetproject.Common.Responses;
 using aspnetproject.Controllers.Base;
+using aspnetproject.Infrastructure.Services.BusinessLogic;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

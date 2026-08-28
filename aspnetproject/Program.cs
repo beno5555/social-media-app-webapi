@@ -3,9 +3,11 @@ using aspnetproject.BusinessLogic.Mappers;
 using aspnetproject.BusinessLogic.Services;
 using aspnetproject.BusinessLogic.Services.Helpers;
 using aspnetproject.BusinessLogic.Services.Logging;
-using aspnetproject.BusinessLogic.Services.Main;
 using aspnetproject.Data;
 using aspnetproject.Data.Repositories;
+using aspnetproject.Hubs;
+using aspnetproject.Infrastructure.Mappers;
+using aspnetproject.Infrastructure.Services.BusinessLogic;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
@@ -42,9 +44,60 @@ public class Program
             
             options.OperationFilter<SecurityRequirementsOperationFilter>();
         });
-        
         builder.Services.AddOpenApi();
 
+        builder.Services
+            .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
+            .AddJwtBearer(options =>
+            {
+                var     jwtSection = builder.Configuration.GetSection("Jwt");
+                var signInKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSection["Key"]!));
+                
+                options.TokenValidationParameters = new TokenValidationParameters
+                {
+                    ValidateIssuerSigningKey = true,
+                    IssuerSigningKey = signInKey,
+                    ValidateIssuer = false,
+                    ValidateAudience = false,
+                    
+                    ClockSkew = TimeSpan.FromMinutes(1)
+                };
+
+                options.Events = new JwtBearerEvents
+                {
+                    OnMessageReceived = context =>
+                    {
+                        var accessToken = context.Request.Query["access_token"];
+                        var path        = context.HttpContext.Request.Path;
+
+                        if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
+                        {
+                            context.Token = accessToken;
+                        }
+
+                        return Task.CompletedTask;
+                    }
+                };
+            });
+        
+        builder.Services.AddAuthorization();
+
+        builder.Services.AddSignalR();
+
+        builder.Services.AddCors(options =>
+        {
+            var allowedOrigins = builder.Configuration
+                .GetSection("Cors:AllowedOrigins")
+                .Get<string[]>() ?? [];
+
+            options.AddPolicy("SignalRTestPolicy", policy =>
+            {
+                policy.WithOrigins(allowedOrigins)
+                    .AllowAnyHeader()
+                    .AllowAnyMethod()
+                    .AllowCredentials();
+            });
+        });
         
         builder.Services.AddScoped<CommentRepository>();
         builder.Services.AddScoped<FriendshipRepository>();
@@ -71,26 +124,7 @@ public class Program
         builder.Services.AddScoped<TokenGenerator>();
 
         builder.Services.AddScoped<SystemLogger>();
-        
 
-        builder.Services
-            .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
-            {
-                var     jwtSection = builder.Configuration.GetSection("Jwt");
-                var signInKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSection["Key"]!));
-                
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = signInKey,
-                    ValidateIssuer = false,
-                    ValidateAudience = false,
-                    
-                    ClockSkew = TimeSpan.FromMinutes(1)
-                };
-            });
-        builder.Services.AddAuthorization();
         
         var app = builder.Build();
 
@@ -147,11 +181,15 @@ public class Program
 
         app.UseRouting();
 
+        app.UseCors("SignalRTestPolicy");
+
         app.UseAuthentication();
 
         app.UseAuthorization();
 
         app.MapControllers();
+
+        app.MapHub<MessageHub>("hubs/messages");
 
         app.Run();
     }

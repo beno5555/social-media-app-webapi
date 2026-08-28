@@ -1,8 +1,8 @@
-﻿using aspnetproject.BusinessLogic.Services.Main;
-using aspnetproject.Common.Dtos.Common;
-using aspnetproject.Common.Dtos.Messages;
+﻿using aspnetproject.Common.Dtos.Common;
 using aspnetproject.Common.Responses;
 using aspnetproject.Controllers.Base;
+using aspnetproject.Infrastructure.Dtos.Messages;
+using aspnetproject.Infrastructure.Services.BusinessLogic;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,6 +17,24 @@ public class MessageController : BaseController
     public MessageController(MessageService messageService)
     {
         _messageService = messageService;
+    }
+    
+    [HttpPost]
+    [Route("{receiverId:int}")]
+    public async Task<ActionResult<ApplicationResponse<SentMessageDto>>> SendMessage(
+        int                         receiverId, 
+        [FromBody] CreateMessageDto createMessageDto
+    )
+    {
+        var userId   = GetUserId();
+        var response = await _messageService.SendMessageAsync(userId, receiverId, createMessageDto);
+
+        if (response.Succeeded)
+        {
+            return Created($"/api/messages/{response.Data!.Id}", response);
+        }
+
+        return BadRequest(response);
     }
 
     [HttpGet]
@@ -73,22 +91,13 @@ public class MessageController : BaseController
         return Ok(response);
     }
 
-    [HttpPost]
-    [Route("{receiverId:int}")]
-    public async Task<ActionResult<ApplicationResponse<SentMessageDto>>> SendMessage(
-        int receiverId, 
-        [FromBody] CreateMessageDto createMessageDto
-        )
+    [HttpPut]
+    [Route("conversation/{otherUserId:int}/mark-as-read")]
+    public async Task<ActionResult> MarkAsRead(int otherUserId)
     {
-        var userId   = GetUserId();
-        var response = await _messageService.SendMessageAsync(userId, receiverId, createMessageDto);
-
-        if (response.Succeeded)
-        {
-            return Created($"/api/messages/{response.Data!.Id}", response);
-        }
-
-        return BadRequest(response);
+        int userId = GetUserId();
+        await _messageService.MarkAsReadAsync(userId, otherUserId);
+        return Ok();
     }
 
     [HttpPut]

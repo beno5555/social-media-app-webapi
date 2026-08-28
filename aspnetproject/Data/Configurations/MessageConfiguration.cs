@@ -1,4 +1,5 @@
-﻿using aspnetproject.Models;
+﻿using aspnetproject.Data.Models;
+using aspnetproject.Models;
 using aspnetproject.ProjectConstants;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
@@ -15,6 +16,9 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
         builder.Property(message => message.MessageContent)
             .IsRequired()
             .HasMaxLength(Constants.MessageMaxLength);
+
+        builder.Property(message => message.SeenAt)
+            .HasDefaultValue(null);
 
         builder.HasIndex(message => new { message.SenderUserId, message.ReceiverUserId, message.CreatedAt });
 

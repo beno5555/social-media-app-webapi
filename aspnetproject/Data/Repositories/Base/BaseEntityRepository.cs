@@ -1,4 +1,5 @@
-﻿using aspnetproject.Models;
+﻿using aspnetproject.Data.Models;
+using aspnetproject.Models;
 
 namespace aspnetproject.Data.Repositories.Base;
 

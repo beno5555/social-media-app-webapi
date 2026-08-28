@@ -1,4 +1,5 @@
-﻿using aspnetproject.Data.Repositories.Base;
+﻿using aspnetproject.Data.Models;
+using aspnetproject.Data.Repositories.Base;
 using aspnetproject.Models;
 using Microsoft.EntityFrameworkCore;
 
@@ -19,7 +20,9 @@ public class MessageRepository : BaseEntityRepository<Message>
     public async Task<Message> AddMessageAsync(Message messageToAdd)
     {
         await AddAsync(messageToAdd);
-        return (await _dbSet.FirstOrDefaultAsync(message => message.Id == messageToAdd.Id))!;
+        return (await _dbSet
+            .Include(message => message.SenderUser)
+            .FirstOrDefaultAsync(message => message.Id == messageToAdd.Id))!;
     }
 
     protected override IQueryable<Message> Query(bool track = true)
@@ -62,7 +65,7 @@ public class MessageRepository : BaseEntityRepository<Message>
     public async Task<List<Message>> GetUnreadAsync(int senderId, int receiverId)
     {
         return await GetWhereAsync(message =>
-            message.SenderUserId == senderId && message.ReceiverUserId == receiverId && !message.IsRead);
+            message.SenderUserId == senderId && message.ReceiverUserId == receiverId && !message.Seen);
     }
 
     /// <summary>
@@ -70,9 +73,12 @@ public class MessageRepository : BaseEntityRepository<Message>
     /// </summary>
     public async Task MarkAsReadAsync(List<Message> unreadMessages)
     {
+        var seenAt = DateTime.UtcNow;
         foreach (var message in unreadMessages)
         {
-            message.IsRead = true;
+            message.Seen = true;
+            message.SeenAt = seenAt;
+            message.LastUpdatedAt = seenAt;
         }
 
         await _dbContext.SaveChangesAsync();
@@ -81,19 +87,44 @@ public class MessageRepository : BaseEntityRepository<Message>
     /// <summary>
     /// use this when the messages have not been loaded
     /// </summary>
-    public async Task MarkConversationAsReadAsync(int senderId, int receiverId)
+    public async Task<(bool marked, DateTime seenAt)> MarkConversationAsReadAsync(int readerId, int otherUserId)
     {
-        await _dbSet.Where(message =>
-                message.SenderUserId   == senderId   &&
-                message.ReceiverUserId == receiverId && 
-                !message.IsRead)
-            .ExecuteUpdateAsync(setter => setter.SetProperty(message => message.IsRead, true));
+        bool executedSeen = false;
+        var  seenAt       = DateTime.UtcNow;
+        
+        var lastMessage = await _dbSet
+            .Where(message => (message.SenderUserId == otherUserId && message.ReceiverUserId == readerId) ||
+                              (message.SenderUserId == readerId && message.ReceiverUserId == otherUserId))
+            .OrderByDescending(message => message.CreatedAt)
+            .FirstOrDefaultAsync();
+        
+
+        if (lastMessage is not null &&
+            lastMessage.SenderUserId == otherUserId &&
+            lastMessage.ReceiverUserId == readerId &&
+            !lastMessage.Seen)
+        {
+            await _dbSet
+                .Where(message =>
+                    message.SenderUserId   == otherUserId &&
+                    message.ReceiverUserId == readerId &&
+                    !message.Seen
+                )
+                .ExecuteUpdateAsync(setter => setter
+                    .SetProperty(message => message.Seen,          true)
+                    .SetProperty(message => message.SeenAt,        seenAt)
+                    .SetProperty(message => message.LastUpdatedAt, seenAt));
+            
+            executedSeen = true;
+        }
+
+        return (executedSeen, seenAt);
     }
 
     public async Task<int> GetUnreadConversationsCount(int userId)
     {
         return await _dbSet
-            .Where(message => message.ReceiverUserId == userId && !message.IsRead)
+            .Where(message => message.ReceiverUserId == userId && !message.Seen)
             .Select(message => message.SenderUserId)
             .Distinct()
             .CountAsync();

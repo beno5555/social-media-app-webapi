@@ -1,7 +1,7 @@
 ﻿using aspnetproject.BusinessLogic.Mappers.Base;
 using aspnetproject.Common.Dtos.Comments;
-using aspnetproject.Common.Dtos.Users;
 using aspnetproject.Infrastructure.Dtos.Comments;
+using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Models;
 
 namespace aspnetproject.BusinessLogic.Mappers;

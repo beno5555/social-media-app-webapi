@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
+using aspnetproject.Common.ProjectConstants.Enums;
+using aspnetproject.Data.Models;
 using aspnetproject.Migrations;
-using aspnetproject.ProjectConstants.Enums;
 
 namespace aspnetproject.Models;
 

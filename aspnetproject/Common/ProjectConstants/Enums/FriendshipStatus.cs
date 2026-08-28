@@ -1,4 +1,4 @@
-﻿namespace aspnetproject.ProjectConstants.Enums;
+﻿namespace aspnetproject.Common.ProjectConstants.Enums;
 
 public enum FriendshipStatus
 {

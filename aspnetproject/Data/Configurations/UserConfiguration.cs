@@ -1,5 +1,5 @@
-﻿using aspnetproject.Models;
-using aspnetproject.ProjectConstants;
+﻿using aspnetproject.Common.ProjectConstants;
+using aspnetproject.Data.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

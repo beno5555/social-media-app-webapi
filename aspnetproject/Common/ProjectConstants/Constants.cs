@@ -1,4 +1,4 @@
-﻿namespace aspnetproject.ProjectConstants;
+﻿namespace aspnetproject.Common.ProjectConstants;
 
 public static class Constants
 {
@@ -11,7 +11,8 @@ public static class Constants
     public const int PasswordMaxLength     = 100;
     public const int PasswordHashMaxLength = 44;
     public const int PasswordSaltMaxLength = 44;
-    
+
+    public const int BioMinLength                = 1;
     public const int BioMaxLength                = 300;
     public const int PostTitleMaxLength          = 100;
     public const int PostContentMaxLength        = 3000;
@@ -20,11 +21,12 @@ public static class Constants
     public const int CommentContentPreviewLength = 70;
     public const int MessageMaxLength            = 1000;
     
-    public const int MinAge = 13;
-    public const int MaxAge = 130;
+    public const int MinAge                     = 13;
+    public const int MaxAge                     = 100;
+    public const int UsernameChangeCooldownDays = 20;
 
-    public const int    DefaultPageSize             = 10;
-    public const int    DefaultConversationPageSize = 10;
+    public const int DefaultPageSize             = 10;
+    public const int DefaultConversationPageSize = 10;
 
     public static readonly TimeSpan EditMessageWindow = TimeSpan.FromMinutes(20);
 

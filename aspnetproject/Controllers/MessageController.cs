@@ -1,7 +1,7 @@
-﻿using aspnetproject.Common.Dtos.Common;
-using aspnetproject.Common.Responses;
+﻿using aspnetproject.Common.Responses;
 using aspnetproject.Controllers.Base;
 using aspnetproject.Infrastructure.Dtos.Messages;
+using aspnetproject.Infrastructure.Queries;
 using aspnetproject.Infrastructure.Services.BusinessLogic;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -97,7 +97,7 @@ public class MessageController : BaseController
     {
         int userId = GetUserId();
         await _messageService.MarkAsReadAsync(userId, otherUserId);
-        return Ok();
+        return NoContent();
     }
 
     [HttpPut]

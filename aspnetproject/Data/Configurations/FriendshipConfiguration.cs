@@ -23,12 +23,12 @@ public class FriendshipConfiguration : IEntityTypeConfiguration<Friendship>
             .HasDefaultValueSql("GETUTCDATE()");
         
         builder.HasOne(friendship => friendship.RequesterUser)
-            .WithMany(requesterUser => requesterUser.SentFriendRequests)
+            .WithMany()
             .HasForeignKey(friendship => friendship.RequesterUserId)
             .OnDelete(DeleteBehavior.Restrict);
 
         builder.HasOne(friendship => friendship.AddresseeUser)
-            .WithMany(addresseeUser => addresseeUser.ReceivedFriendRequests)
+            .WithMany()
             .HasForeignKey(friendship => friendship.AddresseeUserId)
             .OnDelete(DeleteBehavior.Restrict);
     }

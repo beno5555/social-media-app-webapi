@@ -1,5 +1,4 @@
-﻿using aspnetproject.Common.Dtos.Users;
-using aspnetproject.ProjectConstants.Enums;
+﻿using aspnetproject.Infrastructure.Dtos.Users;
 
 namespace aspnetproject.Common.Dtos.Friendships;
 

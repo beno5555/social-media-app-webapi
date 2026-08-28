@@ -1,6 +1,7 @@
 ﻿using aspnetproject.BusinessLogic.Dtos.UserDtos;
-using aspnetproject.Common.Dtos.Users;
 using aspnetproject.Common.Responses;
+using aspnetproject.Infrastructure.Dtos.Auth;
+using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Infrastructure.Services.BusinessLogic;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -27,7 +28,7 @@ public class AuthController : ControllerBase
         var response = await _authService.RegisterAsync(registerDto);
         if (response.Succeeded)
         {
-            return CreatedAtAction(nameof(UserController.GetUser), "User", new { response.Data!.Id }, response);
+            return CreatedAtAction(nameof(AccountController.GetByUsername), "Account", new { response.Data!.Id }, response);
         }
 
         return BadRequest(response);

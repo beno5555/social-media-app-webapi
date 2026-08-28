@@ -1,5 +1,5 @@
-﻿using aspnetproject.Models;
-using aspnetproject.ProjectConstants;
+﻿using aspnetproject.Common.ProjectConstants;
+using aspnetproject.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -21,7 +21,7 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
             .HasMaxLength(Constants.PostContentMaxLength);
 
         builder.HasOne(post => post.User)
-            .WithMany(user => user.Posts)
+            .WithMany()
             .HasForeignKey(post => post.UserId)
             .OnDelete(DeleteBehavior.Cascade);
     }

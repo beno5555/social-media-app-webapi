@@ -1,4 +1,4 @@
-﻿namespace aspnetproject.Common.Dtos.Common;
+﻿namespace aspnetproject.Infrastructure.Queries;
 
 public class PageQuery
 {

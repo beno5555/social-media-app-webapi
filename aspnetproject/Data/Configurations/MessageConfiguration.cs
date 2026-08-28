@@ -1,6 +1,5 @@
-﻿using aspnetproject.Data.Models;
-using aspnetproject.Models;
-using aspnetproject.ProjectConstants;
+﻿using aspnetproject.Common.ProjectConstants;
+using aspnetproject.Data.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -24,12 +23,12 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
 
         // service implementation must manually delete the user's messages before deleting the user.
         builder.HasOne(message => message.SenderUser)
-            .WithMany(senderUser => senderUser.SentMessages)
+            .WithMany()
             .HasForeignKey(message => message.SenderUserId)
             .OnDelete(DeleteBehavior.Restrict);
         
         builder.HasOne(message => message.ReceiverUser)
-            .WithMany(receiverUser => receiverUser.ReceivedMessages)
+            .WithMany()
             .HasForeignKey(message => message.ReceiverUserId)
             .OnDelete(DeleteBehavior.Restrict);
     }

@@ -11,4 +11,9 @@ public abstract class BaseController : ControllerBase
         var userIdRaw = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
         return int.Parse(userIdRaw);
     }
+    protected string GetUsername()
+    {
+        var username = User.FindFirst(ClaimTypes.Name)!.Value;
+        return username;
+    }
 }

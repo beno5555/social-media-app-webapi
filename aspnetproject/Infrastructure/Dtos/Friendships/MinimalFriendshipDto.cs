@@ -1,6 +1,4 @@
-﻿using aspnetproject.ProjectConstants.Enums;
-
-namespace aspnetproject.Common.Dtos.Friendships;
+﻿namespace aspnetproject.Common.Dtos.Friendships;
 
 public class MinimalFriendshipDto
 {

@@ -1,4 +1,4 @@
-﻿namespace aspnetproject.ProjectConstants;
+﻿namespace aspnetproject.Common.ProjectConstants;
 
 public static class ConsoleMessages
 {

@@ -1,5 +1,6 @@
 ﻿using aspnetproject.Common.Dtos.Friendships;
-using aspnetproject.Common.Dtos.Users;
+using aspnetproject.Data.Models;
+using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Models;
 
 namespace aspnetproject.BusinessLogic.Mappers;

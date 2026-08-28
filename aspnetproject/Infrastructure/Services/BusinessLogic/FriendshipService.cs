@@ -1,9 +1,10 @@
 ﻿using aspnetproject.BusinessLogic.Mappers;
 using aspnetproject.Common.Dtos.Friendships;
+using aspnetproject.Common.ProjectConstants.Enums;
 using aspnetproject.Common.Responses;
 using aspnetproject.Data.Repositories;
+using aspnetproject.Infrastructure.Mappers;
 using aspnetproject.Models;
-using aspnetproject.ProjectConstants.Enums;
 
 namespace aspnetproject.Infrastructure.Services.BusinessLogic;
 

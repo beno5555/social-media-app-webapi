@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using aspnetproject.ProjectConstants;
+using aspnetproject.Common.ProjectConstants;
 
-namespace aspnetproject.BusinessLogic.Dtos.Posts;
+namespace aspnetproject.Infrastructure.Dtos.Posts;
 
 public class UpdatePostDto
 {

@@ -1,6 +1,6 @@
-﻿using aspnetproject.Common.Dtos.Users;
-using aspnetproject.Data.Models;
+﻿using aspnetproject.Data.Models;
 using aspnetproject.Infrastructure.Dtos.Messages;
+using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Infrastructure.Dtos.WebsocketsTransfer;
 
 namespace aspnetproject.Infrastructure.Mappers;

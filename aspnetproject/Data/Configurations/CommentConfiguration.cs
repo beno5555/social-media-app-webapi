@@ -1,5 +1,5 @@
-﻿using aspnetproject.Models;
-using aspnetproject.ProjectConstants;
+﻿using aspnetproject.Common.ProjectConstants;
+using aspnetproject.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -17,7 +17,7 @@ public class CommentConfiguration : IEntityTypeConfiguration<Comment>
             .HasMaxLength(Constants.CommentMaxLength);
 
         builder.HasOne(comment => comment.CommenterUser)
-            .WithMany(user => user.Comments)
+            .WithMany()
             .HasForeignKey(comment => comment.CommenterUserId)
             .OnDelete(DeleteBehavior.Restrict);
 

@@ -8,6 +8,7 @@ using aspnetproject.Data.Repositories;
 using aspnetproject.Hubs;
 using aspnetproject.Infrastructure.Mappers;
 using aspnetproject.Infrastructure.Services.BusinessLogic;
+using aspnetproject.Infrastructure.Services.Helpers;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
@@ -110,6 +111,7 @@ public class Program
         builder.Services.AddScoped<MessageMapper>();
         builder.Services.AddScoped<PostMapper>();
         builder.Services.AddScoped<UserMapper>();
+        builder.Services.AddScoped<AuthMapper>();
         builder.Services.AddScoped<FriendshipMapper>();
         
         builder.Services.AddScoped<AccountService>();

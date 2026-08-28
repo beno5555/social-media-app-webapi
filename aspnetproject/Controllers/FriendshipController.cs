@@ -1,10 +1,10 @@
-﻿using aspnetproject.Common.Dtos.Common;
-using aspnetproject.Common.Dtos.Friendships;
-using aspnetproject.Common.Dtos.Users;
+﻿using aspnetproject.Common.Dtos.Friendships;
+using aspnetproject.Common.ProjectConstants.Enums;
 using aspnetproject.Common.Responses;
 using aspnetproject.Controllers.Base;
+using aspnetproject.Infrastructure.Dtos.Users;
+using aspnetproject.Infrastructure.Queries;
 using aspnetproject.Infrastructure.Services.BusinessLogic;
-using aspnetproject.ProjectConstants.Enums;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 

@@ -1,13 +1,14 @@
 ﻿using aspnetproject.BusinessLogic.Mappers;
-using aspnetproject.Common.Dtos.Users;
+using aspnetproject.Common.ProjectConstants.Enums;
 using aspnetproject.Common.Responses;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Hubs;
+using aspnetproject.Infrastructure.Dtos.Friendships;
 using aspnetproject.Infrastructure.Dtos.Messages;
+using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Infrastructure.Mappers;
-using aspnetproject.ProjectConstants.Enums;
 using Microsoft.AspNetCore.SignalR;
-using Constants = aspnetproject.ProjectConstants.Constants;
+using Constants = aspnetproject.Common.ProjectConstants.Constants;
 
 namespace aspnetproject.Infrastructure.Services.BusinessLogic;
 

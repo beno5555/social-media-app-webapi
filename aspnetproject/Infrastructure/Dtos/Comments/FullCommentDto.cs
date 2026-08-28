@@ -1,4 +1,4 @@
-﻿using aspnetproject.Common.Dtos.Users;
+﻿using aspnetproject.Infrastructure.Dtos.Users;
 
 namespace aspnetproject.Common.Dtos.Comments;
 

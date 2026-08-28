@@ -1,6 +1,7 @@
-﻿using aspnetproject.Data.Models;
+﻿using System.ComponentModel.DataAnnotations.Schema;
+using aspnetproject.Models;
 
-namespace aspnetproject.Models;
+namespace aspnetproject.Data.Models;
 
 public class User : BaseEntity
 {
@@ -10,16 +11,11 @@ public class User : BaseEntity
     public string   PasswordHash { get; set; } = string.Empty;
     public string   PasswordSalt { get; set; } = string.Empty;
 
+    [Column(TypeName = "datetime2(3)")]
+    public DateTime? UsernameLastChangedAt { get; set; } = null;
+
     public string? Bio { get; set; }
 
     public ICollection<Log> Logs { get; set; } = [];
     // role
-
-    public ICollection<Post>       Posts                  { get; set; } = [];
-    public ICollection<Comment>    Comments               { get; set; } = [];
-    public ICollection<Message>    SentMessages           { get; set; } = [];
-    public ICollection<Message>    ReceivedMessages       { get; set; } = [];
-    public ICollection<Friendship> SentFriendRequests     { get; set; } = [];
-    public ICollection<Friendship> ReceivedFriendRequests { get; set; } = [];
-    
 }

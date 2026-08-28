@@ -1,8 +1,8 @@
-﻿using aspnetproject.BusinessLogic.Dtos.Posts;
-using aspnetproject.BusinessLogic.Mappers;
+﻿using aspnetproject.BusinessLogic.Mappers;
 using aspnetproject.Common.Dtos.Posts;
 using aspnetproject.Common.Responses;
 using aspnetproject.Data.Repositories;
+using aspnetproject.Infrastructure.Dtos.Posts;
 
 namespace aspnetproject.Infrastructure.Services.BusinessLogic;
 

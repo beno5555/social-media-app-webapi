@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using aspnetproject.ProjectConstants;
+using aspnetproject.Common.ProjectConstants;
 
-namespace aspnetproject.Common.Dtos.Comments;
+namespace aspnetproject.Infrastructure.Dtos.Comments;
     
 public class CreateCommentDto
 {

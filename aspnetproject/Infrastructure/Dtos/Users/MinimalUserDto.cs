@@ -1,4 +1,4 @@
-﻿namespace aspnetproject.Common.Dtos.Users;
+﻿namespace aspnetproject.Infrastructure.Dtos.Users;
 
 public class MinimalUserDto
 {

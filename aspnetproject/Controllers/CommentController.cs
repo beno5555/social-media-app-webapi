@@ -1,9 +1,9 @@
 ﻿using aspnetproject.BusinessLogic.Services;
 using aspnetproject.Common.Dtos.Comments;
-using aspnetproject.Common.Dtos.Common;
 using aspnetproject.Common.Responses;
 using aspnetproject.Controllers.Base;
 using aspnetproject.Infrastructure.Dtos.Comments;
+using aspnetproject.Infrastructure.Queries;
 using aspnetproject.Infrastructure.Services.BusinessLogic;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;

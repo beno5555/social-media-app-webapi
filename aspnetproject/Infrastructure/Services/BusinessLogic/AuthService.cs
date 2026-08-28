@@ -2,9 +2,13 @@
 using aspnetproject.BusinessLogic.Dtos.UserDtos;
 using aspnetproject.BusinessLogic.Mappers;
 using aspnetproject.BusinessLogic.Services.Helpers;
-using aspnetproject.Common.Dtos.Users;
 using aspnetproject.Common.Responses;
+using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories;
+using aspnetproject.Infrastructure.Dtos.Auth;
+using aspnetproject.Infrastructure.Dtos.Users;
+using aspnetproject.Infrastructure.Mappers;
+using aspnetproject.Infrastructure.Services.Helpers;
 using aspnetproject.Models;
 
 namespace aspnetproject.Infrastructure.Services.BusinessLogic;
@@ -14,7 +18,7 @@ public class AuthService
     private readonly UserRepository         _userRepository;
     private readonly RefreshTokenRepository _refreshTokenRepository;
 
-    private readonly UserMapper _userMapper;
+    private readonly AuthMapper _authMapper;
     
     private readonly PasswordHasher _passwordHasher;
     private readonly TokenGenerator _tokenGenerator;
@@ -27,7 +31,7 @@ public class AuthService
         UserRepository userRepository,
         RefreshTokenRepository refreshTokenRepository,
         
-        UserMapper userMapper,
+        AuthMapper authMapper,
         
         PasswordHasher passwordHasher,
         TokenGenerator tokenGenerator,
@@ -37,7 +41,7 @@ public class AuthService
         _userRepository = userRepository;
         _refreshTokenRepository = refreshTokenRepository;
         
-        _userMapper = userMapper;
+        _authMapper = authMapper;
         
         _passwordHasher = passwordHasher;
         _tokenGenerator = tokenGenerator;
@@ -56,11 +60,11 @@ public class AuthService
             if (!usernameExists)
             {
                 var (hash, salt) = _passwordHasher.HashPassword(registerDto.Password);
-                User userToRegister = _userMapper.ToEntity(registerDto, hash, salt);
+                User userToRegister = _authMapper.ToRegisteredEntity(registerDto, hash, salt);
             
                 await _userRepository.AddAsync(userToRegister);
 
-                var displayDto = _userMapper.ToStandardDisplay(userToRegister);
+                var displayDto = _authMapper.ToStandardDisplay(userToRegister);
                 response.Ok(displayDto,  "User registered successfully");
             }
             else

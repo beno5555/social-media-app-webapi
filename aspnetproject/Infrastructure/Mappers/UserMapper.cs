@@ -1,17 +1,18 @@
-﻿using aspnetproject.BusinessLogic.Dtos.UserDtos;
-using aspnetproject.Common.Dtos.Users;
+﻿using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories.Dtos;
+using aspnetproject.Infrastructure.Dtos.Friendships;
+using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Models;
 
-namespace aspnetproject.BusinessLogic.Mappers;
+namespace aspnetproject.Infrastructure.Mappers;
 
 public class UserMapper 
 {
-    public User ToEntity(RegisterDto registerDto, string passwordHash, string passwordSalt)
+    public User ToEntity(CreateAccountDto registerDto, string passwordHash, string passwordSalt)
     {
         return new User
         {
-            Username = registerDto.Username,
+            Username = registerDto.Username.ToLower(),
             Email = registerDto.Email,
             PasswordHash = passwordHash,
             PasswordSalt = passwordSalt,
@@ -37,6 +38,19 @@ public class UserMapper
             Username = user.Username,
             Bio = user.Bio,
 
+            RegisteredAt = user.CreatedAt,
+            DateOfBirth = user.DateOfBirth
+        };
+    }
+
+    public FullUserDto ToFullDisplay(User user)
+    {
+        return new FullUserDto
+        {
+            Id = user.Id,
+            Username = user.Username,
+            Email = user.Email,
+            Bio = user.Bio,
             RegisteredAt = user.CreatedAt,
             DateOfBirth = user.DateOfBirth
         };

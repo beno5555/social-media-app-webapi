@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
-using aspnetproject.ProjectConstants;
+using aspnetproject.Common.ProjectConstants;
 
-namespace aspnetproject.Common.Dtos.Posts;
+namespace aspnetproject.Infrastructure.Dtos.Posts;
 
 public class CreatePostDto
 {

@@ -1,4 +1,6 @@
-﻿namespace aspnetproject.Common.Dtos.Users;
+﻿using aspnetproject.Infrastructure.Dtos.Users;
+
+namespace aspnetproject.Infrastructure.Dtos.Friendships;
 
 public class ConversationFriendDto
 {

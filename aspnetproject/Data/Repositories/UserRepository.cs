@@ -1,8 +1,10 @@
 ﻿using System.Linq.Expressions;
+using aspnetproject.Common.ProjectConstants.Enums;
+using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories.Base;
 using aspnetproject.Data.Repositories.Dtos;
+using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Models;
-using aspnetproject.ProjectConstants.Enums;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
@@ -22,7 +24,7 @@ public class UserRepository : BaseEntityRepository<User>
 
     public async Task<bool> ExistsByUsernameAsync(string username)
     {
-        return await ExistsAsync(user => user.Username == username);
+        return await ExistsAsync(user => string.Equals(user.Username, username, StringComparison.OrdinalIgnoreCase));
     }
 
     public async Task<bool> ExistsByEmailAsync(string email)
@@ -115,9 +117,19 @@ public class UserRepository : BaseEntityRepository<User>
         );
     }
 
-    public async Task UpdateBioAsync(User userToUpdate, string bio)
+    public async Task EditUserProfileAsync(User userToUpdate, EditUserDto editUserDto)
     {
-        userToUpdate.Bio = bio;
+        var lastUpdatedAt = DateTime.UtcNow;
+        userToUpdate.Username = editUserDto.Username.ToLower();
+        userToUpdate.Bio = editUserDto.Bio;
+        userToUpdate.DateOfBirth = editUserDto.DateOfBirth;
+
+        userToUpdate.LastUpdatedAt = lastUpdatedAt;
+        if (!string.Equals(userToUpdate.Username, editUserDto.Username, StringComparison.OrdinalIgnoreCase))
+        {
+            userToUpdate.UsernameLastChangedAt = lastUpdatedAt;
+        }
+        
         await _dbContext.SaveChangesAsync();
     }
 }

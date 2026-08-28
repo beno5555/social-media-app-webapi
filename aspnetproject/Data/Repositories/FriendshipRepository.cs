@@ -1,6 +1,6 @@
-﻿using aspnetproject.Data.Repositories.Base;
+﻿using aspnetproject.Common.ProjectConstants.Enums;
+using aspnetproject.Data.Repositories.Base;
 using aspnetproject.Models;
-using aspnetproject.ProjectConstants.Enums;
 using Microsoft.EntityFrameworkCore;
 
 namespace aspnetproject.Data.Repositories;

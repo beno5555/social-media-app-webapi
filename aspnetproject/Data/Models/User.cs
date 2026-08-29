@@ -13,6 +13,9 @@ public class User : BaseEntity
 
     [Column(TypeName = "datetime2(3)")]
     public DateTime? UsernameLastChangedAt { get; set; } = null;
+    
+    [Column(TypeName = "datetime2(3)")]
+    public DateTime? LastActiveAt { get; set; } = null; // null = online
 
     public string? Bio { get; set; }
 

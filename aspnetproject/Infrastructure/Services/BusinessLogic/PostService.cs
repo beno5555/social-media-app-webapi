@@ -1,5 +1,6 @@
 ﻿using aspnetproject.BusinessLogic.Mappers;
 using aspnetproject.Common.Dtos.Posts;
+using aspnetproject.Common.ProjectConstants;
 using aspnetproject.Common.Responses;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Infrastructure.Dtos.Posts;
@@ -37,11 +38,11 @@ public class PostService
         if (post is not null)
         {
             var postDisplay = _postMapper.ToFullDisplay(post);
-            response.Ok(postDisplay, "Post retrieved successfully");
+            response.Ok(postDisplay, ResponseMessages.PostRetrieved);
         }
         else
         {
-            response.Fail("Post not found");
+            response.Fail(ResponseMessages.PostNotFound);
         }
         return response;
     }
@@ -62,16 +63,16 @@ public class PostService
                 var addedPost = await _postRepository.AddPostAsync(post);
 
                 var postDisplay = _postMapper.ToStandardDisplay(addedPost);
-                response.Ok(postDisplay, "Post uploaded successfully");
+                response.Ok(postDisplay, ResponseMessages.PostUploaded);
             }
             else
             {
-                response.Fail("Post content is required");
+                response.Fail(ResponseMessages.ContentRequired);
             }
         }
         else
         {
-            response.Fail("Post title is required");
+            response.Fail(ResponseMessages.TitleRequired);
         }
 
         return response;
@@ -94,16 +95,16 @@ public class PostService
                 await _postRepository.SaveChangesAsync();
                 
                 var postDisplayDto = _postMapper.ToFullDisplay(post);
-                response.Ok(postDisplayDto, "Post updated successfully");
+                response.Ok(postDisplayDto, ResponseMessages.PostUpdated);
             }
             else
             {
-                response.Fail("Post cannot be updated");
+                response.Fail(ResponseMessages.CouldNotUpdatePost);
             }
         }
         else
         {
-            response.Fail("Post not found");
+            response.Fail(ResponseMessages.PostNotFound);
         }
 
         return response;
@@ -135,7 +136,7 @@ public class PostService
         var posts = await _postRepository.GetFeedAsync(friendIds, pageNumber, pageSize);
         var postDtos = posts.Select(_postMapper.ToStandardDisplay).ToList();
 
-        response.Ok(postDtos);
+        response.Ok(postDtos, ResponseMessages.Feed);
 
         return response;
     }
@@ -151,11 +152,11 @@ public class PostService
             var posts = await _postRepository.GetByUserIdAsync(userId, pageNumber, pageSize);
             var postDtos = posts.Select(_postMapper.ToStandardDisplay).ToList();
             
-            response.Ok(postDtos);
+            response.Ok(postDtos, ResponseMessages.UserPostsRetrieved);
         }
         else
         {
-            response.Fail("User not found");
+            response.Fail(ResponseMessages.UserNotFound);
         }
         
         return  response;
@@ -177,16 +178,16 @@ public class PostService
                     await _postRepository.DeleteWithoutChangeTrackingAsync(post.Id);
                 });
 
-                response.Ok("Post deleted successfully");
+                response.Ok(ResponseMessages.PostDeleted);
             }
             else
             {
-                response.Fail("Post could not be deleted");
+                response.Fail(ResponseMessages.CouldNotDeletePost);
             }
         }
         else
         {
-            response.Fail("Post not found");
+            response.Fail(ResponseMessages.PostNotFound);
         }
 
         return response;

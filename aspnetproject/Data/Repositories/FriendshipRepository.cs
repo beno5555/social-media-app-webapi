@@ -1,4 +1,5 @@
 ﻿using aspnetproject.Common.ProjectConstants.Enums;
+using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories.Base;
 using aspnetproject.Models;
 using Microsoft.EntityFrameworkCore;
@@ -68,6 +69,17 @@ public class FriendshipRepository : BaseRepository<Friendship>
             friendship.FriendshipStatus == FriendshipStatus.Accepted,
             pageNumber, pageSize);
     }
+
+    public async Task<List<int>> GetFriendIdsAsync(int userId)
+    {
+        return await _dbSet
+            .Where(friendship =>
+                (friendship.RequesterUserId == userId || friendship.AddresseeUserId == userId) &&
+                friendship.FriendshipStatus == FriendshipStatus.Accepted)
+            .Select(friendship =>
+                friendship.RequesterUserId == userId ? friendship.AddresseeUserId : friendship.RequesterUserId)
+            .ToListAsync();
+    }
     
     /// <summary>
     /// fetches the accepted request of userA and userB.
@@ -80,6 +92,19 @@ public class FriendshipRepository : BaseRepository<Friendship>
             : (friendship.RequesterUserId == requesterId || friendship.RequesterUserId == addresseeId) &&
               (friendship.AddresseeUserId == requesterId || friendship.AddresseeUserId == addresseeId)
         );
+    }
+
+    public async Task<Friendship?> GetAcceptedFriendshipAsync(int requesterId, int addresseeId,
+        bool                                                      orderMatters = false)
+    {
+        return await GetFirstAsync(friendship => orderMatters
+            ? friendship.RequesterUserId == requesterId && friendship.AddresseeUserId == addresseeId && friendship.FriendshipStatus == FriendshipStatus.Accepted
+            
+            : (friendship.RequesterUserId == requesterId || friendship.RequesterUserId == addresseeId) &&
+              (friendship.AddresseeUserId == requesterId || friendship.AddresseeUserId == addresseeId) &&
+              (friendship.FriendshipStatus == FriendshipStatus.Accepted)
+        );
+    
     }
 
     public async Task<bool> ExistsAsync(int userIdA, int userIdB, FriendshipStatus? status)

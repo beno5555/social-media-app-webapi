@@ -1,8 +1,7 @@
 ﻿using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories.Dtos;
-using aspnetproject.Infrastructure.Dtos.Friendships;
 using aspnetproject.Infrastructure.Dtos.Users;
-using aspnetproject.Models;
+using aspnetproject.Infrastructure.Dtos.Users.Friends;
 
 namespace aspnetproject.Infrastructure.Mappers;
 
@@ -60,16 +59,28 @@ public class UserMapper
     {
         return new ConversationFriendDto
         {
-            Friend = new MinimalUserDto
+            ConversationFriend = new DisplayFriendDto
             {
                 Id = friend.FriendId,
-                Username = friend.FriendUsername
+                Username = friend.FriendUsername,
+                LastActiveAt = friend.FriendLastActiveAt,
             },
+            
             LastMessageContent = friend.LastMessageContent,
             LastMessageSenderId = friend.LastMessageSenderId,
             LastMessageSentAt = friend.LastMessageSentAt,
             
             UnreadCount = friend.UnreadCount
+        };
+    }
+
+    public DisplayFriendDto ToFriendDisplay(User nonConversationFriend)
+    {
+        return new DisplayFriendDto
+        {
+            Id = nonConversationFriend.Id,
+            Username = nonConversationFriend.Username,
+            LastActiveAt = nonConversationFriend.LastActiveAt,
         };
     }
 

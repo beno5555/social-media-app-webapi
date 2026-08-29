@@ -1,7 +1,7 @@
 ﻿using aspnetproject.BusinessLogic.Dtos.Auth;
 using aspnetproject.BusinessLogic.Dtos.UserDtos;
-using aspnetproject.BusinessLogic.Mappers;
 using aspnetproject.BusinessLogic.Services.Helpers;
+using aspnetproject.Common.ProjectConstants;
 using aspnetproject.Common.Responses;
 using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories;
@@ -9,7 +9,6 @@ using aspnetproject.Infrastructure.Dtos.Auth;
 using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Infrastructure.Mappers;
 using aspnetproject.Infrastructure.Services.Helpers;
-using aspnetproject.Models;
 
 namespace aspnetproject.Infrastructure.Services.BusinessLogic;
 
@@ -24,7 +23,6 @@ public class AuthService
     private readonly TokenGenerator _tokenGenerator;
     private readonly IConfiguration _configuration;
 
-    private const string LoginErrorMessage = "Invalid username or password";
     private const string RefreshErrorMessage = "Invalid or expired refresh token";
     
     public AuthService(
@@ -65,16 +63,16 @@ public class AuthService
                 await _userRepository.AddAsync(userToRegister);
 
                 var displayDto = _authMapper.ToStandardDisplay(userToRegister);
-                response.Ok(displayDto,  "User registered successfully");
+                response.Ok(displayDto, ResponseMessages.RegistrationSuccessful);
             }
             else
             {
-                response.Fail("Username is already taken");
+                response.Fail(ResponseMessages.UsernameIsAlreadyTaken);
             }
         }
         else 
         {
-            response.Fail("Email is already taken");
+            response.Fail(ResponseMessages.EmailIsAlreadyTaken);
         }
 
         return response;
@@ -92,16 +90,16 @@ public class AuthService
             if (validPassword)
             {
                 var authResult = await IssueTokensAsync(userToLogin);
-                loginResponse.Ok(authResult, "Login successful");
+                loginResponse.Ok(authResult, ResponseMessages.LoginSuccessful);
             }
             else
             {
-                loginResponse.Fail(LoginErrorMessage);
+                loginResponse.Fail(ResponseMessages.LoginErrorMessage);
             }
         }
         else
         {
-            loginResponse.Fail(LoginErrorMessage);
+            loginResponse.Fail(ResponseMessages.LoginErrorMessage);
         }
 
         return loginResponse;

@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using aspnetproject.Data;
 
@@ -11,9 +12,11 @@ using aspnetproject.Data;
 namespace aspnetproject.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260829102953_RemoveUpdatedAtDefaultValue")]
+    partial class RemoveUpdatedAtDefaultValue
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -93,46 +96,6 @@ namespace aspnetproject.Migrations
                     b.ToTable("Messages", (string)null);
                 });
 
-            modelBuilder.Entity("aspnetproject.Data.Models.RefreshToken", b =>
-                {
-                    b.Property<int>("Id")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("int");
-
-                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
-
-                    b.Property<DateTime>("CreatedAt")
-                        .HasColumnType("datetime2(3)");
-
-                    b.Property<DateTime>("ExpiresAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<DateTime?>("LastUpdatedAt")
-                        .ValueGeneratedOnAdd()
-                        .HasColumnType("datetime2(3)")
-                        .HasDefaultValueSql("GETUTCDATE()");
-
-                    b.Property<DateTime?>("RevokedAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("TokenHash")
-                        .IsRequired()
-                        .HasMaxLength(44)
-                        .HasColumnType("nvarchar(44)");
-
-                    b.Property<int>("UserId")
-                        .HasColumnType("int");
-
-                    b.HasKey("Id");
-
-                    b.HasIndex("TokenHash")
-                        .IsUnique();
-
-                    b.HasIndex("UserId");
-
-                    b.ToTable("RefreshTokens", (string)null);
-                });
-
             modelBuilder.Entity("aspnetproject.Data.Models.User", b =>
                 {
                     b.Property<int>("Id")
@@ -155,9 +118,6 @@ namespace aspnetproject.Migrations
                         .IsRequired()
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
-
-                    b.Property<DateTime?>("LastActiveAt")
-                        .HasColumnType("datetime2(3)");
 
                     b.Property<DateTime?>("LastUpdatedAt")
                         .HasColumnType("datetime2(3)");
@@ -315,6 +275,46 @@ namespace aspnetproject.Migrations
                     b.ToTable("Posts", (string)null);
                 });
 
+            modelBuilder.Entity("aspnetproject.Models.RefreshToken", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<DateTime>("ExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<DateTime?>("LastUpdatedAt")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("datetime2(3)")
+                        .HasDefaultValueSql("GETUTCDATE()");
+
+                    b.Property<DateTime?>("RevokedAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("TokenHash")
+                        .IsRequired()
+                        .HasMaxLength(44)
+                        .HasColumnType("nvarchar(44)");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("TokenHash")
+                        .IsUnique();
+
+                    b.HasIndex("UserId");
+
+                    b.ToTable("RefreshTokens", (string)null);
+                });
+
             modelBuilder.Entity("aspnetproject.Data.Models.Friendship", b =>
                 {
                     b.HasOne("aspnetproject.Data.Models.User", "AddresseeUser")
@@ -353,17 +353,6 @@ namespace aspnetproject.Migrations
                     b.Navigation("SenderUser");
                 });
 
-            modelBuilder.Entity("aspnetproject.Data.Models.RefreshToken", b =>
-                {
-                    b.HasOne("aspnetproject.Data.Models.User", "User")
-                        .WithMany()
-                        .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade)
-                        .IsRequired();
-
-                    b.Navigation("User");
-                });
-
             modelBuilder.Entity("aspnetproject.Models.Comment", b =>
                 {
                     b.HasOne("aspnetproject.Data.Models.User", "CommenterUser")
@@ -394,6 +383,17 @@ namespace aspnetproject.Migrations
                 });
 
             modelBuilder.Entity("aspnetproject.Models.Post", b =>
+                {
+                    b.HasOne("aspnetproject.Data.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("User");
+                });
+
+            modelBuilder.Entity("aspnetproject.Models.RefreshToken", b =>
                 {
                     b.HasOne("aspnetproject.Data.Models.User", "User")
                         .WithMany()

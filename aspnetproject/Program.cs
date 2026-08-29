@@ -9,6 +9,7 @@ using aspnetproject.Hubs;
 using aspnetproject.Infrastructure.Mappers;
 using aspnetproject.Infrastructure.Services.BusinessLogic;
 using aspnetproject.Infrastructure.Services.Helpers;
+using aspnetproject.Infrastructure.Services.Websockets;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
@@ -40,7 +41,7 @@ public class Program
                 Description = "Standard authorization header using bearer scheme. Example: \"bearer {token}\"",
                 Name = "Authorization",
                 In = ParameterLocation.Header,
-                Type = SecuritySchemeType.ApiKey
+                Type = SecuritySchemeType.ApiKey,
             });
             
             options.OperationFilter<SecurityRequirementsOperationFilter>();
@@ -126,6 +127,9 @@ public class Program
         builder.Services.AddScoped<TokenGenerator>();
 
         builder.Services.AddScoped<SystemLogger>();
+
+        builder.Services.AddSingleton<UserConnectionTracker>();
+        builder.Services.AddScoped<PresenceService>();
 
         
         var app = builder.Build();

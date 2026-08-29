@@ -1,9 +1,9 @@
-﻿using aspnetproject.Common.Dtos.Friendships;
-using aspnetproject.Data.Models;
+﻿using aspnetproject.Data.Models;
+using aspnetproject.Infrastructure.Dtos.Friendships;
 using aspnetproject.Infrastructure.Dtos.Users;
-using aspnetproject.Models;
+using aspnetproject.Infrastructure.Dtos.Users.Friends;
 
-namespace aspnetproject.BusinessLogic.Mappers;
+namespace aspnetproject.Infrastructure.Mappers;
 
 public class FriendshipMapper
 {
@@ -26,6 +26,23 @@ public class FriendshipMapper
             {
                 Id = otherUser.Id,
                 Username = otherUser.Username
+            },
+            
+            Status =  friendship.FriendshipStatus.ToString(),
+            SentAt = friendship.SentAt,
+            LastUpdatedAt = friendship.LastUpdatedAt,
+        };
+    }
+    
+    public AcceptedFriendshipDto ToAcceptedDisplay(Friendship friendship, User otherUser)
+    {
+        return new AcceptedFriendshipDto
+        {
+            OtherUser = new DisplayFriendDto
+            {
+                Id = otherUser.Id,
+                Username = otherUser.Username,
+                LastActiveAt =  otherUser.LastActiveAt,
             },
             
             Status =  friendship.FriendshipStatus.ToString(),

@@ -1,4 +1,5 @@
-﻿using aspnetproject.Models;
+﻿using aspnetproject.Data.Models;
+using aspnetproject.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -16,9 +17,6 @@ public class FriendshipConfiguration : IEntityTypeConfiguration<Friendship>
             .HasMaxLength(30)
             .HasConversion<string>();
 
-        builder.Property(friendship => friendship.LastUpdatedAt)
-            .HasDefaultValueSql("GETUTCDATE()");
-        
         builder.Property(friendship => friendship.SentAt)
             .HasDefaultValueSql("GETUTCDATE()");
         

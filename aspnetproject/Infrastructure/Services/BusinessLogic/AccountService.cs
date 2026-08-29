@@ -52,7 +52,7 @@ public class AccountService
             await _userRepository.AddAsync(userToAdd);
 
             var displayDto = _userMapper.ToFullDisplay(userToAdd);
-            response.Ok(displayDto,  "User created successfully");
+            response.Ok(displayDto, ResponseMessages.AccountCreated);
         }
         else
         {
@@ -76,12 +76,12 @@ public class AccountService
             }
             else
             {
-                response.Fail("User with that email already exists");
+                response.Fail(ResponseMessages.UserWithEmailExists);
             }
         }
         else
         {
-            response.Fail("User with that username already exists");
+            response.Fail(ResponseMessages.UserWithUsernameExists);
         }
 
         return response;
@@ -95,11 +95,11 @@ public class AccountService
         if (user is not null)
         {
             var userDto = _userMapper.ToStandardDisplay(user);
-            response.Ok(userDto);
+            response.Ok(userDto, ResponseMessages.AccountRetrieved);
         }
         else
         {
-            response.Fail("User not found");
+            response.Fail(ResponseMessages.UserNotFound);
         }
 
         return response;
@@ -113,11 +113,11 @@ public class AccountService
         if (user is not null)
         {
             var userDto = _userMapper.ToStandardDisplay(user);
-            response.Ok(userDto);
+            response.Ok(userDto, ResponseMessages.AccountRetrieved);
         }
         else
         {
-            response.Fail("User not found");
+            response.Fail(ResponseMessages.UserNotFound);
         }
 
         return response;
@@ -131,11 +131,11 @@ public class AccountService
         if (user is not null)
         {
             var userDto = _userMapper.ToFullDisplay(user);
-            response.Ok(userDto);
+            response.Ok(userDto, ResponseMessages.ProfileRetrieved);
         }
         else
         {
-            response.Fail($"No users matching {username}.");
+            response.Fail(ResponseMessages.NoAccountsMatchingUsername(username));
         }
 
         return response;
@@ -157,7 +157,8 @@ public class AccountService
         
         var users    = await _userRepository.SearchByUsernameAsync(usernameInput, pageNumber, pageSize);
         var userDtos = users.Select(_userMapper.ToMinimalDisplay).ToList();
-        response.Ok(userDtos);
+        
+        response.Ok(userDtos, ResponseMessages.SearchResultsForUsername(usernameInput));
         
         return response;
     }
@@ -181,16 +182,16 @@ public class AccountService
                 await _userRepository.EditUserProfileAsync(userToEdit, editUserDto);
                 
                 var userDto = _userMapper.ToFullDisplay(userToEdit);
-                response.Ok(userDto);
+                response.Ok(userDto, ResponseMessages.ProfileEdited);
             }
             else
             {
-                response.Fail($"Username can be changed again on {nextAllowedChangeDate:yyyy-MM-dd}.");
+                response.Fail(ResponseMessages.UsernameCanBeChangedAgainOn(nextAllowedChangeDate!.Value));
             }
         }
         else
         {
-            response.Fail("User not found");
+            response.Fail(ResponseMessages.UserNotFound);
         }
 
         return response;
@@ -210,10 +211,11 @@ public class AccountService
             if (userToDelete is not null)
             {
                 await _userRepository.DeleteAsync(userToDelete);
+                response.Ok(ResponseMessages.AccountDeleted);
             }
             else
             {
-                response.Fail("User not found.");
+                response.Fail(ResponseMessages.UserNotFound);
             }
         });
 

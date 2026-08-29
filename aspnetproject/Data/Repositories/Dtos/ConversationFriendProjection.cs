@@ -1,11 +1,10 @@
-﻿using System.Security.Principal;
-
-namespace aspnetproject.Data.Repositories.Dtos;
+﻿namespace aspnetproject.Data.Repositories.Dtos;
 
 public class ConversationFriendProjection
 {
-    public int    FriendId       { get; set; }
-    public string FriendUsername { get; set; } = string.Empty;
+    public int    FriendId         { get; set; }
+    public string FriendUsername   { get; set; } = string.Empty;
+    public DateTime? FriendLastActiveAt { get; set; } 
     
     public string   LastMessageContent  { get; set; } = string.Empty;
     public DateTime LastMessageSentAt   { get; set; }

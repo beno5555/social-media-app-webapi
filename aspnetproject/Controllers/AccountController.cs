@@ -87,35 +87,21 @@ public class AccountController : BaseController
     public async Task<ActionResult<ApplicationResponse<FullUserDto>>> EditOwnProfile([FromBody] EditUserDto editUserDto)
     {
         int userId   = GetUserId();
-        return await EditProfile(userId, editUserDto);
+        var response = await _accountService.EditUserProfileAsync(userId, editUserDto);
+
+        if (response.Succeeded)
+        {
+            return Ok(response);
+        }
+
+        return BadRequest(response);
+
     }
     
     [HttpPut]
     [Route("{id:int}")]
     [Authorize(Roles = "Admin")]
     public async Task<ActionResult<ApplicationResponse<FullUserDto>>> EditUserProfile(int id, [FromBody] EditUserDto editUserDto)
-    {
-        return await EditProfile(id, editUserDto);
-    }
-    
-    [HttpDelete]
-    [Route("mine")]
-    public async Task<ActionResult<ApplicationResponse>> DeleteOwnAccount()
-    {
-        int userId   = GetUserId();
-        return await DeleteAccount(userId);
-    }
-
-    [HttpDelete]
-    [Route("{id:int}")]
-    [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<ApplicationResponse>> DeleteUserAccount(int id)
-    {
-        return await DeleteAccount(id);
-    }
-    
-    #region Private helpers
-    private async Task<ActionResult<ApplicationResponse<FullUserDto>>> EditProfile(int id, [FromBody] EditUserDto editUserDto)
     {
         var response = await _accountService.EditUserProfileAsync(id, editUserDto);
 
@@ -127,7 +113,25 @@ public class AccountController : BaseController
         return BadRequest(response);
     }
     
-    private async Task<ActionResult<ApplicationResponse>> DeleteAccount(int id)
+    [HttpDelete]
+    [Route("mine")]
+    public async Task<ActionResult<ApplicationResponse>> DeleteOwnAccount()
+    {
+        int userId   = GetUserId();
+        var response = await _accountService.DeleteAccountAsync(userId);
+
+        if (response.Succeeded)
+        {
+            return Ok(response);
+        }
+
+        return BadRequest(response);
+    }
+
+    [HttpDelete]
+    [Route("{id:int}")]
+    // [Authorize(Roles = "Admin")]
+    public async Task<ActionResult<ApplicationResponse>> DeleteUserAccount(int id)
     {
         var response = await _accountService.DeleteAccountAsync(id);
 
@@ -138,5 +142,4 @@ public class AccountController : BaseController
 
         return BadRequest(response);
     }   
-    #endregion
 }

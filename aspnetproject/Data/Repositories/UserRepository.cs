@@ -24,7 +24,7 @@ public class UserRepository : BaseEntityRepository<User>
 
     public async Task<bool> ExistsByUsernameAsync(string username)
     {
-        return await ExistsAsync(user => string.Equals(user.Username, username, StringComparison.OrdinalIgnoreCase));
+        return await ExistsAsync(user => user.Username == username.ToLower());
     }
 
     public async Task<bool> ExistsByEmailAsync(string email)
@@ -48,6 +48,7 @@ public class UserRepository : BaseEntityRepository<User>
            SELECT 
                 u.Id AS FriendId,
                 u.Username AS FriendUsername,
+                u.LastActiveAt AS FriendLastActiveAt,
                 lm.MessageContent AS LastMessageContent,
                 lm.CreatedAt AS LastMessageSentAt,
                 lm.SenderUserId AS LastMessageSenderId,
@@ -120,7 +121,6 @@ public class UserRepository : BaseEntityRepository<User>
     public async Task EditUserProfileAsync(User userToUpdate, EditUserDto editUserDto)
     {
         var lastUpdatedAt = DateTime.UtcNow;
-        userToUpdate.Username = editUserDto.Username.ToLower();
         userToUpdate.Bio = editUserDto.Bio;
         userToUpdate.DateOfBirth = editUserDto.DateOfBirth;
 
@@ -130,6 +130,20 @@ public class UserRepository : BaseEntityRepository<User>
             userToUpdate.UsernameLastChangedAt = lastUpdatedAt;
         }
         
+        userToUpdate.Username = editUserDto.Username.ToLower();
+        
         await _dbContext.SaveChangesAsync();
+    }
+
+    public async Task MarkActiveAsync(int userId)
+    {
+        await _dbSet.Where(user => user.Id == userId)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(user => user.LastActiveAt, (DateTime?)null));
+    }
+
+    public async Task MarkUserOfflineAsync(int userId, DateTime lastActiveAt)
+    {
+        await _dbSet.Where(user => user.Id == userId)
+            .ExecuteUpdateAsync(setters => setters.SetProperty(user => user.LastActiveAt, lastActiveAt)); 
     }
 }

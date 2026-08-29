@@ -21,15 +21,15 @@ public class ApplicationDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        foreach (var entityType in modelBuilder.Model.GetEntityTypes())
-        {
-            if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
-            {
-                modelBuilder.Entity(entityType.ClrType)
-                    .Property(nameof(BaseEntity.LastUpdatedAt))
-                    .HasDefaultValueSql("GETUTCDATE()");
-            }
-        }
+        // foreach (var entityType in modelBuilder.Model.GetEntityTypes())
+        // {
+        //     if (typeof(BaseEntity).IsAssignableFrom(entityType.ClrType))
+        //     {
+        //         modelBuilder.Entity(entityType.ClrType)
+        //             .Property(nameof(BaseEntity.LastUpdatedAt))
+        //             .HasDefaultValueSql("GETUTCDATE()");
+        //     }
+        // }
         
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
     }

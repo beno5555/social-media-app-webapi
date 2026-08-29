@@ -45,7 +45,7 @@ public class AuthController : ControllerBase
             return Ok(new { accessToken = response.Data.AccessToken });
         }
 
-        return Unauthorized(response.Message);
+        return BadRequest(response);
     }
 
     [HttpPost]

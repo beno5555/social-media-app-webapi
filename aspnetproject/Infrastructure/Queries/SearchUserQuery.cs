@@ -5,6 +5,6 @@ namespace aspnetproject.Infrastructure.Queries;
 
 public class SearchUserQuery : PageQuery
 {
-    [MinLength(Constants.UsernameMinLength), MaxLength(Constants.UsernameMaxlength)]
+    [MinLength(1), MaxLength(Constants.UsernameMaxlength)]
     public string Username { get; set; } = string.Empty;
 }

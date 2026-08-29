@@ -138,3 +138,28 @@ No `GetMessage(id)` action — no real chat UX fetches a single message by id (c
 **`GetConversationFriends`/`GetNonConversationFriends` live here despite returning user-shaped DTOs** — controller placement follows which service backs the logic, not the response DTO's shape. Same reasoning as `GetPostsByUser` living under `/posts`.
 
 **Repository note:** conversation-friends query uses raw SQL (`SqlQueryRaw<T>`), not LINQ — grouped latest-message-per-partner plus a conditional join key was judged too high-risk for silent EF translation failure/client-eval fallback. Projection type is flat (`FriendId`, `FriendUsername`, ...) — `SqlQueryRaw<T>` can't map onto nested/owned types; nesting into `UserSummaryDto` happens in the mapper afterward.
+
+### `AccountController`
+
+Route: `/accounts`. Inherits `BaseController`. `[Authorize]` at controller level, with `[AllowAnonymous]` on public reads — same pattern as `PostsController`/`CommentController`.
+
+| Method | Route | Auth | Notes |
+|---|---|---|---|
+| GET | `/accounts/{username}` | Anonymous | Single user, public view. Returns `StandardUserDto` (no email) |
+| GET | `/accounts/search` | Anonymous | Username substring search, paginated via `SearchUsersQuery : PageQuery`. Returns `UserSummaryDto` (id + username only) |
+| PUT | `/accounts/mine` | Required | Edit own profile (username, DOB, bio — email excluded). Returns `UserDetailDto` |
+| DELETE | `/accounts/mine` | Required | Delete own account. No content |
+| POST | `/accounts` | Required, `Roles = "Admin"` | Admin-create. Returns `UserDetailDto` |
+
+No bare `GET /accounts` (list-all). Considered and dropped — no concrete admin or user workflow needs an unfiltered, unranked dump of every user; search already covers lookup, and a real admin queue would need filters/sort this doesn't have.
+
+**DTO tiers**, mirroring the Friendship pattern of shape-by-audience rather than one DTO for everything:
+- `UserDetailDto` — full, includes email. Used only where the caller is looking at a record they have elevated claim to: their own profile after an edit, or a newly admin-created account.
+- `StandardUserDto` — everything `UserDetailDto` has, minus email. Public single-fetch (`GetByUsername`).
+- `UserSummaryDto` — id + username only. List/search results, on the theory that browsing a result set shouldn't pull full profile data the caller may never open; a second fetch (`GetByUsername`) covers the rest if needed.
+
+**`POST /accounts` routes through `AccountService`, not `AuthService`**, despite functionally creating a user the same way registration does — kept separate so admin-created-account messaging/response shape can diverge from self-registration without `AuthService.RegisterAsync` growing a caller-context branch. `[Authorize(Roles = "Admin")]` is currently inert: no role claims are issued anywhere in the project (RBAC deferred indefinitely), so this fails closed rather than open — endpoint is unreachable by design until roles exist, not a gap to patch now.
+
+**Username change cooldown.** `User.UsernameLastChangedAt` (nullable `DateTime`, null = never changed). `UpdateProfileAsync` (service-level) only rejects a username change if one already happened within the cooldown window; a bio/DOB-only edit never touches this field. Collapses into the same mixed-meaning `BadRequest` bucket as `FriendshipController`'s `SendRequest`/`RespondToRequest` — "not found" vs. "cooldown active" aren't told apart at the HTTP layer, same reasoning (`ApplicationResponse` has no error-type enum).
+
+**DOB validation** via a custom `ValidAgeAttribute` (13–130, rejects future dates) on the DTO, mirroring the existing DB check constraint rather than duplicating magic numbers inline; shared between `RegisterDto` and the edit-profile DTO.

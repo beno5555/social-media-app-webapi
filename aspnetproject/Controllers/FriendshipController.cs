@@ -1,7 +1,7 @@
-﻿using aspnetproject.Common.Dtos.Friendships;
-using aspnetproject.Common.ProjectConstants.Enums;
+﻿using aspnetproject.Common.ProjectConstants.Enums;
 using aspnetproject.Common.Responses;
 using aspnetproject.Controllers.Base;
+using aspnetproject.Infrastructure.Dtos.Friendships;
 using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Infrastructure.Queries;
 using aspnetproject.Infrastructure.Services.BusinessLogic;
@@ -48,6 +48,21 @@ public class FriendshipController : BaseController
             return Ok(response);
         }
         
+        return NotFound(response);
+    }
+
+    [HttpGet]
+    [Route("accepted/{friendId:int}")]
+    public async Task<ActionResult<ApplicationResponse<AcceptedFriendshipDto>>> GetAcceptedFriendship(int friendId)
+    {
+        var userId   = GetUserId();
+        var response = await _friendshipService.GetAcceptedFriendshipAsync(userId, friendId);
+
+        if (response.Succeeded)
+        {
+            return Ok(response);
+        }
+
         return NotFound(response);
     }
     

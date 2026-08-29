@@ -1,10 +1,10 @@
-﻿using aspnetproject.BusinessLogic.Mappers;
-using aspnetproject.Common.Dtos.Friendships;
+﻿using aspnetproject.Common.ProjectConstants;
 using aspnetproject.Common.ProjectConstants.Enums;
 using aspnetproject.Common.Responses;
+using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories;
+using aspnetproject.Infrastructure.Dtos.Friendships;
 using aspnetproject.Infrastructure.Mappers;
-using aspnetproject.Models;
 
 namespace aspnetproject.Infrastructure.Services.BusinessLogic;
 
@@ -51,7 +51,7 @@ public class FriendshipService
                     await _friendshipRepository.AddAsync(friendship);
 
                     var friendshipDto = _friendshipMapper.ToMinimalDisplay(friendship);
-                    response.Ok(friendshipDto, "Friend request send successfully");
+                    response.Ok(friendshipDto, ResponseMessages.FriendRequestSent);
                 }
                 else
                 {
@@ -60,12 +60,12 @@ public class FriendshipService
             }
             else
             {
-                response.Fail("addressee not found");
+                response.Fail(ResponseMessages.AddresseeNotFound);
             }
         }
         else
         {
-            response.Fail("Friend request cannot be sent to oneself");
+            response.Fail(ResponseMessages.FriendRequestCannotBeSentToOneself);
         }
 
         return response;
@@ -77,11 +77,11 @@ public class FriendshipService
         
         if (relationship.FriendshipStatus == FriendshipStatus.Accepted)
         {
-            response.Fail("You are already friends with this user");
+            response.Fail(ResponseMessages.AlreadyFriends);
         }
         else if (relationship.FriendshipStatus == FriendshipStatus.Pending)
         {
-            response.Fail("A pending friend request already exists");
+            response.Fail(ResponseMessages.PendingRequestAlreadyExists);
         }
         else if (relationship.FriendshipStatus == FriendshipStatus.Declined)
         {
@@ -106,7 +106,7 @@ public class FriendshipService
             }
             
             var friendshipDto = _friendshipMapper.ToMinimalDisplay(finalRelationship);
-            response.Ok(friendshipDto, "Friend request sent successfully");
+            response.Ok(friendshipDto, ResponseMessages.FriendRequestSent);
         }
 
         return response;
@@ -127,11 +127,11 @@ public class FriendshipService
                 var friendshipDto = _friendshipMapper.ToStandardDisplay(friendship, friendship.RequesterUser!);
                 await _friendshipRepository.SaveChangesAsync();
                 
-                response.Ok(friendshipDto, "Response Sent!");
+                response.Ok(friendshipDto, ResponseMessages.ResponseSent);
             }
             else
             {
-                response.Fail("No pending request found");
+                response.Fail(ResponseMessages.PendingRequestNotFound);
             }
         }
 
@@ -141,20 +141,30 @@ public class FriendshipService
     public async Task<ApplicationResponse> RemoveRelationshipAsync(int userId, int friendId)
     {
         var response = new ApplicationResponse();
+        
+        var callerExists = await _userRepository.ExistsByIdAsync(userId);
 
-        var friendship = await _friendshipRepository.GetRelationshipAsync(userId, friendId, false);
-
-        if (friendship is not null)
+        if (callerExists)
         {
-            await _messageRepository.DeleteConversationAsync(userId, friendId);
-            await _friendshipRepository.DeleteAsync(friendship);
+            var friendship = await _friendshipRepository.GetRelationshipAsync(userId, friendId, false);
+
+            if (friendship is not null)
+            {
+                await _messageRepository.DeleteConversationAsync(userId, friendId);
+                await _friendshipRepository.DeleteAsync(friendship);
             
-            response.Ok("Relationship removed successfully");
+                response.Ok(ResponseMessages.RelationshipRemoved);
+            }
+            else
+            {
+                response.Fail(ResponseMessages.FriendshipNotFound);
+            }
         }
         else
         {
-            response.Fail("Friendship not found");
+            response.Fail(ResponseMessages.InvalidRequest);
         }
+
 
         return response;
     }
@@ -203,11 +213,11 @@ public class FriendshipService
                 .ToList();
             
             string friendshipTypeMessage = string.IsNullOrEmpty(friendshipType) ? "Friendships"  : friendshipType;
-            response.Ok(friendshipDtos, $"{friendshipTypeMessage} retrieved successfully");
+            response.Ok(friendshipDtos, ResponseMessages.ResourceRetrieved(friendshipTypeMessage));
         }
         else
         {
-            response.Fail("User not found");
+            response.Fail(ResponseMessages.UserNotFound);
         }
         return response;
     }
@@ -227,11 +237,35 @@ public class FriendshipService
                 : relationship.AddresseeUser;
             
             var relationshipDto = _friendshipMapper.ToStandardDisplay(relationship, otherUser!);
-            response.Ok(relationshipDto, "Relationship Fetched Successfully!");
+            response.Ok(relationshipDto, ResponseMessages.RelationshipFetched);
         }
         else
         {
-            response.Fail("Relationship not found");
+            response.Fail(ResponseMessages.RelationshipNotFound);
+        }
+
+        return response;
+    }
+    
+    public async Task<ApplicationResponse<AcceptedFriendshipDto>> GetAcceptedFriendshipAsync(int currentUserId,
+        int                                                                                       otherUserId)
+    {
+        var response   = new ApplicationResponse<AcceptedFriendshipDto>();
+        
+        var friendship = await _friendshipRepository.GetAcceptedFriendshipAsync(currentUserId, otherUserId, false);
+
+        if (friendship is not null)
+        {
+            var otherUser = friendship.RequesterUserId == otherUserId
+                ? friendship.RequesterUser
+                : friendship.AddresseeUser;
+            
+            var friendshipDto = _friendshipMapper.ToAcceptedDisplay(friendship, otherUser!);
+            response.Ok(friendshipDto, ResponseMessages.RelationshipFetched);           
+        }
+        else
+        {
+            response.Fail(ResponseMessages.FriendshipNotFound);
         }
 
         return response;

@@ -1,5 +1,6 @@
 ﻿using aspnetproject.BusinessLogic.Mappers;
 using aspnetproject.Common.Dtos.Comments;
+using aspnetproject.Common.ProjectConstants;
 using aspnetproject.Common.Responses;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Infrastructure.Dtos.Comments;
@@ -37,7 +38,7 @@ public class CommentService
         if (comment is not null)
         {
             var commentDto = _commentMapper.ToFullDisplay(comment);           
-            response.Ok(commentDto, "Comment retrieved successfully!");
+            response.Ok(commentDto, ResponseMessages.CommentRetrieved);
         }
 
         return response;
@@ -55,11 +56,11 @@ public class CommentService
             var addedComment = await _commentRepository.AddCommentAsync(comment);
             
             var commentDto = _commentMapper.ToFullDisplay(addedComment);
-            response.Ok(commentDto, "Comment uploaded successfully!");
+            response.Ok(commentDto, ResponseMessages.CommentUploaded);
         }
         else
         {
-            response.Fail("Post not found");
+            response.Fail(ResponseMessages.PostNotFound);
         }
 
         return response;
@@ -77,16 +78,16 @@ public class CommentService
             if (belongsToCaller)
             {
                 await _commentRepository.DeleteAsync(comment);  
-                response.Ok("Comment deleted successfully!");
+                response.Ok(ResponseMessages.CommentDeletedSuccessfully);
             }
             else
             {
-                response.Fail("Comment could not be deleted");
+                response.Fail(ResponseMessages.CouldNotDeleteComment);
             }
         }
         else
         {
-            response.Fail("Comment not found");
+            response.Fail(ResponseMessages.CommentNotFound);
         }
 
         return response;
@@ -103,11 +104,11 @@ public class CommentService
             var comments    = await _commentRepository.GetByPostIdAsync(postId, pageNumber, pageSize);
             var commentDtos = comments.Select(_commentMapper.ToStandardDisplay).ToList();
             
-            response.Ok(commentDtos);
+            response.Ok(commentDtos, ResponseMessages.PostCommentsRetrieved);
         }
         else
         {
-            response.Fail("Post not found");
+            response.Fail(ResponseMessages.PostNotFound);
         }
 
         return response;
@@ -124,11 +125,11 @@ public class CommentService
             var comments = await _commentRepository.GetByUserIdAsync(userId, pageNumber, pageSize);
             var commentDtos = comments.Select(_commentMapper.ToStandardDisplay).ToList();
 
-            response.Ok(commentDtos, "User comments retrieved successfully!");
+            response.Ok(commentDtos, ResponseMessages.UserCommentsRetrieved);
         }
         else
         {
-            response.Fail("User not found");
+            response.Fail(ResponseMessages.UserNotFound);
         }
 
         return response;
@@ -148,7 +149,7 @@ public class CommentService
             await _commentRepository.SaveChangesAsync();
             
             var commentDto = _commentMapper.ToFullDisplay(comment);
-            response.Ok(commentDto, "Commend updated successfully!");
+            response.Ok(commentDto, ResponseMessages.CommentUpdated);
         }
 
         return response;

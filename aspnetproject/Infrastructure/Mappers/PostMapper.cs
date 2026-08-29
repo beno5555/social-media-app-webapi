@@ -1,5 +1,4 @@
-﻿using aspnetproject.BusinessLogic.Mappers.Base;
-using aspnetproject.Common.Dtos.Comments;
+﻿using aspnetproject.Common.Dtos.Comments;
 using aspnetproject.Common.Dtos.Posts;
 using aspnetproject.Infrastructure.Dtos.Comments;
 using aspnetproject.Infrastructure.Dtos.Posts;

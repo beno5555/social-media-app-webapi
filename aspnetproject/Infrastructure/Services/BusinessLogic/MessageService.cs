@@ -1,12 +1,13 @@
-﻿using aspnetproject.BusinessLogic.Mappers;
+﻿using aspnetproject.Common.ProjectConstants;
 using aspnetproject.Common.ProjectConstants.Enums;
 using aspnetproject.Common.Responses;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Hubs;
-using aspnetproject.Infrastructure.Dtos.Friendships;
 using aspnetproject.Infrastructure.Dtos.Messages;
 using aspnetproject.Infrastructure.Dtos.Users;
+using aspnetproject.Infrastructure.Dtos.Users.Friends;
 using aspnetproject.Infrastructure.Mappers;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Constants = aspnetproject.Common.ProjectConstants.Constants;
 
@@ -61,7 +62,7 @@ public class MessageService
             await _hubContext.Clients.Group(receiverId.ToString()).SendAsync("ReceiveMessage", pushMessageDto);
 
             var displayMessageDto = _messageMapper.ToSentMessageDisplay(message);
-            response.Ok(displayMessageDto, "Message sent successfully");
+            response.Ok(displayMessageDto, ResponseMessages.MessageSent);
         }
         else
         {
@@ -78,21 +79,30 @@ public class MessageService
         int? pageSize = null)
     {
         var response = new ListResponse<StandardMessageDto>();
-        var friendshipCheck = await ValidFriendship(readerId, otherUserId);
+        var callerExists = await _userRepository.ExistsByIdAsync(readerId);
 
-        if (friendshipCheck.Succeeded)
+        if (callerExists)
         {
-            var messages = await _messageRepository.GetConversationAsync(readerId, otherUserId, pageNumber, pageSize);
-            messages.Reverse(); // Repository fetches the messages in descending order to fetch the latest ones. we should reverse it.
+            var friendshipCheck = await ValidFriendship(readerId, otherUserId);
+
+            if (friendshipCheck.Succeeded)
+            {
+                var messages = await _messageRepository.GetConversationAsync(readerId, otherUserId, pageNumber, pageSize);
+                messages.Reverse(); // Repository fetches the messages in descending order to fetch the latest ones. we should reverse it.
             
-            await MarkAsReadAsync(readerId, otherUserId);
+                await MarkAsReadAsync(readerId, otherUserId);
             
-            var messageDtos = messages.Select(_messageMapper.ToStandardDisplay).ToList();
-            response.Ok(messageDtos, "Conversation retrieved successfully!");
+                var messageDtos = messages.Select(_messageMapper.ToStandardDisplay).ToList();
+                response.Ok(messageDtos, ResponseMessages.ConversationRetrievedSuccessfully);
+            }
+            else
+            {
+                response.Fail(friendshipCheck.Message);
+            }
         }
         else
         {
-            response.Fail(friendshipCheck.Message);
+            response.Fail("Invalid request");
         }
 
         return response;
@@ -103,19 +113,19 @@ public class MessageService
         
         var conversationFriends = await _userRepository.GetConversationFriendsAsync(userId, pageNumber, pageSize);
         var conversationFriendDtos = conversationFriends.Select(_userMapper.ToConversationFriendDisplay).ToList();
-        response.Ok(conversationFriendDtos, "Conversation friends retrieved successfully");
+        response.Ok(conversationFriendDtos, ResponseMessages.ConversationFriendsListSuccessMessage);
 
         return response;
     }
-    public async Task<ListResponse<MinimalUserDto>> GetNonConversationFriendsAsync(int userId, int? pageNumber, int? pageSize) 
+    public async Task<ListResponse<DisplayFriendDto>> GetNonConversationFriendsAsync(int userId, int? pageNumber, int? pageSize) 
     {
-        var response = new ListResponse<MinimalUserDto>();
+        var response = new ListResponse<DisplayFriendDto>();
         
         var friends =
             await _userRepository.GetFriendsByConversationStatusAsync(userId, shouldHaveConversation: false, pageNumber, pageSize);
-        var userDtos = friends.Select(_userMapper.ToMinimalDisplay).ToList();
+        var userDtos = friends.Select(_userMapper.ToFriendDisplay).ToList();
         
-        response.Ok(userDtos, "Friends with no conversation retrieved successfully");
+        response.Ok(userDtos, ResponseMessages.FriendsWithNoConversationRetrieved);
 
         return response;
     }
@@ -145,17 +155,17 @@ public class MessageService
                 }
                 else
                 {
-                    response.Fail("You can only send messages to your friends");
+                    response.Fail(ResponseMessages.CanOnlySendMessagesToFriends);
                 }
             }
             else
             {
-                response.Fail("Receiver user not found");
+                response.Fail(ResponseMessages.ReceiverUserNotFound);
             }
         }
         else
         {
-            response.Fail("Cannot send a message to oneself");
+            response.Fail(ResponseMessages.CannotSendMessagesToOneself);
         }
 
         return response;
@@ -184,11 +194,11 @@ public class MessageService
                     await _hubContext.Clients.Group(userId.ToString()).SendAsync("MessageEdited", messageEditedDto);
                     
                     var messageDto = _messageMapper.ToStandardDisplay(message);
-                    response.Ok(messageDto, "Message edited successfully");
+                    response.Ok(messageDto, ResponseMessages.MessageEdited);
                 }
                 else
                 {
-                    response.Fail("Edit window has expired");
+                    response.Fail(ResponseMessages.EditWindowExpired);
                 }
             }
             else
@@ -196,17 +206,17 @@ public class MessageService
                 bool isCallerInConversation = message.ReceiverUserId == userId;
                 if (isCallerInConversation)
                 {
-                    response.Fail("You do not have permission to edit this message");
+                    response.Fail(ResponseMessages.DoNotHavePermissionToEditMessage);
                 }
                 else
                 {
-                    response.Fail("Invalid request");
+                    response.Fail(ResponseMessages.InvalidRequest);
                 }
             }
         }
         else
         {
-            response.Fail("Message not found");
+            response.Fail(ResponseMessages.MessageNotFound);
         }
 
         return response;
@@ -234,16 +244,16 @@ public class MessageService
             if (belongsToCaller)
             {
                 await _messageRepository.DeleteAsync(message);
-                response.Ok("Message deleted");
+                response.Ok(ResponseMessages.MessageDeleted);
             }
             else
             {
-                response.Fail("Delete request declined");
+                response.Fail(ResponseMessages.DeleteRequestDeclined);
             }
         }
         else
         {
-            response.Fail("Message not found");
+            response.Fail(ResponseMessages.MessageNotFound);
         }
 
         return response;

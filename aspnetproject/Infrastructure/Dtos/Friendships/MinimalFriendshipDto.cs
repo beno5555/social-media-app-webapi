@@ -1,4 +1,4 @@
-﻿namespace aspnetproject.Common.Dtos.Friendships;
+﻿namespace aspnetproject.Infrastructure.Dtos.Friendships;
 
 public class MinimalFriendshipDto
 {

@@ -1,6 +1,7 @@
 ﻿using aspnetproject.Common.Responses;
 using aspnetproject.Controllers.Base;
 using aspnetproject.Infrastructure.Dtos.Messages;
+using aspnetproject.Infrastructure.Dtos.Users.Friends;
 using aspnetproject.Infrastructure.Queries;
 using aspnetproject.Infrastructure.Services.BusinessLogic;
 using Microsoft.AspNetCore.Authorization;
@@ -54,7 +55,7 @@ public class MessageController : BaseController
     
     [HttpGet]
     [Route("friends/conversation")]
-    public async Task<ActionResult> GetConversationFriends([FromQuery] PageQuery query) // added
+    public async Task<ActionResult<ListResponse<ConversationFriendDto>>> GetConversationFriends([FromQuery] PageQuery query) // added
     {
         var userId   = GetUserId();
         var response = await  _messageService.GetConversationFriendsAsync(userId, query.PageNumber, query.PageSize);
@@ -69,7 +70,7 @@ public class MessageController : BaseController
     
     [HttpGet]
     [Route("friends/no-conversation")]
-    public async Task<ActionResult> GetNonConversationFriends([FromQuery] PageQuery query) // added
+    public async Task<ActionResult<ListResponse<DisplayFriendDto>>> GetNonConversationFriends([FromQuery] PageQuery query) // added
     {
         var userId = GetUserId();
         var response = await _messageService.GetNonConversationFriendsAsync(userId, query.PageNumber, query.PageSize);

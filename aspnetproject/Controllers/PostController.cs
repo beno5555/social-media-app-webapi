@@ -1,5 +1,4 @@
-﻿using aspnetproject.Common.Dtos.Posts;
-using aspnetproject.Common.Responses;
+﻿using aspnetproject.Common.Responses;
 using aspnetproject.Controllers.Base;
 using aspnetproject.Infrastructure.Dtos.Posts;
 using aspnetproject.Infrastructure.Queries;

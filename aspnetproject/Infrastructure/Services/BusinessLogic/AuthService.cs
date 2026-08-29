@@ -1,7 +1,4 @@
-﻿using aspnetproject.BusinessLogic.Dtos.Auth;
-using aspnetproject.BusinessLogic.Dtos.UserDtos;
-using aspnetproject.BusinessLogic.Services.Helpers;
-using aspnetproject.Common.ProjectConstants;
+﻿using aspnetproject.Common.ProjectConstants;
 using aspnetproject.Common.Responses;
 using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories;
@@ -23,7 +20,6 @@ public class AuthService
     private readonly TokenGenerator _tokenGenerator;
     private readonly IConfiguration _configuration;
 
-    private const string RefreshErrorMessage = "Invalid or expired refresh token";
     
     public AuthService(
         UserRepository userRepository,
@@ -106,7 +102,7 @@ public class AuthService
     }
 
     /// <summary>
-    /// provide a new access token by first validating a refresh token and then change that refresh token as well
+    /// provides a new access token by first validating a refresh token and then changes that refresh token as well
     /// </summary>
     public async Task<ApplicationResponse<AuthResultDto>> RefreshAsync(string rawRefreshToken)
     {
@@ -127,7 +123,7 @@ public class AuthService
             }
             else
             {
-                response.Fail(RefreshErrorMessage);
+                response.Fail(ResponseMessages.RefreshErrorMessage);
             }
         }
 

@@ -1,9 +1,8 @@
-﻿using aspnetproject.BusinessLogic.Mappers;
-using aspnetproject.Common.Dtos.Posts;
-using aspnetproject.Common.ProjectConstants;
+﻿using aspnetproject.Common.ProjectConstants;
 using aspnetproject.Common.Responses;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Infrastructure.Dtos.Posts;
+using aspnetproject.Infrastructure.Mappers;
 
 namespace aspnetproject.Infrastructure.Services.BusinessLogic;
 
@@ -29,6 +28,42 @@ public class PostService
         _commentRepository = commentRepository;
         _postMapper = postMapper;
     }
+    
+    public async Task<ApplicationResponse<StandardPostDisplayDto>> UploadPost(int userId, CreatePostDto createPostDto)
+    {
+        var response = new ApplicationResponse<StandardPostDisplayDto>();
+        
+        var userExists = await _userRepository.ExistsByIdAsync(userId);
+
+        if (userExists)
+        {
+            if (!string.IsNullOrEmpty(createPostDto.PostTitle))
+            {
+                if (!string.IsNullOrWhiteSpace(createPostDto.PostContent))
+                {
+                    var post      = _postMapper.ToEntity(userId, createPostDto);
+                    var addedPost = await _postRepository.AddPostAsync(post);
+
+                    var postDisplay = _postMapper.ToStandardDisplay(addedPost);
+                    response.Ok(postDisplay, ResponseMessages.PostUploaded);
+                }
+                else
+                {
+                    response.Fail(ResponseMessages.ContentRequired);
+                }
+            }
+            else
+            {
+                response.Fail(ResponseMessages.TitleRequired);
+            }
+        }
+        else
+        {
+            response.Fail(ResponseMessages.UserNotFound);
+        }
+
+        return response;
+    }
 
     public async Task<ApplicationResponse<FullPostDisplayDto>> GetPostByIdAsync(int id)
     {
@@ -46,36 +81,57 @@ public class PostService
         }
         return response;
     }
-
-    /// <summary>
-    /// We do not check whether user with userId exists in the database or not, since the only source of userId is the userId of the currently logged-in user.
-    /// Proper id checking will be implemented if we decide to add admin role that would be able to upload/update the post under someone else's name
-    /// </summary>
-    public async Task<ApplicationResponse<StandardPostDisplayDto>> UploadPost(int userId, CreatePostDto createPostDto)
+    
+    public async Task<ListResponse<MinimalPostDisplayDto>> GetAllPostsAsync(int? pageNumber, int? pageSize)
     {
-        var response = new ApplicationResponse<StandardPostDisplayDto>();
+        var response = new ListResponse<MinimalPostDisplayDto>();
         
-        if (!string.IsNullOrEmpty(createPostDto.PostTitle))
-        {
-            if (!string.IsNullOrWhiteSpace(createPostDto.PostContent))
-            {
-                var post = _postMapper.ToEntity(userId, createPostDto);
-                var addedPost = await _postRepository.AddPostAsync(post);
+        var posts    = await _postRepository.GetAllAsync(pageNumber, pageSize);
+        var postDtos = posts
+            .Select(_postMapper
+                .ToMinimalDisplay)
+            .ToList();
 
-                var postDisplay = _postMapper.ToStandardDisplay(addedPost);
-                response.Ok(postDisplay, ResponseMessages.PostUploaded);
-            }
-            else
-            {
-                response.Fail(ResponseMessages.ContentRequired);
-            }
+        response.Ok(postDtos);
+
+        return response;
+    }
+    
+    public async Task<ListResponse<StandardPostDisplayDto>> GetFeedAsync(int userId, int? pageNumber, int? pageSize)
+    {
+        var response = new ListResponse<StandardPostDisplayDto>();
+        
+        var friends  = await _friendshipRepository.GetFriendshipsAsync(userId);
+        List<int> friendIds = friends.Select(friend =>
+            friend.RequesterUserId == userId ? friend.AddresseeUserId : friend.RequesterUserId).ToList();
+
+        var posts    = await _postRepository.GetFeedAsync(friendIds, pageNumber, pageSize);
+        var postDtos = posts.Select(_postMapper.ToStandardDisplay).ToList();
+
+        response.Ok(postDtos, ResponseMessages.Feed);
+
+        return response;
+    }
+    
+    public async Task<ListResponse<StandardPostDisplayDto>> GetByUserIdAsync(int userId, int? pageNumber, int? pageSize)
+    {
+        var response = new ListResponse<StandardPostDisplayDto>();
+
+        bool userExists = await _userRepository.ExistsByIdAsync(userId);
+
+        if (userExists)
+        {
+            var posts    = await _postRepository.GetByUserIdAsync(userId, pageNumber, pageSize);
+            var postDtos = posts.Select(_postMapper.ToStandardDisplay).ToList();
+            
+            response.Ok(postDtos, ResponseMessages.UserPostsRetrieved);
         }
         else
         {
-            response.Fail(ResponseMessages.TitleRequired);
+            response.Fail(ResponseMessages.UserNotFound);
         }
-
-        return response;
+        
+        return  response;
     }
 
     public async Task<ApplicationResponse<FullPostDisplayDto>> UpdatePost(int id, int userId, UpdatePostDto updatePostDto)
@@ -108,58 +164,6 @@ public class PostService
         }
 
         return response;
-    }
-
-    public async Task<ListResponse<MinimalPostDisplayDto>> GetAllPostsAsync(int? pageNumber, int? pageSize)
-    {
-        var response = new ListResponse<MinimalPostDisplayDto>();
-        
-        var posts    = await _postRepository.GetAllAsync(pageNumber, pageSize);
-        var postDtos = posts
-            .Select(_postMapper
-                .ToMinimalDisplay)
-            .ToList();
-
-        response.Ok(postDtos);
-
-        return response;
-    }
-
-    public async Task<ListResponse<StandardPostDisplayDto>> GetFeedAsync(int userId, int? pageNumber, int? pageSize)
-    {
-        var response = new ListResponse<StandardPostDisplayDto>();
-        
-        var friends  = await _friendshipRepository.GetFriendshipsAsync(userId);
-        List<int> friendIds = friends.Select(friend =>
-            friend.RequesterUserId == userId ? friend.AddresseeUserId : friend.RequesterUserId).ToList();
-
-        var posts = await _postRepository.GetFeedAsync(friendIds, pageNumber, pageSize);
-        var postDtos = posts.Select(_postMapper.ToStandardDisplay).ToList();
-
-        response.Ok(postDtos, ResponseMessages.Feed);
-
-        return response;
-    }
-
-    public async Task<ListResponse<StandardPostDisplayDto>> GetByUserIdAsync(int userId, int? pageNumber, int? pageSize)
-    {
-        var response = new ListResponse<StandardPostDisplayDto>();
-
-        bool userExists = await _userRepository.ExistsByIdAsync(userId);
-
-        if (userExists)
-        {
-            var posts = await _postRepository.GetByUserIdAsync(userId, pageNumber, pageSize);
-            var postDtos = posts.Select(_postMapper.ToStandardDisplay).ToList();
-            
-            response.Ok(postDtos, ResponseMessages.UserPostsRetrieved);
-        }
-        else
-        {
-            response.Fail(ResponseMessages.UserNotFound);
-        }
-        
-        return  response;
     }
 
     public async Task<ApplicationResponse> DeletePostAsync(int userId, int id)

@@ -1,7 +1,6 @@
 ﻿using aspnetproject.Data.Models;
 using aspnetproject.Infrastructure.Dtos.Auth;
 using aspnetproject.Infrastructure.Dtos.Users;
-using Microsoft.IdentityModel.Tokens;
 
 namespace aspnetproject.Infrastructure.Mappers;
 
@@ -19,6 +18,7 @@ public class AuthMapper
             DateOfBirth = registerDto.DateOfBirth
         };
     }
+    
     public StandardUserDto ToStandardDisplay(User user)
     {
         return new StandardUserDto

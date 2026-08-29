@@ -1,5 +1,4 @@
 ﻿using System.ComponentModel.DataAnnotations.Schema;
-using aspnetproject.Models;
 
 namespace aspnetproject.Data.Models;
 

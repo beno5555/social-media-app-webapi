@@ -4,7 +4,6 @@ using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories.Base;
 using aspnetproject.Data.Repositories.Dtos;
 using aspnetproject.Infrastructure.Dtos.Users;
-using aspnetproject.Models;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
@@ -86,8 +85,7 @@ public class UserRepository : BaseEntityRepository<User>
     }
 
     /// <summary>
-    /// fetches friends with whom the user has conversations if shouldHaveConversation is true
-    /// fetches friends with whom the user does not have a conversation if shouldHaveConversation is false
+    /// fetches friends with whom the user has or does not have a conversation, based on shouldHaveConversation parameter
     /// </summary>
     public async Task<List<User>> GetFriendsByConversationStatusAsync(int userId, bool shouldHaveConversation, int? pageNumber, int? pageSize)
     {

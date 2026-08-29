@@ -1,7 +1,6 @@
 ﻿using aspnetproject.Common.ProjectConstants.Enums;
 using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories.Base;
-using aspnetproject.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace aspnetproject.Data.Repositories;
@@ -22,9 +21,6 @@ public class FriendshipRepository : BaseRepository<Friendship>
         return track ? query : query.AsNoTracking();
     }
 
-    /// <summary>
-    /// gets the pending requests that were SENT to user with id userId
-    /// </summary>
     public async Task<List<Friendship>> GetPendingRequestsAsync(int userId, int? pageNumber = null, int? pageSize = null)
     {
         return await GetAsync(userId, FriendshipStatus.Pending, pageNumber, pageSize);
@@ -37,15 +33,7 @@ public class FriendshipRepository : BaseRepository<Friendship>
     }
 
     /// <summary>
-    /// gets the rejected requests that were SENT to user with id userId
-    /// </summary>
-    public async Task<List<Friendship>> GetRejectedRequestsAsync(int userId, int? pageNumber = null, int? pageSize = null)
-    {
-        return await GetAsync(userId, FriendshipStatus.Declined, pageNumber, pageSize);
-    }
-    
-    /// <summary>
-    /// fetches the friendships that userId sent with optional status filter
+    /// fetches the friendships that got sent to userId with optional status filter
     /// </summary>
     private async Task<List<Friendship>> GetAsync(
         int userId,
@@ -81,9 +69,6 @@ public class FriendshipRepository : BaseRepository<Friendship>
             .ToListAsync();
     }
     
-    /// <summary>
-    /// fetches the accepted request of userA and userB.
-    /// </summary>
     public async Task<Friendship?> GetRelationshipAsync(int requesterId, int addresseeId, bool orderMatters = false)
     {
         return await GetFirstAsync(friendship => orderMatters
@@ -130,5 +115,4 @@ public class FriendshipRepository : BaseRepository<Friendship>
         // await DeleteWhereAsync(friendship => friendship.RequesterUserId == userId ||
         //                                      friendship.AddresseeUserId == userId);
     }
-
 }

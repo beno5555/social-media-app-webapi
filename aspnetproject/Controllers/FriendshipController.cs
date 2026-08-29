@@ -23,7 +23,7 @@ public class FriendshipController : BaseController
 
     [HttpPost]
     [Route("{addresseeId:int}")]
-    public async Task<ActionResult<ApplicationResponse<MinimalFriendshipDto>>> SendRequest(int addresseeId) // added
+    public async Task<ActionResult<ApplicationResponse<MinimalFriendshipDto>>> SendRequest(int addresseeId) 
     {
         var userId   = GetUserId();
         var response = await _friendshipService.SendRequest(userId, addresseeId);
@@ -38,7 +38,7 @@ public class FriendshipController : BaseController
 
     [HttpGet]
     [Route("{friendId:int}")]
-    public async Task<ActionResult<ApplicationResponse<StandardFriendshipDto>>> GetRelationship(int friendId) // added
+    public async Task<ActionResult<ApplicationResponse<StandardFriendshipDto>>> GetRelationship(int friendId) 
     {
         var userId   = GetUserId();
         var response = await _friendshipService.GetRelationshipAsync(userId, friendId);
@@ -68,7 +68,7 @@ public class FriendshipController : BaseController
     
     [HttpGet]
     [Route("mine")]
-    public async Task<ActionResult<ListResponse<StandardFriendshipDto>>> GetFriendships([FromQuery] PageQuery query) // added
+    public async Task<ActionResult<ListResponse<StandardFriendshipDto>>> GetFriendships([FromQuery] PageQuery query) 
     {
         int userId   = GetUserId();
         var response = await _friendshipService.GetFriendshipsAsync(userId, query.PageNumber, query.PageSize);
@@ -83,7 +83,7 @@ public class FriendshipController : BaseController
     
     [HttpGet]
     [Route("pending")]
-    public async Task<ActionResult<ListResponse<StandardFriendshipDto>>> GetPendingRequests([FromQuery] PageQuery query) // added
+    public async Task<ActionResult<ListResponse<StandardFriendshipDto>>> GetPendingRequests([FromQuery] PageQuery query) 
     {
         int userId   = GetUserId();
         var response = await _friendshipService.GetPendingRequestsAsync(userId, query.PageNumber, query.PageSize);
@@ -98,7 +98,7 @@ public class FriendshipController : BaseController
     
     [HttpGet]
     [Route("sent")]
-    public async Task<ActionResult<ListResponse<StandardFriendshipDto>>> GetSentRequests([FromQuery] PageQuery query) // added
+    public async Task<ActionResult<ListResponse<StandardFriendshipDto>>> GetSentRequests([FromQuery] PageQuery query) 
     {
         int userId   = GetUserId();
         var response = await _friendshipService.GetSentRequestsAsync(userId, query.PageNumber, query.PageSize);
@@ -113,7 +113,7 @@ public class FriendshipController : BaseController
 
     [HttpGet]
     [Route("user/{userId:int}")]
-    public async Task<ActionResult<ListResponse<MinimalUserDto>>> GetFriendsOf(int userId, [FromQuery] PageQuery query) // added
+    public async Task<ActionResult<ListResponse<MinimalUserDto>>> GetFriendsOf(int userId, [FromQuery] PageQuery query) 
     {
         var response = await _friendshipService.GetFriendshipsAsync(userId, query.PageNumber, query.PageSize);
 
@@ -127,22 +127,25 @@ public class FriendshipController : BaseController
     
     [HttpPut]
     [Route("{requesterId:int}/accept")]
-    public async Task<ActionResult<ApplicationResponse<StandardFriendshipDto>>> AcceptRequest(int requesterId) // added
+    public async Task<ActionResult<ApplicationResponse<StandardFriendshipDto>>> AcceptRequest(int requesterId) 
     {
-        return await RespondToRequest(requesterId, FriendshipStatus.Accepted);
+        var userId   = GetUserId();
+        var response = await _friendshipService.RespondToRequestAsync(requesterId, userId, FriendshipStatus.Accepted);
+
+        if (response.Succeeded)
+        {
+            return Ok(response);
+        }
+
+        return BadRequest(response);
     }
 
     [HttpPut]
     [Route("{requesterId:int}/decline")]
-    public async Task<ActionResult<ApplicationResponse<StandardFriendshipDto>>> DeclineRequest(int requesterId) // added
-    {
-        return await RespondToRequest(requesterId, FriendshipStatus.Declined);
-    }
-    
-    private async Task<ActionResult<ApplicationResponse<StandardFriendshipDto>>> RespondToRequest(int requesterId, FriendshipStatus status)
+    public async Task<ActionResult<ApplicationResponse<StandardFriendshipDto>>> DeclineRequest(int requesterId) 
     {
         var userId   = GetUserId();
-        var response = await _friendshipService.RespondToRequestAsync(requesterId, userId, status);
+        var response = await _friendshipService.RespondToRequestAsync(requesterId, userId, FriendshipStatus.Declined);
 
         if (response.Succeeded)
         {
@@ -154,7 +157,7 @@ public class FriendshipController : BaseController
 
     [HttpDelete]
     [Route("{friendId:int}")]
-    public async Task<ActionResult<ApplicationResponse>> RemoveRelationship(int friendId) // added
+    public async Task<ActionResult<ApplicationResponse>> RemoveRelationship(int friendId) 
     {
         int userId = GetUserId();
         var response = await _friendshipService.RemoveRelationshipAsync(userId, friendId);

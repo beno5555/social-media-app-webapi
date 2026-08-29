@@ -1,8 +1,7 @@
-﻿using aspnetproject.Common.Dtos.Comments;
-using aspnetproject.Infrastructure.Dtos.Comments;
+﻿using aspnetproject.Infrastructure.Dtos.Comments;
 using aspnetproject.Infrastructure.Dtos.Users;
 
-namespace aspnetproject.Common.Dtos.Posts;
+namespace aspnetproject.Infrastructure.Dtos.Posts;
 
 public class FullPostDisplayDto
 {

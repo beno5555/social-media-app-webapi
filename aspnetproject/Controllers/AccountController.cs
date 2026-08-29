@@ -95,7 +95,6 @@ public class AccountController : BaseController
         }
 
         return BadRequest(response);
-
     }
     
     [HttpPut]
@@ -130,7 +129,7 @@ public class AccountController : BaseController
 
     [HttpDelete]
     [Route("{id:int}")]
-    // [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Admin")]
     public async Task<ActionResult<ApplicationResponse>> DeleteUserAccount(int id)
     {
         var response = await _accountService.DeleteAccountAsync(id);

@@ -1,3 +1,16 @@
-﻿namespace aspnetproject.BusinessLogic.Dtos.UserDtos;
+﻿using System.ComponentModel;
+using System.ComponentModel.DataAnnotations;
+using aspnetproject.Common.ProjectConstants;
 
-public record LoginDto(string UniqueIdentifier, string Password);
+namespace aspnetproject.Infrastructure.Dtos.Auth;
+
+public class LoginDto
+{
+    [MaxLength(Constants.UsernameMaxlength)]
+    [DefaultValue("boba")]
+    public string UniqueIdentifier { get; set; } = string.Empty;
+
+    [MinLength(Constants.PasswordMinLength), MaxLength(Constants.PasswordMaxLength)]
+    [DefaultValue("password123")]
+    public string Password { get; set; } = string.Empty;
+}

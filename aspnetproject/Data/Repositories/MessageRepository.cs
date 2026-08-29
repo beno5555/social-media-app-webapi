@@ -1,6 +1,5 @@
 ﻿using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories.Base;
-using aspnetproject.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace aspnetproject.Data.Repositories;
@@ -62,31 +61,6 @@ public class MessageRepository : BaseEntityRepository<Message>
                                           (message.SenderUserId == userB && message.ReceiverUserId == userA));
     }
 
-    public async Task<List<Message>> GetUnreadAsync(int senderId, int receiverId)
-    {
-        return await GetWhereAsync(message =>
-            message.SenderUserId == senderId && message.ReceiverUserId == receiverId && !message.Seen);
-    }
-
-    /// <summary>
-    /// use this when the unread messages have already been loaded
-    /// </summary>
-    public async Task MarkAsReadAsync(List<Message> unreadMessages)
-    {
-        var seenAt = DateTime.UtcNow;
-        foreach (var message in unreadMessages)
-        {
-            message.Seen = true;
-            message.SeenAt = seenAt;
-            message.LastUpdatedAt = seenAt;
-        }
-
-        await _dbContext.SaveChangesAsync();
-    }
-
-    /// <summary>
-    /// use this when the messages have not been loaded
-    /// </summary>
     public async Task<(bool marked, DateTime seenAt)> MarkConversationAsReadAsync(int readerId, int otherUserId)
     {
         bool executedSeen = false;
@@ -128,11 +102,5 @@ public class MessageRepository : BaseEntityRepository<Message>
             .Select(message => message.SenderUserId)
             .Distinct()
             .CountAsync();
-    }
-
-    public async Task<bool> HaveMessages(int userAId, int userBId)
-    {
-        return await ExistsAsync(message => (message.SenderUserId == userAId && message.ReceiverUserId == userBId) ||
-                                            (message.SenderUserId == userBId && message.ReceiverUserId == userAId));
     }
 }

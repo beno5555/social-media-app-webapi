@@ -1,6 +1,4 @@
-﻿using aspnetproject.BusinessLogic.Services;
-using aspnetproject.Common.Dtos.Comments;
-using aspnetproject.Common.Responses;
+﻿using aspnetproject.Common.Responses;
 using aspnetproject.Controllers.Base;
 using aspnetproject.Infrastructure.Dtos.Comments;
 using aspnetproject.Infrastructure.Queries;

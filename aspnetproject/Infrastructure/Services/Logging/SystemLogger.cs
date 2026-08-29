@@ -1,4 +1,4 @@
-﻿namespace aspnetproject.BusinessLogic.Services.Logging;
+﻿namespace aspnetproject.Infrastructure.Services.Logging;
 
 public class SystemLogger
 {

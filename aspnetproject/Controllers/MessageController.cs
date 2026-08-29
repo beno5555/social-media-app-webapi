@@ -40,7 +40,7 @@ public class MessageController : BaseController
 
     [HttpGet]
     [Route("conversation/{otherUserId:int}")]
-    public async Task<ActionResult<ListResponse<StandardMessageDto>>> GetConversation(int otherUserId, [FromQuery] PageQuery query) // added
+    public async Task<ActionResult<ListResponse<StandardMessageDto>>> GetConversation(int otherUserId, [FromQuery] PageQuery query) 
     {
         var userId = GetUserId();
         var response = await  _messageService.GetConversationAsync(userId, otherUserId, query.PageNumber, query.PageSize);
@@ -55,7 +55,7 @@ public class MessageController : BaseController
     
     [HttpGet]
     [Route("friends/conversation")]
-    public async Task<ActionResult<ListResponse<ConversationFriendDto>>> GetConversationFriends([FromQuery] PageQuery query) // added
+    public async Task<ActionResult<ListResponse<ConversationFriendDto>>> GetConversationFriends([FromQuery] PageQuery query) 
     {
         var userId   = GetUserId();
         var response = await  _messageService.GetConversationFriendsAsync(userId, query.PageNumber, query.PageSize);
@@ -70,7 +70,7 @@ public class MessageController : BaseController
     
     [HttpGet]
     [Route("friends/no-conversation")]
-    public async Task<ActionResult<ListResponse<DisplayFriendDto>>> GetNonConversationFriends([FromQuery] PageQuery query) // added
+    public async Task<ActionResult<ListResponse<DisplayFriendDto>>> GetNonConversationFriends([FromQuery] PageQuery query) 
     {
         var userId = GetUserId();
         var response = await _messageService.GetNonConversationFriendsAsync(userId, query.PageNumber, query.PageSize);
@@ -85,7 +85,7 @@ public class MessageController : BaseController
     
     [HttpGet]
     [Route("conversation/unread")]
-    public async Task<ActionResult<int>> Unread() // added
+    public async Task<ActionResult<int>> Unread() 
     {
         var userId = GetUserId();
         var response = await _messageService.GetUnreadConversationsCount(userId);

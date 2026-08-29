@@ -1,9 +1,9 @@
-﻿using aspnetproject.BusinessLogic.Services.Helpers;
-using aspnetproject.Common.ProjectConstants;
+﻿using aspnetproject.Common.ProjectConstants;
 using aspnetproject.Common.Responses;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Infrastructure.Mappers;
+using aspnetproject.Infrastructure.Services.Helpers;
 
 namespace aspnetproject.Infrastructure.Services.BusinessLogic;
 
@@ -141,16 +141,6 @@ public class AccountService
         return response;
     }
     
-    public async Task<List<StandardUserDto>> GetUsersAsync(int currentUserId, int? pageNumber, int? pageSize)
-    {
-        var users    = await _userRepository.GetUsersAsync(currentUserId, pageNumber, pageSize);
-        var userDtos = users
-            .Select(_userMapper.ToStandardDisplay)
-            .ToList();
-        
-        return userDtos;
-    }
-
     public async Task<ListResponse<MinimalUserDto>> SearchUsersAsync(string usernameInput, int? pageNumber = null, int? pageSize = null)
     {
         var response = new ListResponse<MinimalUserDto>();
@@ -222,7 +212,6 @@ public class AccountService
         return response;
     }
 
-    // Assumes valid userId
     private async Task DeleteUserRelatedData(int userId)
     {
         await _commentRepository.DeleteUserCommentsAsync(userId);

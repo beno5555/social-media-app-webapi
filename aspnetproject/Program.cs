@@ -1,14 +1,11 @@
 using System.Text;
-using aspnetproject.BusinessLogic.Mappers;
-using aspnetproject.BusinessLogic.Services;
-using aspnetproject.BusinessLogic.Services.Helpers;
-using aspnetproject.BusinessLogic.Services.Logging;
 using aspnetproject.Data;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Hubs;
 using aspnetproject.Infrastructure.Mappers;
 using aspnetproject.Infrastructure.Services.BusinessLogic;
 using aspnetproject.Infrastructure.Services.Helpers;
+using aspnetproject.Infrastructure.Services.Logging;
 using aspnetproject.Infrastructure.Services.Websockets;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Diagnostics;
@@ -85,7 +82,6 @@ public class Program
         builder.Services.AddAuthorization();
 
         builder.Services.AddSignalR();
-
         builder.Services.AddCors(options =>
         {
             var allowedOrigins = builder.Configuration
@@ -120,17 +116,14 @@ public class Program
         builder.Services.AddScoped<FriendshipService>();
         builder.Services.AddScoped<MessageService>();
         builder.Services.AddScoped<PostService>();
-        
         builder.Services.AddScoped<AuthService>();
+        builder.Services.AddScoped<PresenceService>();
         
         builder.Services.AddScoped<PasswordHasher>();
         builder.Services.AddScoped<TokenGenerator>();
+        builder.Services.AddSingleton<UserConnectionTracker>();
 
         builder.Services.AddScoped<SystemLogger>();
-
-        builder.Services.AddSingleton<UserConnectionTracker>();
-        builder.Services.AddScoped<PresenceService>();
-
         
         var app = builder.Build();
 
@@ -184,15 +177,11 @@ public class Program
         });
 
         app.UseHttpsRedirection();
-
         app.UseRouting();
-
         app.UseCors("SignalRTestPolicy");
 
         app.UseAuthentication();
-
         app.UseAuthorization();
-
         app.MapControllers();
 
         app.MapHub<MessageHub>("hubs/messages");

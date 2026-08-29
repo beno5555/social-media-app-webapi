@@ -1,4 +1,4 @@
-﻿using aspnetproject.Models;
+﻿using aspnetproject.Data.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 

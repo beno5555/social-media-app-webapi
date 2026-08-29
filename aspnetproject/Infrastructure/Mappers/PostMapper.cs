@@ -1,11 +1,9 @@
-﻿using aspnetproject.Common.Dtos.Comments;
-using aspnetproject.Common.Dtos.Posts;
+﻿using aspnetproject.Data.Models;
 using aspnetproject.Infrastructure.Dtos.Comments;
 using aspnetproject.Infrastructure.Dtos.Posts;
 using aspnetproject.Infrastructure.Dtos.Users;
-using aspnetproject.Models;
 
-namespace aspnetproject.BusinessLogic.Mappers;
+namespace aspnetproject.Infrastructure.Mappers;
 
 public class PostMapper
 {

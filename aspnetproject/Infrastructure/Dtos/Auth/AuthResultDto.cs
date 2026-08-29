@@ -1,6 +1,6 @@
 ﻿using System.Text.Json.Serialization;
 
-namespace aspnetproject.BusinessLogic.Dtos.Auth;
+namespace aspnetproject.Infrastructure.Dtos.Auth;
 
 public class AuthResultDto
 {

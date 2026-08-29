@@ -1,9 +1,7 @@
-﻿using aspnetproject.BusinessLogic.Dtos.UserDtos;
-using aspnetproject.Common.Responses;
+﻿using aspnetproject.Common.Responses;
 using aspnetproject.Infrastructure.Dtos.Auth;
 using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Infrastructure.Services.BusinessLogic;
-using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace aspnetproject.Controllers;

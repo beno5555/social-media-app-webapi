@@ -1,5 +1,5 @@
-﻿using aspnetproject.Data.Repositories.Base;
-using aspnetproject.Models;
+﻿using aspnetproject.Data.Models;
+using aspnetproject.Data.Repositories.Base;
 using Microsoft.EntityFrameworkCore;
 
 namespace aspnetproject.Data.Repositories;
@@ -21,11 +21,6 @@ public class CommentRepository : BaseEntityRepository<Comment>
     {
         return await GetFirstAsync(comment => comment.Id == id);
     }
-
-    // public async Task<List<Comment>> GetByUserIdAsync(int userId, int? pageNumber, int? pageSize)
-    // {
-    //     return await GetWhereAsync(comment => comment.CommenterUserId == userId, pageNumber, pageSize);
-    // }
 
     public async Task<List<Comment>> GetByPostIdAsync(int postId, int? pageNumber, int? pageSize)
     {

@@ -1,9 +1,8 @@
-﻿using aspnetproject.BusinessLogic.Mappers;
-using aspnetproject.Common.Dtos.Comments;
-using aspnetproject.Common.ProjectConstants;
+﻿using aspnetproject.Common.ProjectConstants;
 using aspnetproject.Common.Responses;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Infrastructure.Dtos.Comments;
+using aspnetproject.Infrastructure.Mappers;
 
 namespace aspnetproject.Infrastructure.Services.BusinessLogic;
 
@@ -44,25 +43,34 @@ public class CommentService
         return response;
     }
 
-    // no author check. commenting on behalf of someone else is not a feature and authenticated user does not require id check
     public async Task<ApplicationResponse<FullCommentDto>> AddCommentAsync(int authorId, CreateCommentDto createCommentDto)
     {
         var response   = new ApplicationResponse<FullCommentDto>();
-        var postExists = await _postRepository.ExistsByIdAsync(createCommentDto.PostId);
-
-        if (postExists)
+        
+        var userExists = await _userRepository.ExistsByIdAsync(authorId);
+        
+        if (userExists)
         {
-            var comment = _commentMapper.ToEntity(authorId, createCommentDto);
-            var addedComment = await _commentRepository.AddCommentAsync(comment);
+            var postExists = await _postRepository.ExistsByIdAsync(createCommentDto.PostId);
             
-            var commentDto = _commentMapper.ToFullDisplay(addedComment);
-            response.Ok(commentDto, ResponseMessages.CommentUploaded);
+            if (postExists)
+            {
+                var comment      = _commentMapper.ToEntity(authorId, createCommentDto);
+                var addedComment = await _commentRepository.AddCommentAsync(comment);
+            
+                var commentDto = _commentMapper.ToFullDisplay(addedComment);
+                response.Ok(commentDto, ResponseMessages.CommentUploaded);
+            }
+            else
+            {
+                response.Fail(ResponseMessages.PostNotFound);
+            }
         }
         else
         {
-            response.Fail(ResponseMessages.PostNotFound);
+            response.Fail(ResponseMessages.UserNotFound);
         }
-
+        
         return response;
     }
 
@@ -122,7 +130,7 @@ public class CommentService
 
         if (userExists)
         {
-            var comments = await _commentRepository.GetByUserIdAsync(userId, pageNumber, pageSize);
+            var comments    = await _commentRepository.GetByUserIdAsync(userId, pageNumber, pageSize);
             var commentDtos = comments.Select(_commentMapper.ToStandardDisplay).ToList();
 
             response.Ok(commentDtos, ResponseMessages.UserCommentsRetrieved);

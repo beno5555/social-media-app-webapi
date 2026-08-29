@@ -1,6 +1,5 @@
 ﻿using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories.Base;
-using aspnetproject.Models;
 using Microsoft.EntityFrameworkCore;
 
 namespace aspnetproject.Data.Repositories;

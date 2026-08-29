@@ -1,6 +1,6 @@
 ﻿using System.Security.Cryptography;
 
-namespace aspnetproject.BusinessLogic.Services.Helpers;
+namespace aspnetproject.Infrastructure.Services.Helpers;
 
 public class PasswordHasher
 {

@@ -1,9 +1,8 @@
-﻿using aspnetproject.Common.Dtos.Comments;
+﻿using aspnetproject.Data.Models;
 using aspnetproject.Infrastructure.Dtos.Comments;
 using aspnetproject.Infrastructure.Dtos.Users;
-using aspnetproject.Models;
 
-namespace aspnetproject.BusinessLogic.Mappers;
+namespace aspnetproject.Infrastructure.Mappers;
 
 public class CommentMapper 
 {
@@ -14,16 +13,6 @@ public class CommentMapper
             CommentContent = createCommentDto.Content,
             CommenterUserId = authorId,
             PostId = createCommentDto.PostId,
-        };
-    }
-
-    public MinimalCommentDto ToMinimalDisplay(Comment comment)
-    {
-        return new MinimalCommentDto
-        {
-            Id = comment.Id,
-            AuthorUsername = comment.CommenterUser!.Username,
-            Content = comment.CommentContent,
         };
     }
 

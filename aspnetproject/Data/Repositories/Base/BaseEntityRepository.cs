@@ -1,5 +1,4 @@
 ﻿using aspnetproject.Data.Models;
-using aspnetproject.Models;
 
 namespace aspnetproject.Data.Repositories.Base;
 
@@ -28,5 +27,4 @@ public class BaseEntityRepository<T> : BaseRepository<T> where T : BaseEntity
     {
         _dbContext.ChangeTracker.Clear();
     }
-
 }

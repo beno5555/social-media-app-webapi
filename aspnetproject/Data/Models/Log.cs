@@ -1,6 +1,4 @@
-﻿using aspnetproject.Data.Models;
-
-namespace aspnetproject.Models;
+﻿namespace aspnetproject.Data.Models;
 
 public class Log : BaseEntity
 {

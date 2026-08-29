@@ -4,10 +4,8 @@ using aspnetproject.Common.Responses;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Hubs;
 using aspnetproject.Infrastructure.Dtos.Messages;
-using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Infrastructure.Dtos.Users.Friends;
 using aspnetproject.Infrastructure.Mappers;
-using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.SignalR;
 using Constants = aspnetproject.Common.ProjectConstants.Constants;
 
@@ -44,9 +42,6 @@ public class MessageService
         _hubContext = hubContext;
     }
 
-    /// <summary>
-    /// Assumes that senderId is valid since the method should only be called when a logged-in user tries to send a message
-    /// </summary>
     public async Task<ApplicationResponse<SentMessageDto>> SendMessageAsync(int senderId, int receiverId, CreateMessageDto createMessageDto)
     {
         var response = new ApplicationResponse<SentMessageDto>();

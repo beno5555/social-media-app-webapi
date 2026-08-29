@@ -1,4 +1,4 @@
-﻿namespace aspnetproject.Common.Dtos.Posts;
+﻿namespace aspnetproject.Infrastructure.Dtos.Posts;
 
 public class StandardPostDisplayDto
 {

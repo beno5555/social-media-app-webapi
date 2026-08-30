@@ -21,6 +21,13 @@ public class CommentRepository : BaseEntityRepository<Comment>
     {
         return await GetFirstAsync(comment => comment.Id == id);
     }
+    public async Task<Comment?> GetCommentWithCommenterUserAndPostById(int id)
+    {
+        return await _dbSet
+            .Include(comment => comment.CommenterUser)
+            .Include(comment => comment.Post)
+            .FirstOrDefaultAsync(comment => comment.Id == id);
+    }
 
     public async Task<List<Comment>> GetByPostIdAsync(int postId, int? pageNumber, int? pageSize)
     {

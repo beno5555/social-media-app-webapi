@@ -69,9 +69,10 @@ public static class ResponseMessages
     public const string UsernameIsAlreadyTaken = $"Username is already taken";
     public const string EmailIsAlreadyTaken    = $"Email is already taken";
 
-    public const  string LoginSuccessful     = $"{Login} {Successful}";
-    public const  string LoginErrorMessage   = "Invalid Username or Password";
-    public const string RefreshErrorMessage = "Invalid or expired refresh token";
+    public const string LoginSuccessful      = $"{Login} {Successful}";
+    public const string LoginErrorMessage    = "Invalid Username or Password";
+    public const string InvalidRefreshToken  = "Invalid or expired refresh token";
+    public const string RefreshTokenNotFound = "Refresh token not found";
     
     #endregion
     

@@ -1,13 +1,16 @@
 ﻿using aspnetproject.Common.ProjectConstants;
 using aspnetproject.Common.Responses;
+using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Infrastructure.Mappers;
+using aspnetproject.Infrastructure.Services.Base;
 using aspnetproject.Infrastructure.Services.Helpers;
+using aspnetproject.Infrastructure.Services.Logging;
 
 namespace aspnetproject.Infrastructure.Services.BusinessLogic;
 
-public class AccountService
+public class AccountService : BaseService
 {
     private readonly UserRepository       _userRepository;
     private readonly MessageRepository    _messageRepository;
@@ -15,8 +18,7 @@ public class AccountService
     private readonly CommentRepository    _commentRepository;
     
     private readonly PasswordHasher _passwordHasher;
-
-    private readonly UserMapper _userMapper;
+    private readonly UserMapper     _userMapper;
 
     public AccountService(
         UserRepository userRepository,
@@ -25,9 +27,9 @@ public class AccountService
         CommentRepository commentRepository,
         
         PasswordHasher passwordHasher,
-        
-        UserMapper userMapper
-        )
+        UserMapper userMapper,
+        DatabaseLogger dbLogger
+        ) : base(dbLogger)
     {
         _userRepository = userRepository;
         _messageRepository = messageRepository;
@@ -35,10 +37,9 @@ public class AccountService
         _commentRepository = commentRepository;
         
         _passwordHasher = passwordHasher;
-        
         _userMapper = userMapper;
     }
-
+    
     public async Task<ApplicationResponse<FullUserDto>> CreateAccountAsync(CreateAccountDto createAccountDto)
     {
         var response = new ApplicationResponse<FullUserDto>();
@@ -53,10 +54,12 @@ public class AccountService
 
             var displayDto = _userMapper.ToFullDisplay(userToAdd);
             response.Ok(displayDto, ResponseMessages.AccountCreated);
+            await LogResultAsync(response.Succeeded, nameof(CreateAccountAsync), nameof(User), "Created a new account.", userToAdd.Id);
         }
         else
         {
             response.Fail(uniqueUserCheck.Message);
+            await LogResultAsync(response.Succeeded, nameof(CreateAccountAsync), nameof(User),$"Could not create account. {response.Message}", null);
         }
 
         return response;
@@ -100,6 +103,7 @@ public class AccountService
         else
         {
             response.Fail(ResponseMessages.UserNotFound);
+            await LogResultAsync(response.Succeeded, nameof(GetById), nameof(User), $"Retrieval failed. {response.Message}", null);
         }
 
         return response;
@@ -118,6 +122,7 @@ public class AccountService
         else
         {
             response.Fail(ResponseMessages.UserNotFound);
+            await LogResultAsync(response.Succeeded, nameof(GetByUsername), nameof(User), $"Retrieval by username failed. {response.Message}", null);
         }
 
         return response;
@@ -136,6 +141,7 @@ public class AccountService
         else
         {
             response.Fail(ResponseMessages.NoAccountsMatchingUsername(username));
+            await LogResultAsync(response.Succeeded, nameof(GetByUsernameFull), nameof(User), $"Retrieval by username failed. {response.Message}", null);
         }
 
         return response;
@@ -149,6 +155,7 @@ public class AccountService
         var userDtos = users.Select(_userMapper.ToMinimalDisplay).ToList();
         
         response.Ok(userDtos, ResponseMessages.SearchResultsForUsername(usernameInput));
+        await LogResultAsync(response.Succeeded, nameof(SearchUsersAsync), nameof(User), "Performed accounts search", null);
         
         return response;
     }
@@ -173,39 +180,44 @@ public class AccountService
                 
                 var userDto = _userMapper.ToFullDisplay(userToEdit);
                 response.Ok(userDto, ResponseMessages.ProfileEdited);
+                await LogResultAsync(response.Succeeded, nameof(EditUserProfileAsync), nameof(User), "User fields have been edited", id);
             }
             else
             {
                 response.Fail(ResponseMessages.UsernameCanBeChangedAgainOn(nextAllowedChangeDate!.Value));
+                await LogResultAsync(response.Succeeded, nameof(EditUserProfileAsync), nameof(User), $"Edit invalidated. Username cannot be edited yet. {response.Message}", id);
             }
         }
         else
         {
             response.Fail(ResponseMessages.UserNotFound);
+            await LogResultAsync(response.Succeeded, nameof(EditUserProfileAsync), nameof(User), response.Message, null);
         }
 
         return response;
     }
     
-    public async Task<ApplicationResponse> DeleteAccountAsync(int userId)
+    public async Task<ApplicationResponse> DeleteAccountAsync(int id)
     {
         var response = new ApplicationResponse();
 
         await _userRepository.ExecuteInTransactionAsync(async () =>
         {
             _userRepository.ClearTracker();
-            await DeleteUserRelatedData(userId);
+            await DeleteUserRelatedData(id);
             
-            var userToDelete = await _userRepository.GetByIdAsync(userId);
+            var userToDelete = await _userRepository.GetByIdAsync(id);
 
             if (userToDelete is not null)
             {
                 await _userRepository.DeleteAsync(userToDelete);
                 response.Ok(ResponseMessages.AccountDeleted);
+                await LogResultAsync(response.Succeeded, nameof(DeleteAccountAsync), nameof(User), "User account deleted from the database", id);
             }
             else
             {
                 response.Fail(ResponseMessages.UserNotFound);
+                await LogResultAsync(response.Succeeded, nameof(DeleteAccountAsync), nameof(User), $"Could not delete: {response.Message}", id);
             }
         });
 

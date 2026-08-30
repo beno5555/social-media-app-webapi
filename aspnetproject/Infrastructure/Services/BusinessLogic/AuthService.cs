@@ -5,11 +5,13 @@ using aspnetproject.Data.Repositories;
 using aspnetproject.Infrastructure.Dtos.Auth;
 using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Infrastructure.Mappers;
+using aspnetproject.Infrastructure.Services.Base;
 using aspnetproject.Infrastructure.Services.Helpers;
+using aspnetproject.Infrastructure.Services.Logging;
 
 namespace aspnetproject.Infrastructure.Services.BusinessLogic;
 
-public class AuthService
+public class AuthService : BaseService
 {
     private readonly UserRepository         _userRepository;
     private readonly RefreshTokenRepository _refreshTokenRepository;
@@ -19,18 +21,17 @@ public class AuthService
     private readonly PasswordHasher _passwordHasher;
     private readonly TokenGenerator _tokenGenerator;
     private readonly IConfiguration _configuration;
-
     
     public AuthService(
         UserRepository userRepository,
         RefreshTokenRepository refreshTokenRepository,
         
         AuthMapper authMapper,
-        
         PasswordHasher passwordHasher,
         TokenGenerator tokenGenerator,
-        IConfiguration configuration
-        )
+        IConfiguration configuration,
+        DatabaseLogger dbLogger
+        ) : base(dbLogger)
     {
         _userRepository = userRepository;
         _refreshTokenRepository = refreshTokenRepository;
@@ -60,15 +61,18 @@ public class AuthService
 
                 var displayDto = _authMapper.ToStandardDisplay(userToRegister);
                 response.Ok(displayDto, ResponseMessages.RegistrationSuccessful);
+                await LogResultAsync(response.Succeeded, nameof(RegisterAsync), nameof(User), $"{response.Message}. User added to the database.", userToRegister.Id);
             }
             else
             {
                 response.Fail(ResponseMessages.UsernameIsAlreadyTaken);
+                await LogResultAsync(response.Succeeded, nameof(RegisterAsync), nameof(User), $"Registration failed {response.Message}", null);
             }
         }
         else 
         {
             response.Fail(ResponseMessages.EmailIsAlreadyTaken);
+            await LogResultAsync(response.Succeeded, nameof(RegisterAsync), nameof(User), $"Registration failed {response.Message}", null);
         }
 
         return response;
@@ -76,7 +80,7 @@ public class AuthService
 
     public async Task<ApplicationResponse<AuthResultDto>> LoginAsync(LoginDto loginDto)
     {
-        var loginResponse = new ApplicationResponse<AuthResultDto>();
+        var response = new ApplicationResponse<AuthResultDto>();
         var userToLogin = await _userRepository.GetByUniqueIdentifierAsync(loginDto.UniqueIdentifier);
         
         if (userToLogin is not null)
@@ -86,19 +90,22 @@ public class AuthService
             if (validPassword)
             {
                 var authResult = await IssueTokensAsync(userToLogin);
-                loginResponse.Ok(authResult, ResponseMessages.LoginSuccessful);
+                response.Ok(authResult, ResponseMessages.LoginSuccessful);
+                await LogResultAsync(response.Succeeded, nameof(LoginAsync), nameof(User), $"{response.Message}. Access and refresh tokens issued to the user", userToLogin.Id);
             }
             else
             {
-                loginResponse.Fail(ResponseMessages.LoginErrorMessage);
+                response.Fail(ResponseMessages.LoginErrorMessage);
+                await LogResultAsync(response.Succeeded, nameof(LoginAsync), nameof(User), $"Login failed: {response.Message}.", userToLogin.Id);
             }
         }
         else
         {
-            loginResponse.Fail(ResponseMessages.LoginErrorMessage);
+            response.Fail(ResponseMessages.LoginErrorMessage);
+            await LogResultAsync(response.Succeeded, nameof(LoginAsync), nameof(User), $"Login failed: {response.Message}.", null);
         }
 
-        return loginResponse;
+        return response;
     }
 
     /// <summary>
@@ -123,8 +130,14 @@ public class AuthService
             }
             else
             {
-                response.Fail(ResponseMessages.RefreshErrorMessage);
+                response.Fail(ResponseMessages.InvalidRefreshToken);
+                await LogResultAsync(response.Succeeded, nameof(RefreshAsync), nameof(RefreshToken), $"Could not refresh access token. {response.Message}", existingToken.Id);
             }
+        }
+        else
+        {
+            response.Fail(ResponseMessages.RefreshTokenNotFound);
+            await LogResultAsync(response.Succeeded, nameof(RefreshAsync), nameof(RefreshToken), $"Could not refresh access token. {response.Message}", null);
         }
 
         return response;

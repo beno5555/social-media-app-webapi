@@ -5,10 +5,12 @@ using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Infrastructure.Dtos.Friendships;
 using aspnetproject.Infrastructure.Mappers;
+using aspnetproject.Infrastructure.Services.Base;
+using aspnetproject.Infrastructure.Services.Logging;
 
 namespace aspnetproject.Infrastructure.Services.BusinessLogic;
 
-public class FriendshipService
+public class FriendshipService : BaseService
 {
     private readonly FriendshipRepository _friendshipRepository;
     private readonly MessageRepository    _messageRepository;
@@ -22,8 +24,9 @@ public class FriendshipService
         MessageRepository messageRepository,
         UserMapper userMapper,
         UserRepository userRepository,
-        FriendshipMapper friendshipMapper
-        )
+        FriendshipMapper friendshipMapper,
+        DatabaseLogger dbLogger
+        ) : base(dbLogger)
     {
         _friendshipRepository = friendshipRepository;
         _messageRepository = messageRepository;
@@ -52,20 +55,24 @@ public class FriendshipService
 
                     var friendshipDto = _friendshipMapper.ToMinimalDisplay(friendship);
                     response.Ok(friendshipDto, ResponseMessages.FriendRequestSent);
+                    await LogResultAsync(response.Succeeded, nameof(SendRequest), nameof(Friendship), $"{response.Message}.", null);
                 }
                 else
                 {
                     response = await HandleExistingRelationship(relationship, requesterId);
+                    await LogResultAsync(response.Succeeded, nameof(SendRequest), nameof(Friendship), response.Message, null);
                 }
             }
             else
             {
                 response.Fail(ResponseMessages.AddresseeNotFound);
+                await LogResultAsync(response.Succeeded, nameof(SendRequest), nameof(Friendship), $"Failed to send a request: {response.Message}", null);
             }
         }
         else
         {
             response.Fail(ResponseMessages.FriendRequestCannotBeSentToOneself);
+            await LogResultAsync(response.Succeeded, nameof(SendRequest), nameof(Friendship), $"Caller tried to send a request to oneself", null);
         }
 
         return response;
@@ -176,10 +183,12 @@ public class FriendshipService
             
             var relationshipDto = _friendshipMapper.ToStandardDisplay(relationship, otherUser!);
             response.Ok(relationshipDto, ResponseMessages.RelationshipFetched);
+            await LogResultAsync(response.Succeeded, nameof(GetRelationshipAsync), nameof(Friendship), $"{response.Message} in standard public form.", null);
         }
         else
         {
             response.Fail(ResponseMessages.RelationshipNotFound);
+            await LogResultAsync(response.Succeeded, nameof(GetRelationshipAsync), nameof(Friendship), $"Relationship retrieval failed. {response.Message}", null);
         }
 
         return response;
@@ -198,10 +207,12 @@ public class FriendshipService
             
             var friendshipDto = _friendshipMapper.ToAcceptedDisplay(friendship, otherUser!);
             response.Ok(friendshipDto, ResponseMessages.RelationshipFetched);           
+            await LogResultAsync(response.Succeeded, nameof(GetAcceptedFriendshipAsync), nameof(Friendship), $"{response.Message}", null);
         }
         else
         {
             response.Fail(ResponseMessages.FriendshipNotFound);
+            await LogResultAsync(response.Succeeded, nameof(GetAcceptedFriendshipAsync), nameof(Friendship), response.Message, null);
         }
 
         return response;
@@ -223,10 +234,12 @@ public class FriendshipService
                 await _friendshipRepository.SaveChangesAsync();
                 
                 response.Ok(friendshipDto, ResponseMessages.ResponseSent);
+                await LogResultAsync(response.Succeeded, nameof(RespondToRequestAsync), nameof(Friendship), "Response written to the database", null);
             }
             else
             {
                 response.Fail(ResponseMessages.PendingRequestNotFound);
+                await LogResultAsync(response.Succeeded, nameof(RespondToRequestAsync), nameof(Friendship), $"Could not respond to a request. {ResponseMessages.PendingRequestNotFound}", null);
             }
         }
 
@@ -251,17 +264,19 @@ public class FriendshipService
                 await _friendshipRepository.DeleteAsync(friendship);
             
                 response.Ok(ResponseMessages.RelationshipRemoved);
+                await LogResultAsync(response.Succeeded, nameof(RemoveRelationshipAsync), nameof(Friendship), $"{response.Message} from the database", null);
             }
             else
             {
-                response.Fail(ResponseMessages.FriendshipNotFound);
+                response.Fail(ResponseMessages.RelationshipNotFound);
+                await LogResultAsync(response.Succeeded, nameof(RemoveRelationshipAsync), nameof(Friendship), $"Could not remove relationship. {response.Message}", null);
             }
         }
         else
         {
             response.Fail(ResponseMessages.InvalidRequest);
+            await LogResultAsync(response.Succeeded, nameof(RemoveRelationshipAsync), nameof(Friendship), $"Caller data not resolved", null);
         }
-
 
         return response;
     }

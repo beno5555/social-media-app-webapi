@@ -1,12 +1,15 @@
 ﻿using aspnetproject.Common.ProjectConstants;
 using aspnetproject.Common.Responses;
+using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Infrastructure.Dtos.Posts;
 using aspnetproject.Infrastructure.Mappers;
+using aspnetproject.Infrastructure.Services.Base;
+using aspnetproject.Infrastructure.Services.Logging;
 
 namespace aspnetproject.Infrastructure.Services.BusinessLogic;
 
-public class PostService
+public class PostService : BaseService
 {
     private readonly PostRepository       _postRepository;
     private readonly FriendshipRepository _friendshipRepository;
@@ -19,8 +22,9 @@ public class PostService
         FriendshipRepository friendshipRepository,
         UserRepository userRepository,
         CommentRepository commentRepository,
-        PostMapper postMapper
-        )
+        PostMapper postMapper,
+        DatabaseLogger dbLogger
+        ) : base(dbLogger)
     {
         _postRepository = postRepository;
         _friendshipRepository = friendshipRepository;
@@ -50,16 +54,19 @@ public class PostService
                 else
                 {
                     response.Fail(ResponseMessages.ContentRequired);
+                    await LogResultAsync(response.Succeeded, nameof(UploadPost), nameof(Post), $"Could not upload post: {response.Message}", null);
                 }
             }
             else
             {
                 response.Fail(ResponseMessages.TitleRequired);
+                await LogResultAsync(response.Succeeded, nameof(UploadPost), nameof(Post), $"Could not upload post: {response.Message}", null);
             }
         }
         else
         {
             response.Fail(ResponseMessages.UserNotFound);
+            await LogResultAsync(response.Succeeded, nameof(UploadPost), nameof(Post), $"Could not upload post: {response.Message}", null);
         }
 
         return response;
@@ -78,6 +85,7 @@ public class PostService
         else
         {
             response.Fail(ResponseMessages.PostNotFound);
+            await LogResultAsync(response.Succeeded, nameof(GetPostByIdAsync), nameof(Post), $"Could not retrieve post. {response.Message}", id);
         }
         return response;
     }
@@ -129,6 +137,7 @@ public class PostService
         else
         {
             response.Fail(ResponseMessages.UserNotFound);
+            await LogResultAsync(response.Succeeded, nameof(GetByUserIdAsync), nameof(Post), $"Could not retrieve posts. {response.Message}", null);
         }
         
         return  response;
@@ -152,15 +161,18 @@ public class PostService
                 
                 var postDisplayDto = _postMapper.ToFullDisplay(post);
                 response.Ok(postDisplayDto, ResponseMessages.PostUpdated);
+                await LogResultAsync(response.Succeeded, nameof(UpdatePost), nameof(Post), response.Message, id);
             }
             else
             {
                 response.Fail(ResponseMessages.CouldNotUpdatePost);
+                await LogResultAsync(response.Succeeded, nameof(UpdatePost), nameof(Post), $"{response.Message}. Caller does not have edit permissions to this post", id);
             }
         }
         else
         {
             response.Fail(ResponseMessages.PostNotFound);
+            await LogResultAsync(response.Succeeded, nameof(UpdatePost), nameof(Post), response.Message, id);
         }
 
         return response;
@@ -183,15 +195,18 @@ public class PostService
                 });
 
                 response.Ok(ResponseMessages.PostDeleted);
+                await LogResultAsync(response.Succeeded, nameof(DeletePostAsync), nameof(Post), response.Message, id);
             }
             else
             {
                 response.Fail(ResponseMessages.CouldNotDeletePost);
+                await LogResultAsync(response.Succeeded, nameof(DeletePostAsync), nameof(Post), $"{response.Message}. Caller does not have delete permissions to the post", id);
             }
         }
         else
         {
             response.Fail(ResponseMessages.PostNotFound);
+            await LogResultAsync(response.Succeeded, nameof(DeletePostAsync), nameof(Post), response.Message, id);
         }
 
         return response;

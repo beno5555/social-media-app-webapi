@@ -45,6 +45,8 @@ public class Program
         });
         builder.Services.AddOpenApi();
 
+        builder.Services.AddHttpContextAccessor();
+
         builder.Services
             .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
             .AddJwtBearer(options =>
@@ -118,12 +120,14 @@ public class Program
         builder.Services.AddScoped<PostService>();
         builder.Services.AddScoped<AuthService>();
         builder.Services.AddScoped<PresenceService>();
+        builder.Services.AddScoped<LogService>();
         
         builder.Services.AddScoped<PasswordHasher>();
         builder.Services.AddScoped<TokenGenerator>();
         builder.Services.AddSingleton<UserConnectionTracker>();
 
         builder.Services.AddScoped<SystemLogger>();
+        builder.Services.AddScoped<DatabaseLogger>();
         
         var app = builder.Build();
 
@@ -144,7 +148,7 @@ public class Program
                 if (exception is not null)
                 {
                     var sysLogger = context.RequestServices.GetRequiredService<SystemLogger>();
-                    sysLogger.LogError(exception, context.Request.Method, context.Request.Path);
+                    sysLogger.LogEndpointErrorAsync(exception, context.Request.Method, context.Request.Path);
 
                     if (exception is DbUpdateException)
                     {

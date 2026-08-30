@@ -1,17 +1,20 @@
 ﻿using aspnetproject.Common.ProjectConstants;
 using aspnetproject.Common.ProjectConstants.Enums;
 using aspnetproject.Common.Responses;
+using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Hubs;
 using aspnetproject.Infrastructure.Dtos.Messages;
 using aspnetproject.Infrastructure.Dtos.Users.Friends;
 using aspnetproject.Infrastructure.Mappers;
+using aspnetproject.Infrastructure.Services.Base;
+using aspnetproject.Infrastructure.Services.Logging;
 using Microsoft.AspNetCore.SignalR;
 using Constants = aspnetproject.Common.ProjectConstants.Constants;
 
 namespace aspnetproject.Infrastructure.Services.BusinessLogic;
 
-public class MessageService
+public class MessageService : BaseService
 {
     private readonly MessageRepository    _messageRepository;
     private readonly UserRepository       _userRepository;
@@ -19,7 +22,6 @@ public class MessageService
 
     private readonly MessageMapper _messageMapper;
     private readonly UserMapper    _userMapper;
-    
     private readonly IHubContext<MessageHub> _hubContext;
 
     public MessageService(
@@ -27,10 +29,11 @@ public class MessageService
         UserRepository       userRepository,
         FriendshipRepository friendshipRepository,
         
-        MessageMapper        messageMapper,
-        UserMapper           userMapper,
-        
-        IHubContext<MessageHub> hubContext)
+        MessageMapper           messageMapper,
+        UserMapper              userMapper,
+        IHubContext<MessageHub> hubContext,
+        DatabaseLogger          dbLogger
+            ) : base(dbLogger)
     {
         _messageRepository = messageRepository;
         _userRepository = userRepository;
@@ -38,7 +41,6 @@ public class MessageService
         
         _messageMapper = messageMapper;
         _userMapper = userMapper;
-        
         _hubContext = hubContext;
     }
 
@@ -62,6 +64,7 @@ public class MessageService
         else
         {
             response.Fail(friendshipCheck.Message);
+            await LogResultAsync(response.Succeeded, nameof(SendMessageAsync), nameof(Message), $"Could not send a message: {response.Message}", null);
         }
 
         return response;
@@ -93,11 +96,13 @@ public class MessageService
             else
             {
                 response.Fail(friendshipCheck.Message);
+                await LogResultAsync(response.Succeeded, nameof(GetConversationAsync), nameof(Message), $"Could not fetch conversation of two users: {response.Message}", null);
             }
         }
         else
         {
             response.Fail("Invalid request");
+            await LogResultAsync(response.Succeeded, nameof(GetConversationAsync), nameof(Message), $"Could not fetch conversation of two users: {response.Message}", null);
         }
 
         return response;
@@ -194,6 +199,7 @@ public class MessageService
                 else
                 {
                     response.Fail(ResponseMessages.EditWindowExpired);
+                    await LogResultAsync(response.Succeeded, nameof(EditMessage), nameof(Message), $"Could not edit message: {response.Message}", id);
                 }
             }
             else
@@ -202,16 +208,19 @@ public class MessageService
                 if (isCallerInConversation)
                 {
                     response.Fail(ResponseMessages.DoNotHavePermissionToEditMessage);
+                    await LogResultAsync(response.Succeeded, nameof(EditMessage), nameof(Message), $"Could not edit message. only the sender can edit a message, not a receiver", id);
                 }
                 else
                 {
                     response.Fail(ResponseMessages.InvalidRequest);
+                    await LogResultAsync(response.Succeeded, nameof(EditMessage), nameof(Message), $"Could not edit message: only the sender can edit a message, not a receiver, and definitely not the user who is not even in a conversation", id);
                 }
             }
         }
         else
         {
             response.Fail(ResponseMessages.MessageNotFound);
+            await LogResultAsync(response.Succeeded, nameof(EditMessage), nameof(Message), $"Could not edit message: {response.Message}", id);
         }
 
         return response;
@@ -240,15 +249,18 @@ public class MessageService
             {
                 await _messageRepository.DeleteAsync(message);
                 response.Ok(ResponseMessages.MessageDeleted);
+                await LogResultAsync(response.Succeeded, nameof(DeleteMessage), nameof(Message), $"{response.Message}", id);
             }
             else
             {
                 response.Fail(ResponseMessages.DeleteRequestDeclined);
+                await LogResultAsync(response.Succeeded, nameof(DeleteMessage), nameof(Message), $"Could not delete message. Caller does not have a permission", id);
             }
         }
         else
         {
             response.Fail(ResponseMessages.MessageNotFound);
+            await LogResultAsync(response.Succeeded, nameof(DeleteMessage), nameof(Message), response.Message, id);
         }
 
         return response;

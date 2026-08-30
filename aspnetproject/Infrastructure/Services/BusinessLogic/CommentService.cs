@@ -1,12 +1,15 @@
 ﻿using aspnetproject.Common.ProjectConstants;
 using aspnetproject.Common.Responses;
+using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Infrastructure.Dtos.Comments;
 using aspnetproject.Infrastructure.Mappers;
+using aspnetproject.Infrastructure.Services.Base;
+using aspnetproject.Infrastructure.Services.Logging;
 
 namespace aspnetproject.Infrastructure.Services.BusinessLogic;
 
-public class CommentService
+public class CommentService : BaseService
 {
     private readonly CommentRepository _commentRepository;
     private readonly PostRepository    _postRepository;
@@ -17,14 +20,13 @@ public class CommentService
         CommentRepository commentRepository,
         PostRepository postRepository,
         UserRepository userRepository,
-        
-        CommentMapper commentMapper
-        )
+        CommentMapper commentMapper,
+        DatabaseLogger dbLogger
+        ) : base(dbLogger)
     {
         _commentRepository = commentRepository;
         _postRepository = postRepository;
         _userRepository = userRepository;
-        
         _commentMapper = commentMapper;
     }
     
@@ -38,6 +40,12 @@ public class CommentService
         {
             var commentDto = _commentMapper.ToFullDisplay(comment);           
             response.Ok(commentDto, ResponseMessages.CommentRetrieved);
+            await LogResultAsync(response.Succeeded, nameof(GetCommentByIdAsync), nameof(Comment), "Retrieved the comment with full details", comment.Id);
+        }
+        else
+        {
+            response.Fail(ResponseMessages.CommentNotFound);
+            await LogResultAsync(response.Succeeded, nameof(GetCommentByIdAsync), nameof(Comment), $"Could not retrieve comment from the database. {response.Message}", null);
         }
 
         return response;
@@ -64,11 +72,13 @@ public class CommentService
             else
             {
                 response.Fail(ResponseMessages.PostNotFound);
+                await LogResultAsync(response.Succeeded, nameof(AddCommentAsync), nameof(Comment), $"Could not add comment to the post. {response.Message}", null);
             }
         }
         else
         {
             response.Fail(ResponseMessages.UserNotFound);
+            await LogResultAsync(response.Succeeded, nameof(AddCommentAsync), nameof(Comment), $"Could not add comment to the post. {response.Message}", null);
         }
         
         return response;
@@ -78,24 +88,28 @@ public class CommentService
     {
         var response = new ApplicationResponse();
 
-        var comment = await _commentRepository.GetByIdAsync(id);
+        var comment = await _commentRepository.GetCommentWithCommenterUserAndPostById(id);
 
         if (comment is not null)
         {
             bool belongsToCaller = comment.CommenterUserId == userId;
-            if (belongsToCaller)
+            bool isPostAuthor    = comment.Post!.UserId     == userId;
+            if (belongsToCaller || isPostAuthor)
             {
                 await _commentRepository.DeleteAsync(comment);  
                 response.Ok(ResponseMessages.CommentDeletedSuccessfully);
+                await LogResultAsync(response.Succeeded, nameof(DeleteCommentAsync), nameof(Comment), $"{response.Message} from the database", comment.Id);
             }
             else
             {
                 response.Fail(ResponseMessages.CouldNotDeleteComment);
+                await LogResultAsync(response.Succeeded, nameof(DeleteCommentAsync), nameof(Comment), $"{response.Message} from the database. Only commenter user and post author can delete a comment", comment.Id);
             }
         }
         else
         {
             response.Fail(ResponseMessages.CommentNotFound);
+            await LogResultAsync(response.Succeeded, nameof(DeleteCommentAsync), nameof(Comment), $"{response.Message}.", null);
         }
 
         return response;
@@ -117,6 +131,7 @@ public class CommentService
         else
         {
             response.Fail(ResponseMessages.PostNotFound);
+            await LogResultAsync(response.Succeeded, nameof(GetByPostAsync), nameof(Comment), $"Could not retrieve comments. {response.Message}", null);
         }
 
         return response;
@@ -138,6 +153,7 @@ public class CommentService
         else
         {
             response.Fail(ResponseMessages.UserNotFound);
+            await LogResultAsync(response.Succeeded, nameof(GetByPostAsync), nameof(Comment), $"Could not retrieve comments. {response.Message}", null);
         }
 
         return response;
@@ -158,6 +174,12 @@ public class CommentService
             
             var commentDto = _commentMapper.ToFullDisplay(comment);
             response.Ok(commentDto, ResponseMessages.CommentUpdated);
+            await LogResultAsync(response.Succeeded, nameof(EditCommentAsync), nameof(Comment), $"{response.Message}. Update saved to the database ", comment.Id);
+        }
+        else
+        {
+            response.Fail(ResponseMessages.CommentNotFound);
+            await LogResultAsync(response.Succeeded, nameof(EditCommentAsync), nameof(Comment), $"{response.Message}", null);
         }
 
         return response;

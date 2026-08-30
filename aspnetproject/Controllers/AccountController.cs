@@ -20,7 +20,7 @@ public class AccountController : BaseController
     }
 
     [HttpPost]
-    [Authorize(Roles = "Admin")]
+    // [Authorize(Roles = "Admin")]
     public async Task<ActionResult<ApplicationResponse<FullUserDto>>> CreateUser(CreateAccountDto createAccountDto)
     {
         var response = await _accountService.CreateAccountAsync(createAccountDto);

@@ -16,35 +16,32 @@ public class AuthService : BaseService
 {
     private readonly UserRepository         _userRepository;
     private readonly RefreshTokenRepository _refreshTokenRepository;
-    private readonly EmailSender            _emailSender;
     private readonly PasswordHasher         _passwordHasher;
     private readonly TokenGenerator         _tokenGenerator;
-    private readonly IConfiguration         _configuration;
+    private readonly AccountSecurityService _accountSecurityService;
     
     public AuthService(
         UserRepository userRepository,
         RefreshTokenRepository refreshTokenRepository,
-        EmailSender emailSender,
         PasswordHasher passwordHasher,
         TokenGenerator tokenGenerator,
-        IConfiguration configuration,
+        AccountSecurityService accountSecurityService,
         DatabaseLogger dbLogger
         ) : base(dbLogger)
     {
         _userRepository = userRepository;
         _refreshTokenRepository = refreshTokenRepository;
-        _emailSender = emailSender;
         _passwordHasher = passwordHasher;
         _tokenGenerator = tokenGenerator;
-        _configuration = configuration;
+        _accountSecurityService = accountSecurityService;
     }
 
-    public async Task<ApplicationResponse<StandardUserDto>> RegisterAsync(RegisterDto registerDto)
+    public async Task<ApplicationResponse<FullUserDto>> RegisterAsync(RegisterDto registerDto)
     {
-        var response    = new ApplicationResponse<StandardUserDto>();
-        var emailExists = await _userRepository.ExistsByEmailAsync(registerDto.Email);
+        var response    = new ApplicationResponse<FullUserDto>();
+        var user = await _userRepository.GetUserByEmailAsync(registerDto.Email);
 
-        if (!emailExists)
+        if (user is null)
         {
             var usernameExists = await _userRepository.ExistsByUsernameAsync(registerDto.Username);
             
@@ -55,7 +52,7 @@ public class AuthService : BaseService
             
                 await _userRepository.AddAsync(userToRegister);
 
-                var displayDto = AuthMapper.ToStandardDisplay(userToRegister);
+                var displayDto = UserMapper.ToFullDisplay(userToRegister);
                 response.Ok(displayDto, ResponseMessages.RegistrationSuccessful);
                 await LogResultAsync(response.Succeeded, nameof(RegisterAsync), nameof(User), null, userToRegister.Id);
             }
@@ -65,27 +62,27 @@ public class AuthService : BaseService
                 await LogResultAsync(response.Succeeded, nameof(RegisterAsync), nameof(User), $"Registration failed: {response.Message}", null);
             }
         }
-        else 
+        else
         {
             response.Fail(ResponseMessages.EmailIsAlreadyTaken);
             await LogResultAsync(response.Succeeded, nameof(RegisterAsync), nameof(User), $"Registration failed: {response.Message}", null);
+            await _accountSecurityService.HandleFailedRegisterAttempt(user);
         }
 
         return response;
     }
-
     public async Task<ApplicationResponse<AuthResultDto>> LoginAsync(LoginDto loginDto)
     {
         var response = new ApplicationResponse<AuthResultDto>();
-        var userToLogin = await _userRepository.GetByUniqueIdentifierAsync(loginDto.UniqueIdentifier);
+        var userToLogin = await _userRepository.GetByUniqueIdentifierWithRolesAsync(loginDto.UniqueIdentifier);
         
         if (userToLogin is not null)
         {
-            bool validPassword = _passwordHasher.VerifyPassword(loginDto.Password, userToLogin.PasswordHash, userToLogin.PasswordSalt);
+            bool validPassword = _passwordHasher.PasswordsMatch(loginDto.Password, userToLogin.PasswordHash, userToLogin.PasswordSalt);
             
             if (validPassword)
             {
-                var authResult = await IssueTokensAsync(userToLogin);
+                var authResult = await _accountSecurityService.IssueAccessAndRefreshTokensAsync(userToLogin);
                 response.Ok(authResult, ResponseMessages.LoginSuccessful);
                 await LogResultAsync(response.Succeeded, nameof(LoginAsync), nameof(User), null, userToLogin.Id);
             }
@@ -99,14 +96,11 @@ public class AuthService : BaseService
         {
             response.Fail(ResponseMessages.LoginErrorMessage);
             await LogResultAsync(response.Succeeded, nameof(LoginAsync), nameof(User), $"Login failed: {response.Message}.", null);
+            // add login count and send warning email after every 3 invalid attempts.
         }
 
         return response;
     }
-
-    /// <summary>
-    /// provides a new access token by first validating a refresh token and then changes that refresh token as well
-    /// </summary>
     public async Task<ApplicationResponse<AuthResultDto>> RefreshAsync(string rawRefreshToken)
     {
         var response = new ApplicationResponse<AuthResultDto>();
@@ -116,12 +110,12 @@ public class AuthService : BaseService
 
         if (existingToken is not null)
         {
-            var user = await _userRepository.GetByIdAsync(existingToken.UserId);
+            var user = await _userRepository.GetUserByIdAsync(existingToken.UserId);
 
             if (user is not null)
             {
                 await _refreshTokenRepository.RevokeAsync(existingToken);
-                var authResult = await IssueTokensAsync(user!);
+                var authResult = await _accountSecurityService.IssueAccessAndRefreshTokensAsync(user);
                 response.Ok(authResult);
             }
             else
@@ -139,39 +133,34 @@ public class AuthService : BaseService
         return response;
     }
 
-    public async Task<ApplicationResponse> ForgotPasswordAsync(ForgotPasswordDto forgotPasswordDto)
+    public async Task<ApplicationResponse> RequestPasswordResetAsync(ForgotPasswordDto forgotPasswordDto)
     {
         var response = new ApplicationResponse();
 
         var user = await _userRepository.GetByUniqueIdentifierAsync(forgotPasswordDto.Email);
         if (user is not null)
         {
-            var rawToken  = _tokenGenerator.GenerateRefreshToken();
-            var tokenHash = _tokenGenerator.HashToken(rawToken);
+            bool sentEmailToUser = await _accountSecurityService.HandlePasswordResetRequest(user);
+            if (sentEmailToUser)
+            {
+                response.Ok(ResponseMessages.PasswordResetRequested);
+                await LogResultAsync(response.Succeeded, nameof(RequestPasswordResetAsync), nameof(User), $"{ResponseMessages.PasswordResetRequested}. Reset token sent to the email", null);
+            }
+            else
+            {
+                response.Fail(ResponseMessages.CouldNotSendEmail);
+                await LogResultAsync(response.Succeeded, nameof(RequestPasswordResetAsync), nameof(User), $"{ResponseMessages.CouldNotSendEmail}: Something went wrong", null);
+            }
             
-            user.PasswordResetTokenHash = tokenHash;
-
-            int resetTokenMinutes = int.Parse(_configuration.GetSection("PasswordConfiguration:ResetTokenMinutes").Value!);
-            user.PasswordResetTokenExpiresAt = DateTime.UtcNow.AddMinutes(resetTokenMinutes);
-            await _userRepository.SaveChangesAsync();
-            
-            await _emailSender.SendAsync(
-                user.Email, 
-                "Reset your password",
-                $"<p>Your password reset token: {rawToken}</p><p>Token expires in {resetTokenMinutes} minutes.</p>");
-
-            response.Ok(ResponseMessages.PasswordResetRequested);
-            await LogResultAsync(response.Succeeded, nameof(ForgotPasswordAsync), nameof(User), $"{ResponseMessages.PasswordResetRequested}. Reset token sent to the email", null);
         }
         else
         {
             response.Fail(ResponseMessages.UserNotFound);
-            await LogResultAsync(response.Succeeded, nameof(ForgotPasswordAsync), nameof(User), $"Failed to generate reset token. {ResponseMessages.UserNotFound}", null);
+            await LogResultAsync(response.Succeeded, nameof(RequestPasswordResetAsync), nameof(User), $"Failed to generate reset token. {ResponseMessages.UserNotFound}", null);
         }
 
         return response;
     }
-
     public async Task<ApplicationResponse> ResetPasswordAsync(ResetPasswordDto resetPasswordDto)
     {
         var response = new ApplicationResponse();
@@ -181,7 +170,7 @@ public class AuthService : BaseService
 
         if (user is not null)
         {
-            var isDifferent = _passwordHasher.IsDifferentPassword(resetPasswordDto.NewPassword, user.PasswordHash, user.PasswordSalt);
+            var isDifferent = !(_passwordHasher.PasswordsMatch(resetPasswordDto.NewPassword, user.PasswordHash, user.PasswordSalt));
             if (isDifferent)
             {
                 var (hash, salt) = _passwordHasher.HashPassword(resetPasswordDto.NewPassword);
@@ -193,6 +182,7 @@ public class AuthService : BaseService
             
                 response.Ok(ResponseMessages.PasswordResetSuccessful);
                 await LogResultAsync(response.Succeeded, nameof(ResetPasswordAsync), nameof(User), $"{ResponseMessages.PasswordResetSuccessful}. Revoked all refresh tokens for user to force login", null);
+                await _accountSecurityService.NotifyPasswordReset(user.Email);
             }
             else
             {
@@ -218,30 +208,5 @@ public class AuthService : BaseService
         {
             await _refreshTokenRepository.RevokeAsync(existingToken);
         }
-    }
-
-    private async Task<AuthResultDto> IssueTokensAsync(User user)
-    {
-        var accessToken     = _tokenGenerator.GenerateAccessToken(user.Id, user.Username);
-        var rawRefreshToken = _tokenGenerator.GenerateRefreshToken();
-
-        var refreshDays = int.Parse(_configuration.GetSection("Jwt:RefreshTokenDays").Value!);
-
-        var refreshToken = new RefreshToken
-        {
-            UserId = user.Id,
-            TokenHash = _tokenGenerator.HashToken(rawRefreshToken),
-            ExpiresAt = DateTime.UtcNow.AddDays(refreshDays)
-        };
-
-        await _refreshTokenRepository.AddAsync(refreshToken);
-
-        var tokens = new AuthResultDto
-        {
-            AccessToken = accessToken,
-            RefreshToken = rawRefreshToken
-        };
-
-        return tokens;
     }
 }

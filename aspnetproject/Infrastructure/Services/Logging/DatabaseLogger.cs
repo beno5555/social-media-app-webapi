@@ -4,7 +4,6 @@ using aspnetproject.Data.Models;
 using aspnetproject.Infrastructure.Dtos.DatabaseLogs;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging.Configuration;
 
 namespace aspnetproject.Infrastructure.Services.Logging;
 

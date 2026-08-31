@@ -42,7 +42,7 @@ public static class FriendshipMapper
             {
                 Id = otherUser.Id,
                 Username = otherUser.Username,
-                LastActiveAt =  otherUser.LastActiveAt,
+                LastActiveAt =  otherUser.LastOnlineAt,
             },
             
             Status =  friendship.FriendshipStatus.ToString(),

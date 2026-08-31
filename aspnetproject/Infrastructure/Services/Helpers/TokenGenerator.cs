@@ -2,6 +2,7 @@
 using System.Security.Claims;
 using System.Security.Cryptography;
 using System.Text;
+using aspnetproject.Data.Models;
 using Microsoft.IdentityModel.Tokens;
 
 namespace aspnetproject.Infrastructure.Services.Helpers;
@@ -15,31 +16,34 @@ public class TokenGenerator
         _configuration = configuration;
     }
     
-    public string GenerateAccessToken(int userId, string username)
+    public string GenerateAccessToken(User user)
     {
         var claims = new List<Claim>
         {
-            new(ClaimTypes.NameIdentifier, userId.ToString()),
-            new(ClaimTypes.Name,           username),
+            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
+            new(ClaimTypes.Name,           user.Username),
         };
+
+        foreach (var userRole in user.UserRoles)
+        {
+            claims.Add(new Claim(ClaimTypes.Role, userRole.Role!.Name));
+        }
 
         var jwtSection = _configuration.GetSection("Jwt");
         var minutes    = int.Parse(jwtSection["AccessTokenMinutes"]!);
 
-        SymmetricSecurityKey key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSection["Key"]!));
+        var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSection["Key"]!));
+        var credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
 
-        SigningCredentials credentials = new SigningCredentials(key, SecurityAlgorithms.HmacSha512Signature);
-
-        SecurityTokenDescriptor tokenDescriptor = new SecurityTokenDescriptor
+        var tokenDescriptor = new SecurityTokenDescriptor
         {
             Subject = new ClaimsIdentity(claims),
             Expires = DateTime.UtcNow.AddMinutes(minutes),
             SigningCredentials = credentials
         };
-
-        JwtSecurityTokenHandler tokenHandler = new JwtSecurityTokenHandler();
-
-        SecurityToken token = tokenHandler.CreateToken(tokenDescriptor);
+        
+        var tokenHandler = new JwtSecurityTokenHandler();
+        var token = tokenHandler.CreateToken(tokenDescriptor);
         
         return tokenHandler.WriteToken(token);
     }
@@ -48,7 +52,10 @@ public class TokenGenerator
     {
         var bytes = new byte[64];
         RandomNumberGenerator.Fill(bytes);
-        var token = Convert.ToBase64String(bytes);
+        var token = Convert.ToBase64String(bytes)
+            .TrimEnd('=')
+            .Replace('+', '-')
+            .Replace('/', '_');
         
         return token;
     }

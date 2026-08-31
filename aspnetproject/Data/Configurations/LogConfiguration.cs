@@ -34,6 +34,7 @@ public class LogConfiguration : IEntityTypeConfiguration<Log>
         builder.HasOne(log => log.User)
             .WithMany(user => user.Logs)
             .HasForeignKey(log => log.UserId)
-            .OnDelete(DeleteBehavior.SetNull);
+            .OnDelete(DeleteBehavior.SetNull)
+            .IsRequired(false);
     }
 }

@@ -13,28 +13,69 @@ public class UserRepository : BaseEntityRepository<User>
 {
     public UserRepository(ApplicationDbContext dbContext) : base(dbContext)
     {
-        
+
     }
+
     public async Task<User?> GetByUniqueIdentifierAsync(string uniqueIdentifier)
     {
-        return await _dbSet.FirstOrDefaultAsync(user => user.Email    == uniqueIdentifier ||
-                                                        user.Username == uniqueIdentifier);
+        return await _dbSet
+            .FirstOrDefaultAsync(user => user.Email    == uniqueIdentifier ||
+                                         user.Username == uniqueIdentifier);
+    }
+
+    public async Task<User?> GetByUniqueIdentifierWithRolesAsync(string uniqueIdentifier)
+    {
+        return await _dbSet
+            .Include(user => user.UserRoles)
+            .ThenInclude(userRole => userRole.Role)
+            .FirstOrDefaultAsync(user => user.Email    == uniqueIdentifier ||
+                                         user.Username == uniqueIdentifier);
+    }
+
+    public async Task<User?> GetDeactivatedByIdAsync(int id)
+    {
+        return await GetSingleByIgnoringQueryFilterAsync(user => user.Id                   == id &&
+                                                                 user.AccountDeactivatedAt != null);
+    }
+    public async Task<User?> GetDeactivatedByEmailAsync(string email)
+    {
+        return await GetSingleByIgnoringQueryFilterAsync(user => user.Email                == email &&
+                                                                 user.AccountDeactivatedAt != null);
+    }
+    public async Task<User?> GetDeactivatedAccountByActivationTokenHashAsync(string activationTokenHash)
+    {
+        return await GetSingleByIgnoringQueryFilterAsync(user => user.ResetTokenHash       == activationTokenHash &&
+                                                                 user.ResetTokenExpiresAt  > DateTime.UtcNow      &&
+                                                                 user.AccountDeactivatedAt != null);
+    }
+    
+    public async Task<User?> GetUserByIdAsync(int id)
+    {
+        return await _dbSet
+            .Include(user => user.UserRoles)
+                .ThenInclude(userRole => userRole.Role)
+            .FirstOrDefaultAsync(user => user.Id == id);
+    }
+    
+    public async Task<User?> GetUserByEmailAsync(string email)
+    {
+        return await GetSingleByIgnoringQueryFilterAsync(user => user.Email == email);
     }
 
     public async Task<User?> GetByPasswordResetTokenHash(string passwordResetTokenHash)
     {
-        return await _dbSet.FirstOrDefaultAsync(user => user.PasswordResetTokenHash == passwordResetTokenHash &&
-                                                        user.PasswordResetTokenExpiresAt > DateTime.UtcNow);
+        return await _dbSet.FirstOrDefaultAsync(user => user.ResetTokenHash == passwordResetTokenHash &&
+                                                        user.ResetTokenExpiresAt > DateTime.UtcNow);
     }
 
     public async Task<bool> ExistsByUsernameAsync(string username)
     {
-        return await ExistsAsync(user => user.Username == username.ToLower());
+        return await ExistsByIgnoringQueryFilterAsync(user => user.Username == username.ToLower());
     }
 
     public async Task<bool> ExistsByEmailAsync(string email)
     {
-        return await ExistsAsync(user => user.Email == email);
+        return await ExistsByIgnoringQueryFilterAsync(user => user.Email == email);
     }
     
     public async Task<List<User>> GetUsersAsync(int excludedUserId, int? pageNumber, int? pageSize)
@@ -53,7 +94,7 @@ public class UserRepository : BaseEntityRepository<User>
            SELECT 
                 u.Id AS FriendId,
                 u.Username AS FriendUsername,
-                u.LastActiveAt AS FriendLastActiveAt,
+                u.LastOnlineAt AS FriendLastActiveAt,
                 lm.MessageContent AS LastMessageContent,
                 lm.CreatedAt AS LastMessageSentAt,
                 lm.SenderUserId AS LastMessageSenderId,
@@ -142,13 +183,13 @@ public class UserRepository : BaseEntityRepository<User>
     public async Task MarkActiveAsync(int userId)
     {
         await _dbSet.Where(user => user.Id == userId)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(user => user.LastActiveAt, (DateTime?)null));
+            .ExecuteUpdateAsync(setters => setters.SetProperty(user => user.LastOnlineAt, (DateTime?)null));
     }
 
     public async Task MarkUserOfflineAsync(int userId, DateTime lastActiveAt)
     {
         await _dbSet.Where(user => user.Id == userId)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(user => user.LastActiveAt, lastActiveAt)); 
+            .ExecuteUpdateAsync(setters => setters.SetProperty(user => user.LastOnlineAt, lastActiveAt)); 
     }
 
     public void UpdatePassword(User user, string hash, string salt)
@@ -156,7 +197,7 @@ public class UserRepository : BaseEntityRepository<User>
         user.PasswordHash = hash;
         user.PasswordSalt = salt;
 
-        user.PasswordResetTokenHash = null;
-        user.PasswordResetTokenExpiresAt = null;
+        user.ResetTokenHash = null;
+        user.ResetTokenExpiresAt = null;
     }
 }

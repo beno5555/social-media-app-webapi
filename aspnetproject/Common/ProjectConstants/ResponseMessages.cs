@@ -36,6 +36,12 @@ public static class ResponseMessages
 
     private const string Login        = "Login";
     private const string Registration = "Registration";
+
+    private const string Deactivate  = "Deactivate";
+    private const string Deactivated = "Deactivated";
+
+    private const string Activate = "Activate";
+    private const string Activated = "Activated";
     
     #endregion
     
@@ -51,9 +57,12 @@ public static class ResponseMessages
     public static readonly Func<DateTime, string> UsernameCanBeChangedAgainOn = allowedChangeDate =>
         $"Username can be changed again on {allowedChangeDate:yyyy-MM-dd}";
     
-    public const string AccountCreated   = $"Account {Created} {Successfully}";
-    public const string AccountRetrieved = $"Account {Retrieved} {Successfully}";
-    public const string AccountDeleted   = $"Account {Deleted} {Successfully}";
+    public const string AccountRetrieved   = $"Account {Retrieved} {Successfully}";
+    public const string AccountDeleted     = $"Account {Deleted} {Successfully}";
+    public const string AccountDeactivated = $"Account {Deactivated} {Successfully}";
+    public const string AccountActivated   = $"Account {Activated} {Successfully}";
+    public const string AccountActivationTokenSentToEmail   = $"Account activation token {Sent} to Email";
+    public const string YouCanNowSignIn    = "You can now Sign In";
 
     public const string UserWithEmailExists    = $"User with email {Exists}";
     public const string UserWithUsernameExists = $"User with username {Exists}";
@@ -62,6 +71,9 @@ public static class ResponseMessages
     
     public const string ProfileRetrieved = $"Profile {Retrieved} {Successfully}";
     public const string ProfileEdited    = $"Profile {Edited} {Successfully}";
+
+    public const string CouldNotDeactivateAccount = $"{CouldNot} {Deactivate} Account";
+    public const string ReactivationTokenSentOnEmail = $"Reativation token {Sent} on Email";
     
     #endregion
     
@@ -81,6 +93,8 @@ public static class ResponseMessages
     public const string InvalidOrExpiredPasswordResetToken = "Invalid or expired reset token";
     public const string PasswordResetSuccessful            = "Password reset successful";
     public const string NewPasswordCannotBeTheSame            = "New Password cannot be the same as old password";
+
+    public const string CouldNotSendEmail = $"{CouldNot} {Send} Email";
     
     #endregion
     
@@ -95,6 +109,9 @@ public static class ResponseMessages
     public const string CommentNotFound            = $"Comment {NotFound}";
 
     public const string UserCommentsRetrieved = $"User Comments {Retrieved} {Successfully}";
+
+    public const string OnlyCommenterCanEditMessage            = $"Only commenter can {Edit} message";
+    public const string OnlyCommentAndPostAuthorsCanDeletePost = "Only comment and post authors can delete post";
 
     #endregion
 

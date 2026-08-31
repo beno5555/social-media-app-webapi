@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using aspnetproject.Data;
 
@@ -11,9 +12,11 @@ using aspnetproject.Data;
 namespace aspnetproject.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260831182046_DeactivationNewVersion")]
+    partial class DeactivationNewVersion
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -330,18 +333,18 @@ namespace aspnetproject.Migrations
                         .HasColumnType("nchar(44)")
                         .IsFixedLength();
 
+                    b.Property<DateTime?>("PasswordResetTokenExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PasswordResetTokenHash")
+                        .HasMaxLength(44)
+                        .HasColumnType("nvarchar(44)");
+
                     b.Property<string>("PasswordSalt")
                         .IsRequired()
                         .HasMaxLength(44)
                         .HasColumnType("nchar(44)")
                         .IsFixedLength();
-
-                    b.Property<DateTime?>("ResetTokenExpiresAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ResetTokenHash")
-                        .HasMaxLength(44)
-                        .HasColumnType("nvarchar(44)");
 
                     b.Property<string>("Username")
                         .IsRequired()
@@ -397,7 +400,8 @@ namespace aspnetproject.Migrations
                     b.HasOne("aspnetproject.Data.Models.User", "CommenterUser")
                         .WithMany()
                         .HasForeignKey("CommenterUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("aspnetproject.Data.Models.Post", "Post")
                         .WithMany("Comments")
@@ -415,12 +419,14 @@ namespace aspnetproject.Migrations
                     b.HasOne("aspnetproject.Data.Models.User", "AddresseeUser")
                         .WithMany()
                         .HasForeignKey("AddresseeUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("aspnetproject.Data.Models.User", "RequesterUser")
                         .WithMany()
                         .HasForeignKey("RequesterUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("AddresseeUser");
 
@@ -442,12 +448,14 @@ namespace aspnetproject.Migrations
                     b.HasOne("aspnetproject.Data.Models.User", "ReceiverUser")
                         .WithMany()
                         .HasForeignKey("ReceiverUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.HasOne("aspnetproject.Data.Models.User", "SenderUser")
                         .WithMany()
                         .HasForeignKey("SenderUserId")
-                        .OnDelete(DeleteBehavior.Restrict);
+                        .OnDelete(DeleteBehavior.Restrict)
+                        .IsRequired();
 
                     b.Navigation("ReceiverUser");
 
@@ -459,7 +467,8 @@ namespace aspnetproject.Migrations
                     b.HasOne("aspnetproject.Data.Models.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });
@@ -469,7 +478,8 @@ namespace aspnetproject.Migrations
                     b.HasOne("aspnetproject.Data.Models.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("User");
                 });
@@ -485,7 +495,8 @@ namespace aspnetproject.Migrations
                     b.HasOne("aspnetproject.Data.Models.User", "User")
                         .WithMany("UserRoles")
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.Cascade);
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
 
                     b.Navigation("Role");
 

@@ -12,181 +12,133 @@ namespace aspnetproject.Infrastructure.Services.BusinessLogic;
 
 public class AccountService : BaseService
 {
-    private readonly UserRepository       _userRepository;
-    private readonly MessageRepository    _messageRepository;
-    private readonly FriendshipRepository _friendshipRepository;
-    private readonly CommentRepository    _commentRepository;
-    private readonly PasswordHasher _passwordHasher;
+    private readonly UserRepository         _userRepository;
+    private readonly RefreshTokenRepository _refreshTokenRepository;
+    private readonly MessageRepository      _messageRepository;
+    private readonly FriendshipRepository   _friendshipRepository;
+    private readonly CommentRepository      _commentRepository;
+    private readonly AccountSecurityService _accountSecurityService;
+    private readonly TokenGenerator _tokenGenerator;
 
     public AccountService(
         UserRepository userRepository,
+        RefreshTokenRepository refreshTokenRepository,
         MessageRepository messageRepository,
         FriendshipRepository friendshipRepository,
         CommentRepository commentRepository,
-        PasswordHasher passwordHasher,
-        
+        AccountSecurityService accountSecurityService,
+        TokenGenerator tokenGenerator,
         DatabaseLogger dbLogger
         ) : base(dbLogger)
     {
         _userRepository = userRepository;
+        _refreshTokenRepository = refreshTokenRepository;
         _messageRepository = messageRepository;
         _friendshipRepository = friendshipRepository;
         _commentRepository = commentRepository;
-        _passwordHasher = passwordHasher;
-    }
-    
-    public async Task<ApplicationResponse<FullUserDto>> CreateAccountAsync(CreateAccountDto createAccountDto)
-    {
-        var response = new ApplicationResponse<FullUserDto>();
-
-        var uniqueUserCheck = await UniqueUser(createAccountDto);
-        if (uniqueUserCheck.Succeeded)
-        {
-            var (hash, salt) = _passwordHasher.HashPassword(createAccountDto.Password);
-            
-            var userToAdd = UserMapper.ToEntity(createAccountDto, hash, salt);
-            await _userRepository.AddAsync(userToAdd);
-
-            var displayDto = UserMapper.ToFullDisplay(userToAdd);
-            response.Ok(displayDto, ResponseMessages.AccountCreated);
-            await LogResultAsync(response.Succeeded, nameof(CreateAccountAsync), nameof(User), null, userToAdd.Id);
-        }
-        else
-        {
-            response.Fail(uniqueUserCheck.Message);
-            await LogResultAsync(response.Succeeded, nameof(CreateAccountAsync), nameof(User),$"Could not create account. {response.Message}", null);
-        }
-
-        return response;
+        _accountSecurityService = accountSecurityService;
+        _tokenGenerator = tokenGenerator;
     }
 
-    private async Task<ApplicationResponse> UniqueUser(CreateAccountDto createAccountDto)
+    public async Task<ApplicationResponse> DeactivateAccountAsync(int id)
     {
         var response = new ApplicationResponse();
         
-        var uniqueUsername = !await _userRepository.ExistsByUsernameAsync(createAccountDto.Username);
-        if (uniqueUsername)
-        {
-            var uniqueEmail = !await _userRepository.ExistsByEmailAsync(createAccountDto.Email);
-            if (uniqueEmail)
-            {
-                response.Ok();
-            }
-            else
-            {
-                response.Fail(ResponseMessages.UserWithEmailExists);
-            }
-        }
-        else
-        {
-            response.Fail(ResponseMessages.UserWithUsernameExists);
-        }
-
-        return response;
-    }
-    
-    public async Task<ApplicationResponse<StandardUserDto>> GetById(int id)
-    {
-        var response = new ApplicationResponse<StandardUserDto>();
-
         var user = await _userRepository.GetByIdAsync(id);
         if (user is not null)
         {
-            var userDto = UserMapper.ToStandardDisplay(user);
-            response.Ok(userDto, ResponseMessages.AccountRetrieved);
+            user.AccountDeactivatedAt = DateTime.UtcNow;
+            await _refreshTokenRepository.RevokeAllForUserAsync(user.Id);
+            
+            await _userRepository.SaveChangesAsync();
+            
+            response.Ok(ResponseMessages.AccountDeactivated);
+            await LogResultAsync(response.Succeeded, nameof(DeactivateAccountAsync), nameof(User), null, id);
         }
         else
         {
             response.Fail(ResponseMessages.UserNotFound);
-            await LogResultAsync(response.Succeeded, nameof(GetById), nameof(User), $"Retrieval failed. {response.Message}", null);
+            await LogResultAsync(response.Succeeded, nameof(DeactivateAccountAsync), nameof(User), $"{ResponseMessages.CouldNotDeactivateAccount}: {response.Message}", null);
         }
 
         return response;
     }
 
-    public async Task<ApplicationResponse<StandardUserDto>> GetByUsername(string username)
-    {
-        var response = new ApplicationResponse<StandardUserDto>();
-
-        var user = await _userRepository.GetByUniqueIdentifierAsync(username);
-        if (user is not null)
-        {
-            var userDto = UserMapper.ToStandardDisplay(user);
-            response.Ok(userDto, ResponseMessages.AccountRetrieved);
-        }
-        else
-        {
-            response.Fail(ResponseMessages.UserNotFound);
-            await LogResultAsync(response.Succeeded, nameof(GetByUsername), nameof(User), $"Retrieval by username failed. {response.Message}", null);
-        }
-
-        return response;
-    }
-    
-    public async Task<ApplicationResponse<FullUserDto>> GetByUsernameFull(string username)
+    public async Task<ApplicationResponse<FullUserDto>> ReactivateAccountAsync(int id)
     {
         var response = new ApplicationResponse<FullUserDto>();
-
-        var user = await _userRepository.GetByUniqueIdentifierAsync(username);
+        
+        var user = await _userRepository.GetDeactivatedByIdAsync(id);
         if (user is not null)
         {
+            user.AccountDeactivatedAt = null;
+            await _userRepository.SaveChangesAsync();
+            
             var userDto = UserMapper.ToFullDisplay(user);
-            response.Ok(userDto, ResponseMessages.ProfileRetrieved);
+
+            await _accountSecurityService.NotifyAccountReactivation(user.Email);
+            
+            response.Ok(userDto, ResponseMessages.AccountActivated);
+            await LogResultAsync(response.Succeeded, nameof(ReactivateOwnAccountAsync), nameof(User), null, id);
         }
         else
         {
-            response.Fail(ResponseMessages.NoAccountsMatchingUsername(username));
-            await LogResultAsync(response.Succeeded, nameof(GetByUsernameFull), nameof(User), $"Retrieval by username failed. {response.Message}", null);
+            response.Fail(ResponseMessages.UserNotFound);
+            await LogResultAsync(response.Succeeded, nameof(ReactivateOwnAccountAsync), nameof(User), response.Message, null);
         }
 
         return response;
     }
-    
-    public async Task<ListResponse<MinimalUserDto>> SearchUsersAsync(string usernameInput, int? pageNumber = null, int? pageSize = null)
+    public async Task<ApplicationResponse> RequestAccountActivationAsync(string email)
     {
-        var response = new ListResponse<MinimalUserDto>();
+        var response = new ApplicationResponse();
         
-        var users    = await _userRepository.SearchByUsernameAsync(usernameInput, pageNumber, pageSize);
-        var userDtos = users.Select(UserMapper.ToMinimalDisplay).ToList();
-        
-        response.Ok(userDtos, ResponseMessages.SearchResultsForUsername(usernameInput));
-        await LogResultAsync(response.Succeeded, nameof(SearchUsersAsync), nameof(User), null, null);
-        
-        return response;
-    }
-
-    public async Task<ApplicationResponse<FullUserDto>> EditUserProfileAsync(int id, EditUserDto editUserDto)
-    {
-        var response = new ApplicationResponse<FullUserDto>();
-        
-        var userToEdit = await _userRepository.GetByIdAsync(id);
-
-        if (userToEdit is not null)
+        var user = await _userRepository.GetDeactivatedByEmailAsync(email);
+        if (user is not null)
         {
-            editUserDto.Username = editUserDto.Username.ToLower();
-            var usernameChanged = !string.Equals(userToEdit.Username, editUserDto.Username, StringComparison.OrdinalIgnoreCase);
+            bool emailSent = await _accountSecurityService.HandleAccountActivationRequest(user);
 
-            var nextAllowedChangeDate = userToEdit.UsernameLastChangedAt?.AddDays(Constants.UsernameChangeCooldownDays);
-            var cooldownActive = usernameChanged && nextAllowedChangeDate is not null && nextAllowedChangeDate > DateTime.UtcNow;
-
-            if (!cooldownActive)
+            if (emailSent)
             {
-                await _userRepository.EditUserProfileAsync(userToEdit, editUserDto);
-                
-                var userDto = UserMapper.ToFullDisplay(userToEdit);
-                response.Ok(userDto, ResponseMessages.ProfileEdited);
-                await LogResultAsync(response.Succeeded, nameof(EditUserProfileAsync), nameof(User), null, id);
+                response.Ok(ResponseMessages.AccountActivationTokenSentToEmail);
+                await LogResultAsync(response.Succeeded, nameof(RequestAccountActivationAsync), nameof(User), null, user.Id);
             }
             else
             {
-                response.Fail(ResponseMessages.UsernameCanBeChangedAgainOn(nextAllowedChangeDate!.Value));
-                await LogResultAsync(response.Succeeded, nameof(EditUserProfileAsync), nameof(User), $"Edit invalidated. Username cannot be edited yet. {response.Message}", id);
+                response.Ok(ResponseMessages.CouldNotDeactivateAccount);
+                await LogResultAsync(response.Succeeded, nameof(RequestAccountActivationAsync), nameof(User), response.Message, user.Id);
             }
         }
         else
         {
             response.Fail(ResponseMessages.UserNotFound);
-            await LogResultAsync(response.Succeeded, nameof(EditUserProfileAsync), nameof(User), response.Message, null);
+            await LogResultAsync(response.Succeeded, nameof(RequestAccountActivationAsync), nameof(User), response.Message, null);
+        }
+
+        return response;
+    }  
+    public async Task<ApplicationResponse<FullUserDto>> ReactivateOwnAccountAsync(string activationToken)
+    {
+        var response = new ApplicationResponse<FullUserDto>();
+
+        var tokenHash = _tokenGenerator.HashToken(activationToken);
+        var user      = await _userRepository.GetDeactivatedAccountByActivationTokenHashAsync(tokenHash);
+        
+        if (user is not null)
+        {
+            user.AccountDeactivatedAt = null;
+            await _userRepository.SaveChangesAsync();
+            
+            var userDto = UserMapper.ToFullDisplay(user);
+
+            response.Ok(userDto, ResponseMessages.AccountActivated + ". " + ResponseMessages.YouCanNowSignIn);
+            await LogResultAsync(response.Succeeded, nameof(ReactivateOwnAccountAsync), nameof(User), null, user.Id);
+            await _accountSecurityService.NotifyAccountReactivation(user.Email);
+        }
+        else
+        {
+            response.Fail(ResponseMessages.UserNotFound);
+            await LogResultAsync(response.Succeeded, nameof(ReactivateOwnAccountAsync), nameof(User), response.Message, null);
         }
 
         return response;
@@ -218,7 +170,6 @@ public class AccountService : BaseService
 
         return response;
     }
-
     private async Task DeleteUserRelatedData(int userId)
     {
         await _commentRepository.DeleteUserCommentsAsync(userId);

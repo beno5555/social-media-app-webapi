@@ -80,7 +80,7 @@ public static class UserMapper
         {
             Id = nonConversationFriend.Id,
             Username = nonConversationFriend.Username,
-            LastActiveAt = nonConversationFriend.LastActiveAt,
+            LastActiveAt = nonConversationFriend.LastOnlineAt,
         };
     }
 

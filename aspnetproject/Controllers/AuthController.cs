@@ -25,12 +25,12 @@ public class AuthController : ControllerBase
     [HttpPost]
     [Route("register")]
     [EnableRateLimiting(RateLimitConfig.Policies.Register)]
-    public async Task<ActionResult<ApplicationResponse<StandardUserDto>>> Register(RegisterDto registerDto)
+    public async Task<ActionResult<ApplicationResponse<FullUserDto>>> Register(RegisterDto registerDto)
     {
         var response = await _authService.RegisterAsync(registerDto);
         if (response.Succeeded)
         {
-            return CreatedAtAction(nameof(AccountController.GetByUsername), "Account", new { response.Data!.Username }, response);
+            return CreatedAtAction(nameof(UserController.GetByUsername), "User", new { response.Data!.Username }, response);
         }
 
         return BadRequest(response);
@@ -75,11 +75,11 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost]
-    [Route("forgot-password")]
-    [EnableRateLimiting(RateLimitConfig.Policies.ForgotPassword)]
-    public async Task<ActionResult<ApplicationResponse>> ForgotPassword(ForgotPasswordDto forgotPasswordDto)
+    [Route("request-password-reset")]
+    [EnableRateLimiting(RateLimitConfig.Policies.RequestPasswordReset)]
+    public async Task<ActionResult<ApplicationResponse>> RequestPasswordReset(ForgotPasswordDto forgotPasswordDto)
     {
-        var response = await _authService.ForgotPasswordAsync(forgotPasswordDto);
+        var response = await _authService.RequestPasswordResetAsync(forgotPasswordDto);
 
         if (response.Succeeded)
         {

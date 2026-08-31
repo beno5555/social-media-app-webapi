@@ -83,7 +83,8 @@ public class CommentController : BaseController
     [Route("{id:int}")]
     public async Task<ActionResult<ApplicationResponse<FullCommentDto>>> EditComment(int id, [FromBody] EditCommentDto editCommentDto)
     {
-        var response = await _commentService.EditCommentAsync(id, editCommentDto);
+        var userId   = GetUserId();
+        var response = await _commentService.EditCommentAsync(userId, id, editCommentDto);
 
         if (response.Succeeded)
         {
@@ -97,8 +98,9 @@ public class CommentController : BaseController
     [Route("{id:int}")]
     public async Task<ActionResult<ApplicationResponse>> DeleteComment(int id)
     {
-        int userId   = GetUserId();
-        var response = await _commentService.DeleteCommentAsync(userId, id);
+        int  userId   = GetUserId();
+        bool isAdmin  = IsAdministrator();
+        var  response = await _commentService.DeleteCommentAsync(userId, isAdmin, id);
 
         if (response.Succeeded)
         {

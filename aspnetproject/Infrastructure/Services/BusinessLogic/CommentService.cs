@@ -8,6 +8,7 @@ using aspnetproject.Infrastructure.Mappers;
 using aspnetproject.Infrastructure.Services.Base;
 using aspnetproject.Infrastructure.Services.Logging;
 using Microsoft.AspNetCore.SignalR;
+using Org.BouncyCastle.Crypto.Digests;
 
 namespace aspnetproject.Infrastructure.Services.BusinessLogic;
 
@@ -92,7 +93,7 @@ public class CommentService : BaseService
         return response;
     }
 
-    public async Task<ApplicationResponse> DeleteCommentAsync(int userId, int id)
+    public async Task<ApplicationResponse> DeleteCommentAsync(int userId, bool isAdmin, int id)
     {
         var response = new ApplicationResponse();
 
@@ -100,9 +101,11 @@ public class CommentService : BaseService
 
         if (comment is not null)
         {
-            bool belongsToCaller = comment.CommenterUserId == userId;
-            bool isPostAuthor    = comment.Post!.UserId     == userId;
-            if (belongsToCaller || isPostAuthor)
+            bool belongsToCaller     = comment.CommenterUserId == userId;
+            bool isPostAuthor        = comment.Post!.UserId    == userId;
+            bool hasDeletePermission = belongsToCaller || isPostAuthor || isAdmin;
+            
+            if (hasDeletePermission)
             {
                 await _commentRepository.DeleteAsync(comment);  
                 response.Ok(ResponseMessages.CommentDeletedSuccessfully);
@@ -111,7 +114,7 @@ public class CommentService : BaseService
             else
             {
                 response.Fail(ResponseMessages.CouldNotDeleteComment);
-                await LogResultAsync(response.Succeeded, nameof(DeleteCommentAsync), nameof(Comment), $"{response.Message} from the database. Only commenter user and post author can delete a comment", comment.Id);
+                await LogResultAsync(response.Succeeded, nameof(DeleteCommentAsync), nameof(Comment), $"{response.Message}: caller does not have the privileges to delete a comment", comment.Id);
             }
         }
         else
@@ -167,7 +170,7 @@ public class CommentService : BaseService
         return response;
     }
 
-    public async Task<ApplicationResponse<FullCommentDto>> EditCommentAsync(int id, EditCommentDto editCommentDto)
+    public async Task<ApplicationResponse<FullCommentDto>> EditCommentAsync(int userId, int id, EditCommentDto editCommentDto)
     {
         var response = new ApplicationResponse<FullCommentDto>();
         
@@ -175,14 +178,23 @@ public class CommentService : BaseService
 
         if (comment is not null)
         {
-            comment.CommentContent = editCommentDto.Content;
-            comment.LastUpdatedAt = DateTime.UtcNow;
+            bool belongsToCaller = comment.CommenterUserId == userId;
+            if (belongsToCaller)
+            {
+                comment.CommentContent = editCommentDto.Content;
+                comment.LastUpdatedAt = DateTime.UtcNow;
             
-            await _commentRepository.SaveChangesAsync();
+                await _commentRepository.SaveChangesAsync();
             
-            var commentDto = CommentMapper.ToFullDisplay(comment);
-            response.Ok(commentDto, ResponseMessages.CommentUpdated);
-            await LogResultAsync(response.Succeeded, nameof(EditCommentAsync), nameof(Comment), null, comment.Id);
+                var commentDto = CommentMapper.ToFullDisplay(comment);
+                response.Ok(commentDto, ResponseMessages.CommentUpdated);
+                await LogResultAsync(response.Succeeded, nameof(EditCommentAsync), nameof(Comment), null, comment.Id);
+            }
+            else
+            {
+                response.Fail(ResponseMessages.OnlyCommenterCanEditMessage);
+                await LogResultAsync(response.Succeeded, nameof(EditCommentAsync), nameof(Comment), response.Message, comment.Id);
+            }
         }
         else
         {

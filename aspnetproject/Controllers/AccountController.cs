@@ -1,14 +1,15 @@
-﻿using aspnetproject.Common.Responses;
+﻿using aspnetproject.Common.ProjectConstants.Enums;
+using aspnetproject.Common.Responses;
 using aspnetproject.Controllers.Base;
+using aspnetproject.Infrastructure.Dtos.Accounts;
 using aspnetproject.Infrastructure.Dtos.Users;
-using aspnetproject.Infrastructure.Queries;
 using aspnetproject.Infrastructure.Services.BusinessLogic;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace aspnetproject.Controllers;
 
-[Route("api/accounts")]
+[Route("api/account-management")]
 [Authorize]
 public class AccountController : BaseController
 {
@@ -19,99 +20,6 @@ public class AccountController : BaseController
         _accountService = accountService;
     }
 
-    [HttpPost]
-    // [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<ApplicationResponse<FullUserDto>>> CreateUser(CreateAccountDto createAccountDto)
-    {
-        var response = await _accountService.CreateAccountAsync(createAccountDto);
-
-        if (response.Succeeded)
-        {
-            return Ok(response);
-        }
-
-        return BadRequest(response);
-    }
-        
-    [HttpGet]
-    [Route("{username}")]
-    [AllowAnonymous]
-    public async Task<ActionResult<ApplicationResponse<StandardUserDto>>> GetByUsername(string username)
-    {
-        var response = await _accountService.GetByUsername(username);
-        if (response.Succeeded)
-        {
-            return Ok(response);
-        }
-
-        return NotFound(response);
-    }
-
-    [HttpGet]
-    [Route("mine")]
-    public async Task<ActionResult<ApplicationResponse<FullUserDto>>> GetProfile()
-    {
-        var username = GetUsername();
-        var response = await _accountService.GetByUsernameFull(username);
-
-        if (response.Succeeded)
-        {
-            return Ok(response);
-        }
-
-        return BadRequest(response);
-    }
-
-    [HttpGet]
-    [Route("search")]
-    [AllowAnonymous]
-    public async Task<ActionResult<ListResponse<MinimalUserDto>>> SearchUsers(
-        [FromQuery] SearchUserQuery searchUserQuery)
-    {
-        var response = await _accountService.SearchUsersAsync(
-            searchUserQuery.Username,
-            searchUserQuery.PageNumber,
-            searchUserQuery.PageSize
-            );
-
-        if (response.Succeeded)
-        {
-            return Ok(response);
-        }
-
-        return BadRequest(response);
-    }
-
-    [HttpPut]
-    [Route("mine")]
-    public async Task<ActionResult<ApplicationResponse<FullUserDto>>> EditOwnProfile([FromBody] EditUserDto editUserDto)
-    {
-        int userId   = GetUserId();
-        var response = await _accountService.EditUserProfileAsync(userId, editUserDto);
-
-        if (response.Succeeded)
-        {
-            return Ok(response);
-        }
-
-        return BadRequest(response);
-    }
-    
-    [HttpPut]
-    [Route("{id:int}")]
-    [Authorize(Roles = "Admin")]
-    public async Task<ActionResult<ApplicationResponse<FullUserDto>>> EditUserProfile(int id, [FromBody] EditUserDto editUserDto)
-    {
-        var response = await _accountService.EditUserProfileAsync(id, editUserDto);
-
-        if (response.Succeeded)
-        {
-            return Ok(response);
-        }
-
-        return BadRequest(response);
-    }
-    
     [HttpDelete]
     [Route("mine")]
     public async Task<ActionResult<ApplicationResponse>> DeleteOwnAccount()
@@ -126,10 +34,10 @@ public class AccountController : BaseController
 
         return BadRequest(response);
     }
-
+    
     [HttpDelete]
     [Route("{id:int}")]
-    [Authorize(Roles = "Admin")]
+    [Authorize(Roles = "Administrator")]
     public async Task<ActionResult<ApplicationResponse>> DeleteUserAccount(int id)
     {
         var response = await _accountService.DeleteAccountAsync(id);
@@ -140,5 +48,79 @@ public class AccountController : BaseController
         }
 
         return BadRequest(response);
-    }   
+    }
+
+    [HttpPatch]
+    [Route("mine/deactivate")]
+    public async Task<ActionResult<ApplicationResponse>> DeactivateOwnAccount()
+    {
+        int userId   = GetUserId();
+        var response = await _accountService.DeactivateAccountAsync(userId);
+
+        if (response.Succeeded)
+        {
+            return Ok(response);
+        }
+
+        return BadRequest(response);
+    }
+
+    [HttpPatch]
+    [Route("{id:int}/deactivate")]
+    public async Task<ActionResult<ApplicationResponse>> DeactivateAccount(int id)
+    {
+        var response = await _accountService.DeactivateAccountAsync(id);
+
+        if (response.Succeeded)
+        {
+            return Ok(response);
+        }
+
+        return NotFound(response);
+    }
+
+    [HttpPatch]
+    [Route("{id:int}/activate")]
+    [Authorize(Roles = nameof(RoleName.Administrator))]
+    public async Task<ActionResult<ApplicationResponse<FullUserDto>>> ActivateAccount(int id)
+    {
+        var response = await _accountService.ReactivateAccountAsync(id);
+
+        if (response.Succeeded)
+        {
+            return Ok(response);
+        }
+
+        return BadRequest(response);
+    }
+    
+    [HttpPatch]
+    [Route("activate")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ApplicationResponse<FullUserDto>>> ActivateAccount([FromBody] ActivateAccountDto activateAccountDto)
+    {
+        var response = await _accountService.ReactivateOwnAccountAsync(activateAccountDto.ActivationToken);
+
+        if (response.Succeeded)
+        {
+            return Ok(response);
+        }
+
+        return BadRequest(response);
+    }
+    
+    [HttpPatch]
+    [Route("{email}/request-activate")]
+    [AllowAnonymous]
+    public async Task<ActionResult<ApplicationResponse<FullUserDto>>> RequestAccountActivation(string email)
+    {
+        var response = await _accountService.RequestAccountActivationAsync(email);
+
+        if (response.Succeeded)
+        {
+            return Ok(response);
+        }
+
+        return BadRequest(response);
+    }
 }

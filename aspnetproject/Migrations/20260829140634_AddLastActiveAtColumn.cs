@@ -12,7 +12,7 @@ namespace aspnetproject.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<DateTime>(
-                name: "LastActiveAt",
+                name: "LastOnlineAt",
                 table: "Users",
                 type: "datetime2(3)",
                 nullable: true);
@@ -22,7 +22,7 @@ namespace aspnetproject.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "LastActiveAt",
+                name: "LastOnlineAt",
                 table: "Users");
         }
     }

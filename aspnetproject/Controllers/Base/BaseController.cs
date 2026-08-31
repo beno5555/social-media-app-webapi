@@ -1,4 +1,5 @@
 ﻿using System.Security.Claims;
+using aspnetproject.Common.ProjectConstants.Enums;
 using Microsoft.AspNetCore.Mvc;
 
 namespace aspnetproject.Controllers.Base;
@@ -15,5 +16,10 @@ public abstract class BaseController : ControllerBase
     {
         var username = User.FindFirst(ClaimTypes.Name)!.Value;
         return username;
+    }
+
+    protected bool IsAdministrator()
+    {
+        return User.IsInRole(nameof(RoleName.Administrator));
     }
 }

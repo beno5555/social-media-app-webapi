@@ -30,10 +30,17 @@ public class RefreshTokenRepository : BaseEntityRepository<RefreshToken>
 
     public async Task RevokeAllForUserAsync(int userId)
     {
-        await _dbSet.Where(refreshToken => refreshToken.UserId == userId)
+        await _dbSet.Where(refreshToken => refreshToken.UserId == userId && refreshToken.RevokedAt == null)
             .ExecuteUpdateAsync(setters =>
             {
                 setters.SetProperty(refreshToken => refreshToken.RevokedAt, DateTime.UtcNow);
             });
+    }
+
+    public async Task DeleteExpiredAsync()
+    {
+        await _dbSet
+            .Where(refreshToken => refreshToken.ExpiresAt < DateTime.UtcNow)
+            .ExecuteDeleteAsync();
     }
 }

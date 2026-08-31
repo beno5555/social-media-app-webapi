@@ -20,7 +20,7 @@ public class PasswordHasher
         return (Convert.ToBase64String(hashBytes), Convert.ToBase64String(saltBytes));
     }
 
-    public bool VerifyPassword(string password, string storedHash, string storedSalt)
+    public bool PasswordsMatch(string password, string storedHash, string storedSalt)
     {
         byte[] saltBytes = Convert.FromBase64String(storedSalt);
 
@@ -34,6 +34,4 @@ public class PasswordHasher
         bool isValid = CryptographicOperations.FixedTimeEquals(hashBytes, Convert.FromBase64String(storedHash));
         return isValid;
     }
-    
-    public bool IsDifferentPassword(string newPassword, string oldPasswordHash, string oldPasswordSalt) => !VerifyPassword(newPassword, oldPasswordHash, oldPasswordSalt);
 }

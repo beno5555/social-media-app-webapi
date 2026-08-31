@@ -1,6 +1,8 @@
 ﻿using aspnetproject.Data.Models;
 using aspnetproject.Infrastructure.Dtos.Comments;
 using aspnetproject.Infrastructure.Dtos.Users;
+using Microsoft.VisualBasic;
+using Constants = aspnetproject.Common.ProjectConstants.Constants;
 
 namespace aspnetproject.Infrastructure.Mappers;
 
@@ -22,7 +24,7 @@ public static class CommentMapper
         {
             Id = comment.Id,
             AuthorId = comment.CommenterUserId,
-            AuthorUsername = comment.CommenterUser!.Username,
+            AuthorUsername = comment.CommenterUser?.Username ?? Constants.DeactivatedAccount,
             Content = comment.CommentContent,
             UploadedAt = comment.CreatedAt
         };
@@ -38,7 +40,7 @@ public static class CommentMapper
             Author = new MinimalUserDto
             {
                 Id = comment.CommenterUserId,
-                Username = comment.CommenterUser!.Username
+                Username = comment.CommenterUser?.Username ?? Constants.DeactivatedAccount
             },
             PostId = comment.PostId,
 
@@ -53,7 +55,7 @@ public static class CommentMapper
         {
             Id = comment.Id,
             Content = comment.CommentContent,
-            AuthorUsername = comment.CommenterUser!.Username
+            AuthorUsername = comment.CommenterUser?.Username ?? Constants.DeactivatedAccount
         };
     }
 }

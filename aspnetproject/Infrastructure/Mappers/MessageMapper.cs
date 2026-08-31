@@ -1,4 +1,5 @@
-﻿using aspnetproject.Data.Models;
+﻿using aspnetproject.Common.ProjectConstants;
+using aspnetproject.Data.Models;
 using aspnetproject.Infrastructure.Dtos.Messages;
 using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Infrastructure.Dtos.WebsocketsTransfer;
@@ -27,7 +28,7 @@ public static class MessageMapper
             Sender = new MinimalUserDto
             {
                 Id = message.SenderUserId,
-                Username = message.SenderUser!.Username
+                Username = message.SenderUser?.Username ?? Constants.DeactivatedAccount
             },
             ReceiverId = message.ReceiverUserId,
             
@@ -59,7 +60,7 @@ public static class MessageMapper
             Sender = new MinimalUserDto
             {
                 Id = message.SenderUserId,
-                Username = message.SenderUser!.Username
+                Username = message.SenderUser?.Username ?? Constants.DeactivatedAccount
             }
         };
     }

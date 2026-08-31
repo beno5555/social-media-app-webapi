@@ -14,12 +14,17 @@ public class User : BaseEntity
     public DateTime? UsernameLastChangedAt { get; set; } = null;
     
     [Column(TypeName = "datetime2(3)")]
-    public DateTime? LastActiveAt { get; set; } = null; // null = online
+    public DateTime? LastOnlineAt { get; set; } = null; // null = online
 
     public string? Bio { get; set; }
 
-    public string?   PasswordResetTokenHash      { get; set; } = string.Empty;
-    public DateTime? PasswordResetTokenExpiresAt { get; set; }
+    public string?   ResetTokenHash      { get; set; } = string.Empty;
+    public DateTime? ResetTokenExpiresAt { get; set; }
+
+    public DateTime? AccountDeactivatedAt { get; set; }
+
+    [NotMapped] 
+    public bool IsAccountEnabled => AccountDeactivatedAt == null;
 
     public ICollection<Log>      Logs      { get; set; } = [];
     public ICollection<UserRole> UserRoles { get; set; } = [];

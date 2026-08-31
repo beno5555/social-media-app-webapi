@@ -38,13 +38,6 @@ public class PostController : BaseController
     }
     
     [HttpGet]
-    public async Task<ActionResult<ListResponse<MinimalPostDisplayDto>>> GetAll([FromQuery] PageQuery query)
-    {
-        var result = await _postService.GetAllPostsAsync(query.PageNumber, query.PageSize);
-        return Ok(result);
-    }
-    
-    [HttpGet]
     [Route("feed")]
     public async Task<ActionResult<ListResponse<StandardPostDisplayDto>>> GetFeed([FromQuery] PageQuery query)
     {
@@ -117,8 +110,10 @@ public class PostController : BaseController
     [Route("{id:int}")]
     public async Task<ActionResult<ApplicationResponse>> DeletePost(int id)
     {
-        var userId   = GetUserId();
-        var response = await _postService.DeletePostAsync(userId, id);
+        int  userId  = GetUserId();
+        bool isAdmin = IsAdministrator();
+        
+        var  response = await _postService.DeletePostAsync(userId, isAdmin, id);
     
         if (response.Succeeded)
         {

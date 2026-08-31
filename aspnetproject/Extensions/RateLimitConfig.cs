@@ -10,7 +10,7 @@ public static class RateLimitConfig
         public const string Register = "Register";
         public const string Refresh  = "Refresh";
         
-        public const string ForgotPassword = "ForgotPassword";
+        public const string RequestPasswordReset = "RequestPasswordReset";
         public const string ResetPassword  = "ResetPassword";
     }
 
@@ -29,7 +29,7 @@ public static class RateLimitConfig
             options.AddPolicy(Policies.Refresh, httpContext =>
                 PerIpSlidingWindow(httpContext, 30, TimeSpan.FromMinutes(1)));
             
-            options.AddPolicy(Policies.ForgotPassword, httpContext =>
+            options.AddPolicy(Policies.RequestPasswordReset, httpContext =>
                 PerIpSlidingWindow(httpContext, 3, TimeSpan.FromMinutes(15)));
             
             options.AddPolicy(Policies.ResetPassword, httpContext =>

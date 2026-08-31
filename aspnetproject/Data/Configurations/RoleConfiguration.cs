@@ -20,11 +20,14 @@ public class RoleConfiguration : IEntityTypeConfiguration<Role>
             new Role
             {
                 Id = 1,
-                Name = nameof(RoleName.User)
+                Name = nameof(RoleName.User),
+                CreatedAt = new DateTime(2026, 8, 31, 15, 4, 0, DateTimeKind.Utc),
+                LastUpdatedAt = null
             },
             new Role
             {
                 Id = 2,
+                CreatedAt = new DateTime(2026, 8, 31, 15, 0, 0, DateTimeKind.Utc),
                 Name = nameof(RoleName.Administrator)
             }
         );

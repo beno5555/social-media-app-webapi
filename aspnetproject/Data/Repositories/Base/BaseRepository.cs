@@ -98,6 +98,28 @@ public class BaseRepository<T> where T : class
         await transaction.CommitAsync();
     }
 
+    protected async Task<T?> GetSingleByIgnoringQueryFilterAsync(Expression<Func<T, bool>> predicate)
+    {
+        return await _dbSet
+            .IgnoreQueryFilters()
+            .FirstOrDefaultAsync(predicate);
+    }
+    
+    protected async Task<List<T>> GetWhereByIgnoringQueryFilterAsync(Expression<Func<T, bool>> predicate)
+    {
+        return await _dbSet
+            .IgnoreQueryFilters()
+            .Where(predicate)
+            .ToListAsync();
+    }
+
+    protected async Task<bool> ExistsByIgnoringQueryFilterAsync(Expression<Func<T, bool>> predicate)
+    {
+        return await _dbSet
+            .IgnoreQueryFilters()
+            .AnyAsync(predicate);
+    }
+
     public async Task SaveChangesAsync()
     {
         await _dbContext.SaveChangesAsync();

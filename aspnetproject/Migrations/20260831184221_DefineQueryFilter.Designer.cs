@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using aspnetproject.Data;
 
@@ -11,9 +12,11 @@ using aspnetproject.Data;
 namespace aspnetproject.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260831184221_DefineQueryFilter")]
+    partial class DefineQueryFilter
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -330,18 +333,18 @@ namespace aspnetproject.Migrations
                         .HasColumnType("nchar(44)")
                         .IsFixedLength();
 
+                    b.Property<DateTime?>("PasswordResetTokenExpiresAt")
+                        .HasColumnType("datetime2");
+
+                    b.Property<string>("PasswordResetTokenHash")
+                        .HasMaxLength(44)
+                        .HasColumnType("nvarchar(44)");
+
                     b.Property<string>("PasswordSalt")
                         .IsRequired()
                         .HasMaxLength(44)
                         .HasColumnType("nchar(44)")
                         .IsFixedLength();
-
-                    b.Property<DateTime?>("ResetTokenExpiresAt")
-                        .HasColumnType("datetime2");
-
-                    b.Property<string>("ResetTokenHash")
-                        .HasMaxLength(44)
-                        .HasColumnType("nvarchar(44)");
 
                     b.Property<string>("Username")
                         .IsRequired()

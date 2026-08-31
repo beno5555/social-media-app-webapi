@@ -1,6 +1,7 @@
 ﻿using System.ComponentModel;
 using System.ComponentModel.DataAnnotations;
 using aspnetproject.Common.Attributes;
+using aspnetproject.Common.Attributes.DataValidation;
 using aspnetproject.Common.ProjectConstants;
 
 namespace aspnetproject.Infrastructure.Dtos.Users;

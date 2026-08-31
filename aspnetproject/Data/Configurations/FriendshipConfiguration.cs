@@ -22,11 +22,13 @@ public class FriendshipConfiguration : IEntityTypeConfiguration<Friendship>
         builder.HasOne(friendship => friendship.RequesterUser)
             .WithMany()
             .HasForeignKey(friendship => friendship.RequesterUserId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired(false);
 
         builder.HasOne(friendship => friendship.AddresseeUser)
             .WithMany()
             .HasForeignKey(friendship => friendship.AddresseeUserId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired(false);
     }
 }

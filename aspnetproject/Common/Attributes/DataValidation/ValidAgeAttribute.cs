@@ -1,7 +1,7 @@
 ﻿using System.ComponentModel.DataAnnotations;
 using aspnetproject.Common.ProjectConstants;
 
-namespace aspnetproject.Common.Attributes;
+namespace aspnetproject.Common.Attributes.DataValidation;
 
 public class ValidAgeAttribute : ValidationAttribute
 {

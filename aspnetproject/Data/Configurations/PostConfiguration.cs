@@ -23,6 +23,7 @@ public class PostConfiguration : IEntityTypeConfiguration<Post>
         builder.HasOne(post => post.User)
             .WithMany()
             .HasForeignKey(post => post.UserId)
-            .OnDelete(DeleteBehavior.Cascade);
+            .OnDelete(DeleteBehavior.Cascade)
+            .IsRequired(false);
     }
 }

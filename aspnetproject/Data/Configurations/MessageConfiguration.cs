@@ -25,11 +25,13 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
         builder.HasOne(message => message.SenderUser)
             .WithMany()
             .HasForeignKey(message => message.SenderUserId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired(false);
         
         builder.HasOne(message => message.ReceiverUser)
             .WithMany()
             .HasForeignKey(message => message.ReceiverUserId)
-            .OnDelete(DeleteBehavior.Restrict);
+            .OnDelete(DeleteBehavior.Restrict)
+            .IsRequired(false);
     }
 }

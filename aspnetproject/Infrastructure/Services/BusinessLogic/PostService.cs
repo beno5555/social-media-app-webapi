@@ -174,15 +174,15 @@ public class PostService : BaseService
         return response;
     }
 
-    public async Task<ApplicationResponse> DeletePostAsync(int userId, int id)
+    public async Task<ApplicationResponse> DeletePostAsync(int callerId, bool isAdmin, int id)
     {
         var response = new ApplicationResponse();
         var post     = await _postRepository.GetByIdAsync(id);
 
         if (post is not null)
         {
-            bool belongsToCaller = post.UserId == userId;
-            if (belongsToCaller)
+            bool belongsToCaller = post.UserId == callerId;
+            if (belongsToCaller || isAdmin)
             {
                 await _postRepository.ExecuteInTransactionAsync(async () =>
                 {
@@ -196,7 +196,7 @@ public class PostService : BaseService
             else
             {
                 response.Fail(ResponseMessages.CouldNotDeletePost);
-                await LogResultAsync(response.Succeeded, nameof(DeletePostAsync), nameof(Post), $"{response.Message}. Caller does not have delete permissions to the post", id);
+                await LogResultAsync(response.Succeeded, nameof(DeletePostAsync), nameof(Post), $"{response.Message}: Caller does not have delete permissions to the post", id);
             }
         }
         else

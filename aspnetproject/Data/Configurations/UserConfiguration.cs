@@ -40,11 +40,17 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
         builder.Property(user => user.Bio)
             .HasMaxLength(Constants.BioMaxLength);
 
-        builder.Property(user => user.PasswordResetTokenHash)
+        builder.Property(user => user.ResetTokenHash)
             .IsRequired(false)
             .HasMaxLength(44);
 
-        builder.Property(user => user.PasswordResetTokenExpiresAt)
+        builder.Property(user => user.ResetTokenExpiresAt)
             .IsRequired(false);
+
+        builder.Property(user => user.AccountDeactivatedAt)
+            .IsRequired(false)
+            .HasDefaultValueSql("NULL");
+
+        builder.HasQueryFilter(user => user.AccountDeactivatedAt == null);
     }
 }

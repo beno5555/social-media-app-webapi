@@ -21,12 +21,14 @@ public static class ApplicationServicesExtensions
         services.AddScoped<UserRepository>();
         services.AddScoped<RefreshTokenRepository>();
         
+        services.AddScoped<UserService>();
+        services.AddScoped<AuthService>();
         services.AddScoped<AccountService>();
+        services.AddScoped<AccountSecurityService>();
         services.AddScoped<CommentService>();
         services.AddScoped<FriendshipService>();
         services.AddScoped<MessageService>();
         services.AddScoped<PostService>();
-        services.AddScoped<AuthService>();
         services.AddScoped<PresenceService>();
         services.AddScoped<LogService>();
         

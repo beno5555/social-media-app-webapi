@@ -5,9 +5,9 @@ using aspnetproject.Infrastructure.Dtos.Users.Friends;
 
 namespace aspnetproject.Infrastructure.Mappers;
 
-public class FriendshipMapper
+public static class FriendshipMapper
 {
-    public MinimalFriendshipDto ToMinimalDisplay(Friendship friendship)
+    public static MinimalFriendshipDto ToMinimalDisplay(Friendship friendship)
     {
         return new MinimalFriendshipDto
         {
@@ -18,7 +18,7 @@ public class FriendshipMapper
         };
     }
 
-    public StandardFriendshipDto ToStandardDisplay(Friendship friendship, User otherUser)
+    public static StandardFriendshipDto ToStandardDisplay(Friendship friendship, User otherUser)
     {
         return new StandardFriendshipDto
         {
@@ -34,7 +34,7 @@ public class FriendshipMapper
         };
     }
     
-    public AcceptedFriendshipDto ToAcceptedDisplay(Friendship friendship, User otherUser)
+    public static AcceptedFriendshipDto ToAcceptedDisplay(Friendship friendship, User otherUser)
     {
         return new AcceptedFriendshipDto
         {

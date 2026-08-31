@@ -16,18 +16,15 @@ public class AccountService : BaseService
     private readonly MessageRepository    _messageRepository;
     private readonly FriendshipRepository _friendshipRepository;
     private readonly CommentRepository    _commentRepository;
-    
     private readonly PasswordHasher _passwordHasher;
-    private readonly UserMapper     _userMapper;
 
     public AccountService(
         UserRepository userRepository,
         MessageRepository messageRepository,
         FriendshipRepository friendshipRepository,
         CommentRepository commentRepository,
-        
         PasswordHasher passwordHasher,
-        UserMapper userMapper,
+        
         DatabaseLogger dbLogger
         ) : base(dbLogger)
     {
@@ -35,9 +32,7 @@ public class AccountService : BaseService
         _messageRepository = messageRepository;
         _friendshipRepository = friendshipRepository;
         _commentRepository = commentRepository;
-        
         _passwordHasher = passwordHasher;
-        _userMapper = userMapper;
     }
     
     public async Task<ApplicationResponse<FullUserDto>> CreateAccountAsync(CreateAccountDto createAccountDto)
@@ -49,12 +44,12 @@ public class AccountService : BaseService
         {
             var (hash, salt) = _passwordHasher.HashPassword(createAccountDto.Password);
             
-            var userToAdd = _userMapper.ToEntity(createAccountDto, hash, salt);
+            var userToAdd = UserMapper.ToEntity(createAccountDto, hash, salt);
             await _userRepository.AddAsync(userToAdd);
 
-            var displayDto = _userMapper.ToFullDisplay(userToAdd);
+            var displayDto = UserMapper.ToFullDisplay(userToAdd);
             response.Ok(displayDto, ResponseMessages.AccountCreated);
-            await LogResultAsync(response.Succeeded, nameof(CreateAccountAsync), nameof(User), "Created a new account.", userToAdd.Id);
+            await LogResultAsync(response.Succeeded, nameof(CreateAccountAsync), nameof(User), null, userToAdd.Id);
         }
         else
         {
@@ -97,7 +92,7 @@ public class AccountService : BaseService
         var user = await _userRepository.GetByIdAsync(id);
         if (user is not null)
         {
-            var userDto = _userMapper.ToStandardDisplay(user);
+            var userDto = UserMapper.ToStandardDisplay(user);
             response.Ok(userDto, ResponseMessages.AccountRetrieved);
         }
         else
@@ -116,7 +111,7 @@ public class AccountService : BaseService
         var user = await _userRepository.GetByUniqueIdentifierAsync(username);
         if (user is not null)
         {
-            var userDto = _userMapper.ToStandardDisplay(user);
+            var userDto = UserMapper.ToStandardDisplay(user);
             response.Ok(userDto, ResponseMessages.AccountRetrieved);
         }
         else
@@ -135,7 +130,7 @@ public class AccountService : BaseService
         var user = await _userRepository.GetByUniqueIdentifierAsync(username);
         if (user is not null)
         {
-            var userDto = _userMapper.ToFullDisplay(user);
+            var userDto = UserMapper.ToFullDisplay(user);
             response.Ok(userDto, ResponseMessages.ProfileRetrieved);
         }
         else
@@ -152,10 +147,10 @@ public class AccountService : BaseService
         var response = new ListResponse<MinimalUserDto>();
         
         var users    = await _userRepository.SearchByUsernameAsync(usernameInput, pageNumber, pageSize);
-        var userDtos = users.Select(_userMapper.ToMinimalDisplay).ToList();
+        var userDtos = users.Select(UserMapper.ToMinimalDisplay).ToList();
         
         response.Ok(userDtos, ResponseMessages.SearchResultsForUsername(usernameInput));
-        await LogResultAsync(response.Succeeded, nameof(SearchUsersAsync), nameof(User), "Performed accounts search", null);
+        await LogResultAsync(response.Succeeded, nameof(SearchUsersAsync), nameof(User), null, null);
         
         return response;
     }
@@ -178,9 +173,9 @@ public class AccountService : BaseService
             {
                 await _userRepository.EditUserProfileAsync(userToEdit, editUserDto);
                 
-                var userDto = _userMapper.ToFullDisplay(userToEdit);
+                var userDto = UserMapper.ToFullDisplay(userToEdit);
                 response.Ok(userDto, ResponseMessages.ProfileEdited);
-                await LogResultAsync(response.Succeeded, nameof(EditUserProfileAsync), nameof(User), "User fields have been edited", id);
+                await LogResultAsync(response.Succeeded, nameof(EditUserProfileAsync), nameof(User), null, id);
             }
             else
             {
@@ -212,7 +207,7 @@ public class AccountService : BaseService
             {
                 await _userRepository.DeleteAsync(userToDelete);
                 response.Ok(ResponseMessages.AccountDeleted);
-                await LogResultAsync(response.Succeeded, nameof(DeleteAccountAsync), nameof(User), "User account deleted from the database", id);
+                await LogResultAsync(response.Succeeded, nameof(DeleteAccountAsync), nameof(User), null, id);
             }
             else
             {

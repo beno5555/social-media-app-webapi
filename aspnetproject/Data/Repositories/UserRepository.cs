@@ -21,6 +21,12 @@ public class UserRepository : BaseEntityRepository<User>
                                                         user.Username == uniqueIdentifier);
     }
 
+    public async Task<User?> GetByPasswordResetTokenHash(string passwordResetTokenHash)
+    {
+        return await _dbSet.FirstOrDefaultAsync(user => user.PasswordResetTokenHash == passwordResetTokenHash &&
+                                                        user.PasswordResetTokenExpiresAt > DateTime.UtcNow);
+    }
+
     public async Task<bool> ExistsByUsernameAsync(string username)
     {
         return await ExistsAsync(user => user.Username == username.ToLower());
@@ -143,5 +149,14 @@ public class UserRepository : BaseEntityRepository<User>
     {
         await _dbSet.Where(user => user.Id == userId)
             .ExecuteUpdateAsync(setters => setters.SetProperty(user => user.LastActiveAt, lastActiveAt)); 
+    }
+
+    public void UpdatePassword(User user, string hash, string salt)
+    {
+        user.PasswordHash = hash;
+        user.PasswordSalt = salt;
+
+        user.PasswordResetTokenHash = null;
+        user.PasswordResetTokenExpiresAt = null;
     }
 }

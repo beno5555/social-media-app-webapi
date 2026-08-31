@@ -63,7 +63,7 @@ public class DatabaseLogger
         }
         catch (Exception ex)
         {
-            _systemLogger.LoggingErrorAsync(ex, $"Failed to write log entry {createLogDto.Action}");
+            await _systemLogger.LoggingErrorAsync(ex, $"Failed to write log entry {createLogDto.Action}");
         }
     }
     

@@ -15,25 +15,17 @@ public class FriendshipService : BaseService
     private readonly FriendshipRepository _friendshipRepository;
     private readonly MessageRepository    _messageRepository;
     private readonly UserRepository       _userRepository;
-    
-    private readonly UserMapper       _userMapper;
-    private readonly FriendshipMapper _friendshipMapper;
 
     public FriendshipService(
         FriendshipRepository friendshipRepository,
         MessageRepository messageRepository,
-        UserMapper userMapper,
         UserRepository userRepository,
-        FriendshipMapper friendshipMapper,
         DatabaseLogger dbLogger
         ) : base(dbLogger)
     {
         _friendshipRepository = friendshipRepository;
         _messageRepository = messageRepository;
         _userRepository = userRepository;
-        
-        _userMapper = userMapper;
-        _friendshipMapper = friendshipMapper;
     }
 
     public async Task<ApplicationResponse<MinimalFriendshipDto>> SendRequest(int requesterId, int addresseeId)
@@ -50,17 +42,16 @@ public class FriendshipService : BaseService
 
                 if (relationship is null)
                 {
-                    var friendship = _userMapper.ToFriendship(requesterId, addresseeId);
+                    var friendship = UserMapper.ToFriendship(requesterId, addresseeId);
                     await _friendshipRepository.AddAsync(friendship);
 
-                    var friendshipDto = _friendshipMapper.ToMinimalDisplay(friendship);
+                    var friendshipDto = FriendshipMapper.ToMinimalDisplay(friendship);
                     response.Ok(friendshipDto, ResponseMessages.FriendRequestSent);
-                    await LogResultAsync(response.Succeeded, nameof(SendRequest), nameof(Friendship), $"{response.Message}.", null);
+                    await LogResultAsync(response.Succeeded, nameof(SendRequest), nameof(Friendship), null, null);
                 }
                 else
                 {
                     response = await HandleExistingRelationship(relationship, requesterId);
-                    await LogResultAsync(response.Succeeded, nameof(SendRequest), nameof(Friendship), response.Message, null);
                 }
             }
             else
@@ -84,10 +75,12 @@ public class FriendshipService : BaseService
         if (relationship.FriendshipStatus == FriendshipStatus.Accepted)
         {
             response.Fail(ResponseMessages.AlreadyFriends);
+            await LogResultAsync(response.Succeeded, nameof(SendRequest), nameof(Friendship), "The requester is already friends with the addressee.", null);
         }
         else if (relationship.FriendshipStatus == FriendshipStatus.Pending)
         {
             response.Fail(ResponseMessages.PendingRequestAlreadyExists);
+            await LogResultAsync(response.Succeeded, nameof(SendRequest), nameof(Friendship), response.Message, null);
         }
         else if (relationship.FriendshipStatus == FriendshipStatus.Declined)
         {
@@ -99,7 +92,7 @@ public class FriendshipService : BaseService
                 
                 int oldRequesterId = relationship.RequesterUserId;
 
-                finalRelationship = _userMapper.ToFriendship(requesterId, oldRequesterId);
+                finalRelationship = UserMapper.ToFriendship(requesterId, oldRequesterId);
                 await _friendshipRepository.AddAsync(finalRelationship);
             }
             else
@@ -111,8 +104,9 @@ public class FriendshipService : BaseService
                 await _friendshipRepository.SaveChangesAsync();
             }
             
-            var friendshipDto = _friendshipMapper.ToMinimalDisplay(finalRelationship);
+            var friendshipDto = FriendshipMapper.ToMinimalDisplay(finalRelationship);
             response.Ok(friendshipDto, ResponseMessages.FriendRequestSent);
+            await LogResultAsync(response.Succeeded, nameof(SendRequest), nameof(Friendship), null, null);
         }
 
         return response;
@@ -155,7 +149,7 @@ public class FriendshipService : BaseService
                         ? friendship.AddresseeUser
                         : friendship.RequesterUser;
 
-                    var friendshipDto = _friendshipMapper.ToStandardDisplay(friendship, otherUser!);
+                    var friendshipDto = FriendshipMapper.ToStandardDisplay(friendship, otherUser!);
                     return friendshipDto;
                 })
                 .ToList();
@@ -166,6 +160,7 @@ public class FriendshipService : BaseService
         else
         {
             response.Fail(ResponseMessages.UserNotFound);
+            await LogResultAsync(response.Succeeded, nameof(FetchRelationshipsAsync), nameof(Friendship), $"Failed to fetch {friendshipType}s. {response.Message}", null);
         }
         return response;
     }
@@ -181,9 +176,9 @@ public class FriendshipService : BaseService
                 ? relationship.RequesterUser
                 : relationship.AddresseeUser;
             
-            var relationshipDto = _friendshipMapper.ToStandardDisplay(relationship, otherUser!);
+            var relationshipDto = FriendshipMapper.ToStandardDisplay(relationship, otherUser!);
             response.Ok(relationshipDto, ResponseMessages.RelationshipFetched);
-            await LogResultAsync(response.Succeeded, nameof(GetRelationshipAsync), nameof(Friendship), $"{response.Message} in standard public form.", null);
+            await LogResultAsync(response.Succeeded, nameof(GetRelationshipAsync), nameof(Friendship), null, null);
         }
         else
         {
@@ -205,9 +200,9 @@ public class FriendshipService : BaseService
                 ? friendship.RequesterUser
                 : friendship.AddresseeUser;
             
-            var friendshipDto = _friendshipMapper.ToAcceptedDisplay(friendship, otherUser!);
+            var friendshipDto = FriendshipMapper.ToAcceptedDisplay(friendship, otherUser!);
             response.Ok(friendshipDto, ResponseMessages.RelationshipFetched);           
-            await LogResultAsync(response.Succeeded, nameof(GetAcceptedFriendshipAsync), nameof(Friendship), $"{response.Message}", null);
+            await LogResultAsync(response.Succeeded, nameof(GetAcceptedFriendshipAsync), nameof(Friendship), null, null);
         }
         else
         {
@@ -230,11 +225,11 @@ public class FriendshipService : BaseService
             {
                 await _friendshipRepository.UpdateStatusAsync(friendship, status);
                 
-                var friendshipDto = _friendshipMapper.ToStandardDisplay(friendship, friendship.RequesterUser!);
+                var friendshipDto = FriendshipMapper.ToStandardDisplay(friendship, friendship.RequesterUser!);
                 await _friendshipRepository.SaveChangesAsync();
                 
-                response.Ok(friendshipDto, ResponseMessages.ResponseSent);
-                await LogResultAsync(response.Succeeded, nameof(RespondToRequestAsync), nameof(Friendship), "Response written to the database", null);
+                response.Ok(friendshipDto, ResponseMessages.ResponseSent(status));
+                await LogResultAsync(response.Succeeded, nameof(RespondToRequestAsync), nameof(Friendship), null, null);
             }
             else
             {
@@ -264,7 +259,7 @@ public class FriendshipService : BaseService
                 await _friendshipRepository.DeleteAsync(friendship);
             
                 response.Ok(ResponseMessages.RelationshipRemoved);
-                await LogResultAsync(response.Succeeded, nameof(RemoveRelationshipAsync), nameof(Friendship), $"{response.Message} from the database", null);
+                await LogResultAsync(response.Succeeded, nameof(RemoveRelationshipAsync), nameof(Friendship), null, null);
             }
             else
             {

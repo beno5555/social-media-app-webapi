@@ -1,8 +1,11 @@
 ﻿using aspnetproject.Common.Responses;
+using aspnetproject.Extensions;
 using aspnetproject.Infrastructure.Dtos.Auth;
+using aspnetproject.Infrastructure.Dtos.Auth.Password;
 using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Infrastructure.Services.BusinessLogic;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace aspnetproject.Controllers;
 
@@ -21,12 +24,13 @@ public class AuthController : ControllerBase
     
     [HttpPost]
     [Route("register")]
+    [EnableRateLimiting(RateLimitConfig.Policies.Register)]
     public async Task<ActionResult<ApplicationResponse<StandardUserDto>>> Register(RegisterDto registerDto)
     {
         var response = await _authService.RegisterAsync(registerDto);
         if (response.Succeeded)
         {
-            return CreatedAtAction(nameof(AccountController.GetByUsername), "Account", new { response.Data!.Id }, response);
+            return CreatedAtAction(nameof(AccountController.GetByUsername), "Account", new { response.Data!.Username }, response);
         }
 
         return BadRequest(response);
@@ -34,6 +38,7 @@ public class AuthController : ControllerBase
 
     [HttpPost]
     [Route("login")]
+    [EnableRateLimiting(RateLimitConfig.Policies.Login)]
     public async Task<ActionResult<string>> Login(LoginDto loginDto)
     {
         var response = await _authService.LoginAsync(loginDto);
@@ -48,7 +53,8 @@ public class AuthController : ControllerBase
 
     [HttpPost]
     [Route("refresh")]
-    public async Task<ActionResult> Refresh()
+    [EnableRateLimiting(RateLimitConfig.Policies.Refresh)]
+    public async Task<IActionResult> Refresh()
     {
         var rawRefreshToken = Request.Cookies["refreshToken"];
 
@@ -65,7 +71,37 @@ public class AuthController : ControllerBase
             return BadRequest(response.Message);
         }
 
-        return BadRequest("No refresh token provided");
+        return BadRequest(new { Message = "No refresh token provided" });
+    }
+
+    [HttpPost]
+    [Route("forgot-password")]
+    // [EnableRateLimiting(RateLimitConfig.Policies.ForgotPassword)]
+    public async Task<ActionResult<ApplicationResponse>> ForgotPassword(ForgotPasswordDto forgotPasswordDto)
+    {
+        var response = await _authService.ForgotPasswordAsync(forgotPasswordDto);
+
+        if (response.Succeeded)
+        {
+            return Ok(response);
+        }
+        
+        return BadRequest(response);
+    }
+
+    [HttpPost]
+    [Route("reset-password")]
+    [EnableRateLimiting(RateLimitConfig.Policies.ResetPassword)]
+    public async Task<ActionResult<ApplicationResponse>> ResetPassword(ResetPasswordDto resetPasswordDto)
+    {
+        var response = await _authService.ResetPasswordAsync(resetPasswordDto);
+
+        if (response.Succeeded)
+        {
+            return Ok(response);
+        }
+        
+        return BadRequest(response);
     }
 
     [HttpPost]

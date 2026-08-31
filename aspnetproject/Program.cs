@@ -1,7 +1,9 @@
 using System.Text;
 using aspnetproject.Data;
 using aspnetproject.Data.Repositories;
+using aspnetproject.Extensions;
 using aspnetproject.Hubs;
+using aspnetproject.Infrastructure.Dtos.Auth.Email;
 using aspnetproject.Infrastructure.Mappers;
 using aspnetproject.Infrastructure.Services.BusinessLogic;
 using aspnetproject.Infrastructure.Services.Helpers;
@@ -98,6 +100,8 @@ public class Program
                     .AllowCredentials();
             });
         });
+
+        builder.Services.AddApplicationRateLimiting();
         
         builder.Services.AddScoped<CommentRepository>();
         builder.Services.AddScoped<FriendshipRepository>();
@@ -105,13 +109,6 @@ public class Program
         builder.Services.AddScoped<PostRepository>();
         builder.Services.AddScoped<UserRepository>();
         builder.Services.AddScoped<RefreshTokenRepository>();
-        
-        builder.Services.AddScoped<CommentMapper>();
-        builder.Services.AddScoped<MessageMapper>();
-        builder.Services.AddScoped<PostMapper>();
-        builder.Services.AddScoped<UserMapper>();
-        builder.Services.AddScoped<AuthMapper>();
-        builder.Services.AddScoped<FriendshipMapper>();
         
         builder.Services.AddScoped<AccountService>();
         builder.Services.AddScoped<CommentService>();
@@ -128,6 +125,10 @@ public class Program
 
         builder.Services.AddScoped<SystemLogger>();
         builder.Services.AddScoped<DatabaseLogger>();
+
+        builder.Services.Configure<EmailConfiguration>(builder.Configuration.GetSection("EmailConfiguration"));
+
+        builder.Services.AddTransient<EmailSender>();
         
         var app = builder.Build();
 
@@ -148,7 +149,7 @@ public class Program
                 if (exception is not null)
                 {
                     var sysLogger = context.RequestServices.GetRequiredService<SystemLogger>();
-                    sysLogger.LogEndpointErrorAsync(exception, context.Request.Method, context.Request.Path);
+                    await sysLogger.LogEndpointErrorAsync(exception, context.Request.Method, context.Request.Path);
 
                     if (exception is DbUpdateException)
                     {
@@ -183,6 +184,7 @@ public class Program
         app.UseHttpsRedirection();
         app.UseRouting();
         app.UseCors("SignalRTestPolicy");
+        app.UseRateLimiter();
 
         app.UseAuthentication();
         app.UseAuthorization();

@@ -5,9 +5,9 @@ using aspnetproject.Infrastructure.Dtos.Users;
 
 namespace aspnetproject.Infrastructure.Mappers;
 
-public class PostMapper
+public static class PostMapper
 {
-    public Post ToEntity(int userId, CreatePostDto createPostDto)
+    public static Post ToEntity(int userId, CreatePostDto createPostDto)
     {
         return new Post
         {
@@ -17,7 +17,7 @@ public class PostMapper
         };
     }
 
-    public FullPostDisplayDto ToFullDisplay(Post post)
+    public static FullPostDisplayDto ToFullDisplay(Post post)
     {
         return new FullPostDisplayDto
         {
@@ -43,7 +43,7 @@ public class PostMapper
         };
     }
     
-    public StandardPostDisplayDto ToStandardDisplay(Post post)
+    public static StandardPostDisplayDto ToStandardDisplay(Post post)
     {
         return new StandardPostDisplayDto
         {
@@ -58,7 +58,7 @@ public class PostMapper
         };
     }
     
-    public MinimalPostDisplayDto ToMinimalDisplay(Post post)
+    public static MinimalPostDisplayDto ToMinimalDisplay(Post post)
     {
         return new MinimalPostDisplayDto
         {

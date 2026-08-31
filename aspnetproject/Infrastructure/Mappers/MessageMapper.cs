@@ -5,9 +5,9 @@ using aspnetproject.Infrastructure.Dtos.WebsocketsTransfer;
 
 namespace aspnetproject.Infrastructure.Mappers;
 
-public class MessageMapper 
+public static class MessageMapper 
 {
-    public Message ToEntity(int senderId, int receiverId, CreateMessageDto createMessageDto)
+    public static Message ToEntity(int senderId, int receiverId, CreateMessageDto createMessageDto)
     {
         return new Message
         {
@@ -17,7 +17,7 @@ public class MessageMapper
         };
     }
 
-    public StandardMessageDto ToStandardDisplay(Message message)
+    public static StandardMessageDto ToStandardDisplay(Message message)
     {
         return new StandardMessageDto
         {
@@ -39,7 +39,7 @@ public class MessageMapper
         };
     }
     
-    public SentMessageDto ToSentMessageDisplay(Message message)
+    public static SentMessageDto ToSentMessageDisplay(Message message)
     {
         return new SentMessageDto
         {
@@ -49,7 +49,7 @@ public class MessageMapper
         };
     }
 
-    public PushMessageDto ToPush(Message message)
+    public static PushMessageDto ToPush(Message message)
     {
         return new PushMessageDto
         {
@@ -64,7 +64,7 @@ public class MessageMapper
         };
     }
 
-    public MessageEditedDto ToMessageEdited(Message message)
+    public static MessageEditedDto ToMessageEdited(Message message)
     {
         return new MessageEditedDto
         {

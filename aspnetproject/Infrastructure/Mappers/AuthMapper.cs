@@ -4,9 +4,9 @@ using aspnetproject.Infrastructure.Dtos.Users;
 
 namespace aspnetproject.Infrastructure.Mappers;
 
-public class AuthMapper
+public static class AuthMapper
 {
-    public User ToRegisteredEntity(RegisterDto registerDto, string passwordHash, string passwordSalt)
+    public static User ToRegisteredEntity(RegisterDto registerDto, string passwordHash, string passwordSalt)
     {
         return new User
         {
@@ -19,7 +19,7 @@ public class AuthMapper
         };
     }
     
-    public StandardUserDto ToStandardDisplay(User user)
+    public static StandardUserDto ToStandardDisplay(User user)
     {
         return new StandardUserDto
         {

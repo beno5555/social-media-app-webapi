@@ -19,18 +19,12 @@ public class MessageService : BaseService
     private readonly MessageRepository    _messageRepository;
     private readonly UserRepository       _userRepository;
     private readonly FriendshipRepository _friendshipRepository;
-
-    private readonly MessageMapper _messageMapper;
-    private readonly UserMapper    _userMapper;
     private readonly IHubContext<MessageHub> _hubContext;
 
     public MessageService(
         MessageRepository    messageRepository,
         UserRepository       userRepository,
         FriendshipRepository friendshipRepository,
-        
-        MessageMapper           messageMapper,
-        UserMapper              userMapper,
         IHubContext<MessageHub> hubContext,
         DatabaseLogger          dbLogger
             ) : base(dbLogger)
@@ -38,9 +32,6 @@ public class MessageService : BaseService
         _messageRepository = messageRepository;
         _userRepository = userRepository;
         _friendshipRepository = friendshipRepository;
-        
-        _messageMapper = messageMapper;
-        _userMapper = userMapper;
         _hubContext = hubContext;
     }
 
@@ -52,13 +43,13 @@ public class MessageService : BaseService
         
         if (friendshipCheck.Succeeded)
         {
-            var messageToAdd = _messageMapper.ToEntity(senderId, receiverId, createMessageDto);
+            var messageToAdd = MessageMapper.ToEntity(senderId, receiverId, createMessageDto);
             var message      = await _messageRepository.AddMessageAsync(messageToAdd);
 
-            var pushMessageDto = _messageMapper.ToPush(message);
+            var pushMessageDto = MessageMapper.ToPush(message);
             await _hubContext.Clients.Group(receiverId.ToString()).SendAsync("ReceiveMessage", pushMessageDto);
 
-            var displayMessageDto = _messageMapper.ToSentMessageDisplay(message);
+            var displayMessageDto = MessageMapper.ToSentMessageDisplay(message);
             response.Ok(displayMessageDto, ResponseMessages.MessageSent);
         }
         else
@@ -90,7 +81,7 @@ public class MessageService : BaseService
             
                 await MarkAsReadAsync(readerId, otherUserId);
             
-                var messageDtos = messages.Select(_messageMapper.ToStandardDisplay).ToList();
+                var messageDtos = messages.Select(MessageMapper.ToStandardDisplay).ToList();
                 response.Ok(messageDtos, ResponseMessages.ConversationRetrievedSuccessfully);
             }
             else
@@ -112,7 +103,7 @@ public class MessageService : BaseService
         var response = new ListResponse<ConversationFriendDto>();
         
         var conversationFriends = await _userRepository.GetConversationFriendsAsync(userId, pageNumber, pageSize);
-        var conversationFriendDtos = conversationFriends.Select(_userMapper.ToConversationFriendDisplay).ToList();
+        var conversationFriendDtos = conversationFriends.Select(UserMapper.ToConversationFriendDisplay).ToList();
         response.Ok(conversationFriendDtos, ResponseMessages.ConversationFriendsListSuccessMessage);
 
         return response;
@@ -123,7 +114,7 @@ public class MessageService : BaseService
         
         var friends =
             await _userRepository.GetFriendsByConversationStatusAsync(userId, shouldHaveConversation: false, pageNumber, pageSize);
-        var userDtos = friends.Select(_userMapper.ToFriendDisplay).ToList();
+        var userDtos = friends.Select(UserMapper.ToFriendDisplay).ToList();
         
         response.Ok(userDtos, ResponseMessages.FriendsWithNoConversationRetrieved);
 
@@ -190,10 +181,10 @@ public class MessageService : BaseService
                     message.LastUpdatedAt = DateTime.UtcNow;
                     await _messageRepository.SaveChangesAsync();
 
-                    var messageEditedDto = _messageMapper.ToMessageEdited(message);
+                    var messageEditedDto = MessageMapper.ToMessageEdited(message);
                     await _hubContext.Clients.Group(userId.ToString()).SendAsync("MessageEdited", messageEditedDto);
                     
-                    var messageDto = _messageMapper.ToStandardDisplay(message);
+                    var messageDto = MessageMapper.ToStandardDisplay(message);
                     response.Ok(messageDto, ResponseMessages.MessageEdited);
                 }
                 else
@@ -249,7 +240,7 @@ public class MessageService : BaseService
             {
                 await _messageRepository.DeleteAsync(message);
                 response.Ok(ResponseMessages.MessageDeleted);
-                await LogResultAsync(response.Succeeded, nameof(DeleteMessage), nameof(Message), $"{response.Message}", id);
+                await LogResultAsync(response.Succeeded, nameof(DeleteMessage), nameof(Message), null, id);
             }
             else
             {

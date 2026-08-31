@@ -89,7 +89,7 @@ public class MessageController : BaseController
     {
         var userId = GetUserId();
         var response = await _messageService.GetUnreadConversationsCount(userId);
-        return Ok(response);
+        return Ok(new { UnreadCount = response });
     }
 
     [HttpPut]

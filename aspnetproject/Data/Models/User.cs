@@ -18,6 +18,9 @@ public class User : BaseEntity
 
     public string? Bio { get; set; }
 
+    public string?   PasswordResetTokenHash      { get; set; } = string.Empty;
+    public DateTime? PasswordResetTokenExpiresAt { get; set; }
+
     public ICollection<Log> Logs { get; set; } = [];
     // role
 }

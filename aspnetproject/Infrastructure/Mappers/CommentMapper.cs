@@ -4,9 +4,9 @@ using aspnetproject.Infrastructure.Dtos.Users;
 
 namespace aspnetproject.Infrastructure.Mappers;
 
-public class CommentMapper 
+public static class CommentMapper 
 {
-    public Comment ToEntity(int authorId, CreateCommentDto createCommentDto)
+    public static Comment ToEntity(int authorId, CreateCommentDto createCommentDto)
     {
         return new Comment
         {
@@ -16,7 +16,7 @@ public class CommentMapper
         };
     }
 
-    public StandardCommentDto ToStandardDisplay(Comment comment)
+    public static StandardCommentDto ToStandardDisplay(Comment comment)
     {
         return new StandardCommentDto
         {
@@ -28,7 +28,7 @@ public class CommentMapper
         };
     }
 
-    public FullCommentDto ToFullDisplay(Comment comment)
+    public static FullCommentDto ToFullDisplay(Comment comment)
     {
         return new FullCommentDto
         {

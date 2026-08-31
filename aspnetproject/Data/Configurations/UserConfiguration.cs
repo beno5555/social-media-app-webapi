@@ -39,5 +39,12 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
 
         builder.Property(user => user.Bio)
             .HasMaxLength(Constants.BioMaxLength);
+
+        builder.Property(user => user.PasswordResetTokenHash)
+            .IsRequired(false)
+            .HasMaxLength(44);
+
+        builder.Property(user => user.PasswordResetTokenExpiresAt)
+            .IsRequired(false);
     }
 }

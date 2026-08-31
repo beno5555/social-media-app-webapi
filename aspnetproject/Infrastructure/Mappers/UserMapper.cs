@@ -5,9 +5,9 @@ using aspnetproject.Infrastructure.Dtos.Users.Friends;
 
 namespace aspnetproject.Infrastructure.Mappers;
 
-public class UserMapper 
+public static class UserMapper 
 {
-    public User ToEntity(CreateAccountDto registerDto, string passwordHash, string passwordSalt)
+    public static User ToEntity(CreateAccountDto registerDto, string passwordHash, string passwordSalt)
     {
         return new User
         {
@@ -20,7 +20,7 @@ public class UserMapper
         };
     }
 
-    public MinimalUserDto ToMinimalDisplay(User user)
+    public static MinimalUserDto ToMinimalDisplay(User user)
     {
         return new MinimalUserDto
         {
@@ -29,7 +29,7 @@ public class UserMapper
         };
     }
 
-    public StandardUserDto ToStandardDisplay(User user)
+    public static StandardUserDto ToStandardDisplay(User user)
     {
         return new StandardUserDto
         {
@@ -42,7 +42,7 @@ public class UserMapper
         };
     }
 
-    public FullUserDto ToFullDisplay(User user)
+    public static FullUserDto ToFullDisplay(User user)
     {
         return new FullUserDto
         {
@@ -55,7 +55,7 @@ public class UserMapper
         };
     }
 
-    public ConversationFriendDto ToConversationFriendDisplay(ConversationFriendProjection friend)
+    public static ConversationFriendDto ToConversationFriendDisplay(ConversationFriendProjection friend)
     {
         return new ConversationFriendDto
         {
@@ -74,7 +74,7 @@ public class UserMapper
         };
     }
 
-    public DisplayFriendDto ToFriendDisplay(User nonConversationFriend)
+    public static DisplayFriendDto ToFriendDisplay(User nonConversationFriend)
     {
         return new DisplayFriendDto
         {
@@ -84,7 +84,7 @@ public class UserMapper
         };
     }
 
-    public Friendship ToFriendship(int requesterId, int addresseeId)
+    public static Friendship ToFriendship(int requesterId, int addresseeId)
     {
         return new Friendship
         {

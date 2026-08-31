@@ -1,4 +1,6 @@
-﻿namespace aspnetproject.Common.ProjectConstants;
+﻿using aspnetproject.Common.ProjectConstants.Enums;
+
+namespace aspnetproject.Common.ProjectConstants;
 
 public static class ResponseMessages
 {
@@ -69,10 +71,15 @@ public static class ResponseMessages
     public const string UsernameIsAlreadyTaken = $"Username is already taken";
     public const string EmailIsAlreadyTaken    = $"Email is already taken";
 
-    public const string LoginSuccessful      = $"{Login} {Successful}";
-    public const string LoginErrorMessage    = "Invalid Username or Password";
-    public const string InvalidRefreshToken  = "Invalid or expired refresh token";
-    public const string RefreshTokenNotFound = "Refresh token not found";
+    public const string LoginSuccessful           = $"{Login} {Successful}";
+    public const string LoginErrorMessage         = "Invalid Username or Password";
+    public const string InvalidRefreshToken       = "Invalid refresh token";
+    public const string RefreshTokenNotFound      = "Refresh token not found";
+    
+    public const string PasswordResetRequested             = "Password reset requested.";
+    public const string InvalidPasswordResetToken          = "Invalid reset token";
+    public const string InvalidOrExpiredPasswordResetToken = "Invalid or expired reset token";
+    public const string PasswordResetSuccessful            = "Password reset successful";
     
     #endregion
     
@@ -83,7 +90,7 @@ public static class ResponseMessages
     public const string CommentUpdated   = $"Comment {Updated} {Successfully}";
     
     public const string CommentDeletedSuccessfully = $"Comment {Deleted} {Successfully}";
-    public const string CouldNotDeleteComment      = $"{CouldNot} {Deleted} Comment";
+    public const string CouldNotDeleteComment      = $"{CouldNot} {Delete} Comment";
     public const string CommentNotFound            = $"Comment {NotFound}";
 
     public const string UserCommentsRetrieved = $"User Comments {Retrieved} {Successfully}";
@@ -99,7 +106,7 @@ public static class ResponseMessages
     public const string AlreadyFriends              = "You are already friends with this user";
     public const string PendingRequestAlreadyExists = "A pending friend request already exists";
     
-    public const string ResponseSent           = $"Response {Sent} {Successfully}";
+    public static readonly Func<FriendshipStatus, string> ResponseSent           = responseStatus => $"Request {responseStatus}";
     public const string PendingRequestNotFound = $"Pending request {NotFound}";
     
     public const string RelationshipRemoved = $"Relationship {Removed} {Successfully}";
@@ -164,4 +171,5 @@ public static class ResponseMessages
     public const string InvalidRequest = "Invalid Request";
 
     #endregion
+
 }

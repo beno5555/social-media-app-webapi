@@ -14,20 +14,17 @@ public class CommentService : BaseService
     private readonly CommentRepository _commentRepository;
     private readonly PostRepository    _postRepository;
     private readonly UserRepository    _userRepository;
-    private readonly CommentMapper     _commentMapper;
 
     public CommentService(
         CommentRepository commentRepository,
         PostRepository postRepository,
         UserRepository userRepository,
-        CommentMapper commentMapper,
         DatabaseLogger dbLogger
         ) : base(dbLogger)
     {
         _commentRepository = commentRepository;
         _postRepository = postRepository;
         _userRepository = userRepository;
-        _commentMapper = commentMapper;
     }
     
     public async Task<ApplicationResponse<FullCommentDto>> GetCommentByIdAsync(int id)
@@ -38,9 +35,9 @@ public class CommentService : BaseService
 
         if (comment is not null)
         {
-            var commentDto = _commentMapper.ToFullDisplay(comment);           
+            var commentDto = CommentMapper.ToFullDisplay(comment);           
             response.Ok(commentDto, ResponseMessages.CommentRetrieved);
-            await LogResultAsync(response.Succeeded, nameof(GetCommentByIdAsync), nameof(Comment), "Retrieved the comment with full details", comment.Id);
+            await LogResultAsync(response.Succeeded, nameof(GetCommentByIdAsync), nameof(Comment), null, comment.Id);
         }
         else
         {
@@ -63,10 +60,10 @@ public class CommentService : BaseService
             
             if (postExists)
             {
-                var comment      = _commentMapper.ToEntity(authorId, createCommentDto);
+                var comment      = CommentMapper.ToEntity(authorId, createCommentDto);
                 var addedComment = await _commentRepository.AddCommentAsync(comment);
             
-                var commentDto = _commentMapper.ToFullDisplay(addedComment);
+                var commentDto = CommentMapper.ToFullDisplay(addedComment);
                 response.Ok(commentDto, ResponseMessages.CommentUploaded);
             }
             else
@@ -98,7 +95,7 @@ public class CommentService : BaseService
             {
                 await _commentRepository.DeleteAsync(comment);  
                 response.Ok(ResponseMessages.CommentDeletedSuccessfully);
-                await LogResultAsync(response.Succeeded, nameof(DeleteCommentAsync), nameof(Comment), $"{response.Message} from the database", comment.Id);
+                await LogResultAsync(response.Succeeded, nameof(DeleteCommentAsync), nameof(Comment), null, comment.Id);
             }
             else
             {
@@ -124,7 +121,7 @@ public class CommentService : BaseService
         if (postExists)
         {
             var comments    = await _commentRepository.GetByPostIdAsync(postId, pageNumber, pageSize);
-            var commentDtos = comments.Select(_commentMapper.ToStandardDisplay).ToList();
+            var commentDtos = comments.Select(CommentMapper.ToStandardDisplay).ToList();
             
             response.Ok(commentDtos, ResponseMessages.PostCommentsRetrieved);
         }
@@ -146,7 +143,7 @@ public class CommentService : BaseService
         if (userExists)
         {
             var comments    = await _commentRepository.GetByUserIdAsync(userId, pageNumber, pageSize);
-            var commentDtos = comments.Select(_commentMapper.ToStandardDisplay).ToList();
+            var commentDtos = comments.Select(CommentMapper.ToStandardDisplay).ToList();
 
             response.Ok(commentDtos, ResponseMessages.UserCommentsRetrieved);
         }
@@ -172,9 +169,9 @@ public class CommentService : BaseService
             
             await _commentRepository.SaveChangesAsync();
             
-            var commentDto = _commentMapper.ToFullDisplay(comment);
+            var commentDto = CommentMapper.ToFullDisplay(comment);
             response.Ok(commentDto, ResponseMessages.CommentUpdated);
-            await LogResultAsync(response.Succeeded, nameof(EditCommentAsync), nameof(Comment), $"{response.Message}. Update saved to the database ", comment.Id);
+            await LogResultAsync(response.Succeeded, nameof(EditCommentAsync), nameof(Comment), null, comment.Id);
         }
         else
         {

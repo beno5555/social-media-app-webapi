@@ -3,6 +3,7 @@ using aspnetproject.Common.Responses;
 using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Infrastructure.Dtos.Auth;
+using aspnetproject.Infrastructure.Dtos.Auth.Password;
 using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Infrastructure.Mappers;
 using aspnetproject.Infrastructure.Services.Base;
@@ -15,18 +16,15 @@ public class AuthService : BaseService
 {
     private readonly UserRepository         _userRepository;
     private readonly RefreshTokenRepository _refreshTokenRepository;
-
-    private readonly AuthMapper _authMapper;
-    
-    private readonly PasswordHasher _passwordHasher;
-    private readonly TokenGenerator _tokenGenerator;
-    private readonly IConfiguration _configuration;
+    private readonly EmailSender            _emailSender;
+    private readonly PasswordHasher         _passwordHasher;
+    private readonly TokenGenerator         _tokenGenerator;
+    private readonly IConfiguration         _configuration;
     
     public AuthService(
         UserRepository userRepository,
         RefreshTokenRepository refreshTokenRepository,
-        
-        AuthMapper authMapper,
+        EmailSender emailSender,
         PasswordHasher passwordHasher,
         TokenGenerator tokenGenerator,
         IConfiguration configuration,
@@ -35,9 +33,7 @@ public class AuthService : BaseService
     {
         _userRepository = userRepository;
         _refreshTokenRepository = refreshTokenRepository;
-        
-        _authMapper = authMapper;
-        
+        _emailSender = emailSender;
         _passwordHasher = passwordHasher;
         _tokenGenerator = tokenGenerator;
         _configuration = configuration;
@@ -55,24 +51,24 @@ public class AuthService : BaseService
             if (!usernameExists)
             {
                 var (hash, salt) = _passwordHasher.HashPassword(registerDto.Password);
-                User userToRegister = _authMapper.ToRegisteredEntity(registerDto, hash, salt);
+                User userToRegister = AuthMapper.ToRegisteredEntity(registerDto, hash, salt);
             
                 await _userRepository.AddAsync(userToRegister);
 
-                var displayDto = _authMapper.ToStandardDisplay(userToRegister);
+                var displayDto = AuthMapper.ToStandardDisplay(userToRegister);
                 response.Ok(displayDto, ResponseMessages.RegistrationSuccessful);
-                await LogResultAsync(response.Succeeded, nameof(RegisterAsync), nameof(User), $"{response.Message}. User added to the database.", userToRegister.Id);
+                await LogResultAsync(response.Succeeded, nameof(RegisterAsync), nameof(User), null, userToRegister.Id);
             }
             else
             {
                 response.Fail(ResponseMessages.UsernameIsAlreadyTaken);
-                await LogResultAsync(response.Succeeded, nameof(RegisterAsync), nameof(User), $"Registration failed {response.Message}", null);
+                await LogResultAsync(response.Succeeded, nameof(RegisterAsync), nameof(User), $"Registration failed: {response.Message}", null);
             }
         }
         else 
         {
             response.Fail(ResponseMessages.EmailIsAlreadyTaken);
-            await LogResultAsync(response.Succeeded, nameof(RegisterAsync), nameof(User), $"Registration failed {response.Message}", null);
+            await LogResultAsync(response.Succeeded, nameof(RegisterAsync), nameof(User), $"Registration failed: {response.Message}", null);
         }
 
         return response;
@@ -91,7 +87,7 @@ public class AuthService : BaseService
             {
                 var authResult = await IssueTokensAsync(userToLogin);
                 response.Ok(authResult, ResponseMessages.LoginSuccessful);
-                await LogResultAsync(response.Succeeded, nameof(LoginAsync), nameof(User), $"{response.Message}. Access and refresh tokens issued to the user", userToLogin.Id);
+                await LogResultAsync(response.Succeeded, nameof(LoginAsync), nameof(User), null, userToLogin.Id);
             }
             else
             {
@@ -131,13 +127,71 @@ public class AuthService : BaseService
             else
             {
                 response.Fail(ResponseMessages.InvalidRefreshToken);
-                await LogResultAsync(response.Succeeded, nameof(RefreshAsync), nameof(RefreshToken), $"Could not refresh access token. {response.Message}", existingToken.Id);
+                await LogResultAsync(response.Succeeded, nameof(RefreshAsync), nameof(RefreshToken), $"Could not refresh access token: {response.Message}", existingToken.Id);
             }
         }
         else
         {
             response.Fail(ResponseMessages.RefreshTokenNotFound);
-            await LogResultAsync(response.Succeeded, nameof(RefreshAsync), nameof(RefreshToken), $"Could not refresh access token. {response.Message}", null);
+            await LogResultAsync(response.Succeeded, nameof(RefreshAsync), nameof(RefreshToken), $"Could not refresh access token: {response.Message}", null);
+        }
+
+        return response;
+    }
+
+    public async Task<ApplicationResponse> ForgotPasswordAsync(ForgotPasswordDto forgotPasswordDto)
+    {
+        var response = new ApplicationResponse();
+
+        var user = await _userRepository.GetByUniqueIdentifierAsync(forgotPasswordDto.Email);
+        if (user is not null)
+        {
+            var rawToken  = _tokenGenerator.GenerateRefreshToken();
+            var tokenHash = _tokenGenerator.HashToken(rawToken);
+            
+            user.PasswordResetTokenHash = tokenHash;
+            user.PasswordResetTokenExpiresAt = DateTime.UtcNow.AddMinutes(30);
+            await _userRepository.SaveChangesAsync();
+            
+            await _emailSender.SendAsync(
+                user.Email, 
+                "Reset your password",
+                $"<p>Your password reset token: {rawToken}</p><p>Token expires in 30 minutes.</p>");
+
+            response.Ok(ResponseMessages.PasswordResetRequested);
+            await LogResultAsync(response.Succeeded, nameof(ForgotPasswordAsync), nameof(User), $"{ResponseMessages.PasswordResetRequested}. Reset token sent to the email", null);
+        }
+        else
+        {
+            response.Fail(ResponseMessages.UserNotFound);
+            await LogResultAsync(response.Succeeded, nameof(ForgotPasswordAsync), nameof(User), $"Failed to generate reset token. {ResponseMessages.UserNotFound}", null);
+        }
+
+        return response;
+    }
+
+    public async Task<ApplicationResponse> ResetPasswordAsync(ResetPasswordDto resetPasswordDto)
+    {
+        var response = new ApplicationResponse();
+        
+        var tokenHash = _tokenGenerator.HashToken(resetPasswordDto.Token);
+        var user      = await _userRepository.GetByPasswordResetTokenHash(tokenHash);
+
+        if (user is not null)
+        {
+            var (hash, salt) = _passwordHasher.HashPassword(resetPasswordDto.NewPassword);
+            _userRepository.UpdatePassword(user, hash, salt);
+
+            await _refreshTokenRepository.RevokeAllForUserAsync(user.Id);
+            await _userRepository.SaveChangesAsync();
+            
+            response.Ok(ResponseMessages.PasswordResetSuccessful);
+            await LogResultAsync(response.Succeeded, nameof(ResetPasswordAsync), nameof(User), $"{ResponseMessages.PasswordResetSuccessful}. Revoked all refresh tokens for user to force login", null);
+        }
+        else
+        {
+            response.Fail(ResponseMessages.InvalidPasswordResetToken);
+            await LogResultAsync(response.Succeeded, nameof(ResetPasswordAsync), nameof(User), ResponseMessages.InvalidOrExpiredPasswordResetToken, null);
         }
 
         return response;

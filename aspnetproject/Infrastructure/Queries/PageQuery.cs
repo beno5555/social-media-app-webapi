@@ -6,7 +6,7 @@ namespace aspnetproject.Infrastructure.Queries;
 public class PageQuery
 {
     public int PageNumber { get; set; } = 1;
-    
-    [MaxLength(Constants.MaxPageSize)]
-    public int PageSize   { get; set; } = Constants.DefaultPageSize;
+
+    [Range(1, Constants.MaxPageSize)] 
+    public int PageSize { get; set; } = Constants.DefaultPageSize;
 }

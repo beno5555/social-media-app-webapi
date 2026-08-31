@@ -15,14 +15,12 @@ public class PostService : BaseService
     private readonly FriendshipRepository _friendshipRepository;
     private readonly UserRepository       _userRepository;
     private readonly CommentRepository    _commentRepository;
-    private readonly PostMapper           _postMapper;
 
     public PostService(
         PostRepository postRepository,
         FriendshipRepository friendshipRepository,
         UserRepository userRepository,
         CommentRepository commentRepository,
-        PostMapper postMapper,
         DatabaseLogger dbLogger
         ) : base(dbLogger)
     {
@@ -30,7 +28,6 @@ public class PostService : BaseService
         _friendshipRepository = friendshipRepository;
         _userRepository = userRepository;
         _commentRepository = commentRepository;
-        _postMapper = postMapper;
     }
     
     public async Task<ApplicationResponse<StandardPostDisplayDto>> UploadPost(int userId, CreatePostDto createPostDto)
@@ -45,10 +42,10 @@ public class PostService : BaseService
             {
                 if (!string.IsNullOrWhiteSpace(createPostDto.PostContent))
                 {
-                    var post      = _postMapper.ToEntity(userId, createPostDto);
+                    var post      = PostMapper.ToEntity(userId, createPostDto);
                     var addedPost = await _postRepository.AddPostAsync(post);
 
-                    var postDisplay = _postMapper.ToStandardDisplay(addedPost);
+                    var postDisplay = PostMapper.ToStandardDisplay(addedPost);
                     response.Ok(postDisplay, ResponseMessages.PostUploaded);
                 }
                 else
@@ -79,7 +76,7 @@ public class PostService : BaseService
         var post = await _postRepository.GetPostByIdAsync(id);
         if (post is not null)
         {
-            var postDisplay = _postMapper.ToFullDisplay(post);
+            var postDisplay = PostMapper.ToFullDisplay(post);
             response.Ok(postDisplay, ResponseMessages.PostRetrieved);
         }
         else
@@ -96,8 +93,7 @@ public class PostService : BaseService
         
         var posts    = await _postRepository.GetAllAsync(pageNumber, pageSize);
         var postDtos = posts
-            .Select(_postMapper
-                .ToMinimalDisplay)
+            .Select(PostMapper.ToMinimalDisplay)
             .ToList();
 
         response.Ok(postDtos);
@@ -114,7 +110,7 @@ public class PostService : BaseService
             friend.RequesterUserId == userId ? friend.AddresseeUserId : friend.RequesterUserId).ToList();
 
         var posts    = await _postRepository.GetFeedAsync(friendIds, pageNumber, pageSize);
-        var postDtos = posts.Select(_postMapper.ToStandardDisplay).ToList();
+        var postDtos = posts.Select(PostMapper.ToStandardDisplay).ToList();
 
         response.Ok(postDtos, ResponseMessages.Feed);
 
@@ -130,7 +126,7 @@ public class PostService : BaseService
         if (userExists)
         {
             var posts    = await _postRepository.GetByUserIdAsync(userId, pageNumber, pageSize);
-            var postDtos = posts.Select(_postMapper.ToStandardDisplay).ToList();
+            var postDtos = posts.Select(PostMapper.ToStandardDisplay).ToList();
             
             response.Ok(postDtos, ResponseMessages.UserPostsRetrieved);
         }
@@ -159,9 +155,9 @@ public class PostService : BaseService
 
                 await _postRepository.SaveChangesAsync();
                 
-                var postDisplayDto = _postMapper.ToFullDisplay(post);
+                var postDisplayDto = PostMapper.ToFullDisplay(post);
                 response.Ok(postDisplayDto, ResponseMessages.PostUpdated);
-                await LogResultAsync(response.Succeeded, nameof(UpdatePost), nameof(Post), response.Message, id);
+                await LogResultAsync(response.Succeeded, nameof(UpdatePost), nameof(Post), null, id);
             }
             else
             {
@@ -195,7 +191,7 @@ public class PostService : BaseService
                 });
 
                 response.Ok(ResponseMessages.PostDeleted);
-                await LogResultAsync(response.Succeeded, nameof(DeletePostAsync), nameof(Post), response.Message, id);
+                await LogResultAsync(response.Succeeded, nameof(DeletePostAsync), nameof(Post), null, id);
             }
             else
             {

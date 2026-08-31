@@ -21,6 +21,6 @@ public class User : BaseEntity
     public string?   PasswordResetTokenHash      { get; set; } = string.Empty;
     public DateTime? PasswordResetTokenExpiresAt { get; set; }
 
-    public ICollection<Log> Logs { get; set; } = [];
-    // role
+    public ICollection<Log>      Logs      { get; set; } = [];
+    public ICollection<UserRole> UserRoles { get; set; } = [];
 }

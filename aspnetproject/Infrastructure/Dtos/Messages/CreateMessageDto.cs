@@ -6,5 +6,6 @@ namespace aspnetproject.Infrastructure.Dtos.Messages;
 public class CreateMessageDto
 {
     [MaxLength(Constants.MessageMaxLength)]
-    public string MessageContent { get; set; } = string.Empty;
+    [Required]
+    public string Content { get; set; } = string.Empty;
 }

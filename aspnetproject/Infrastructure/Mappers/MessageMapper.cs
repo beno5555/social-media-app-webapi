@@ -13,7 +13,7 @@ public static class MessageMapper
         {
             SenderUserId = senderId,
             ReceiverUserId = receiverId,
-            MessageContent = createMessageDto.MessageContent
+            MessageContent = createMessageDto.Content
         };
     }
 

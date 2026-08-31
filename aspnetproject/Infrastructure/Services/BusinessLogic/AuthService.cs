@@ -150,13 +150,15 @@ public class AuthService : BaseService
             var tokenHash = _tokenGenerator.HashToken(rawToken);
             
             user.PasswordResetTokenHash = tokenHash;
-            user.PasswordResetTokenExpiresAt = DateTime.UtcNow.AddMinutes(30);
+
+            int resetTokenMinutes = int.Parse(_configuration.GetSection("PasswordConfiguration:ResetTokenMinutes").Value!);
+            user.PasswordResetTokenExpiresAt = DateTime.UtcNow.AddMinutes(resetTokenMinutes);
             await _userRepository.SaveChangesAsync();
             
             await _emailSender.SendAsync(
                 user.Email, 
                 "Reset your password",
-                $"<p>Your password reset token: {rawToken}</p><p>Token expires in 30 minutes.</p>");
+                $"<p>Your password reset token: {rawToken}</p><p>Token expires in {resetTokenMinutes} minutes.</p>");
 
             response.Ok(ResponseMessages.PasswordResetRequested);
             await LogResultAsync(response.Succeeded, nameof(ForgotPasswordAsync), nameof(User), $"{ResponseMessages.PasswordResetRequested}. Reset token sent to the email", null);
@@ -179,14 +181,24 @@ public class AuthService : BaseService
 
         if (user is not null)
         {
-            var (hash, salt) = _passwordHasher.HashPassword(resetPasswordDto.NewPassword);
-            _userRepository.UpdatePassword(user, hash, salt);
-
-            await _refreshTokenRepository.RevokeAllForUserAsync(user.Id);
-            await _userRepository.SaveChangesAsync();
+            var isDifferent = _passwordHasher.IsDifferentPassword(resetPasswordDto.NewPassword, user.PasswordHash, user.PasswordSalt);
+            if (isDifferent)
+            {
+                var (hash, salt) = _passwordHasher.HashPassword(resetPasswordDto.NewPassword);
             
-            response.Ok(ResponseMessages.PasswordResetSuccessful);
-            await LogResultAsync(response.Succeeded, nameof(ResetPasswordAsync), nameof(User), $"{ResponseMessages.PasswordResetSuccessful}. Revoked all refresh tokens for user to force login", null);
+                _userRepository.UpdatePassword(user, hash, salt);
+
+                await _refreshTokenRepository.RevokeAllForUserAsync(user.Id);
+                await _userRepository.SaveChangesAsync();
+            
+                response.Ok(ResponseMessages.PasswordResetSuccessful);
+                await LogResultAsync(response.Succeeded, nameof(ResetPasswordAsync), nameof(User), $"{ResponseMessages.PasswordResetSuccessful}. Revoked all refresh tokens for user to force login", null);
+            }
+            else
+            {
+                response.Fail(ResponseMessages.NewPasswordCannotBeTheSame);
+                await LogResultAsync(response.Succeeded, nameof(ResetPasswordAsync), nameof(User), ResponseMessages.NewPasswordCannotBeTheSame, user.Id);
+            }
         }
         else
         {
@@ -196,7 +208,7 @@ public class AuthService : BaseService
 
         return response;
     }
-
+    
     public async Task LogoutAsync(string rawRefreshToken)
     {
         var tokenHash = _tokenGenerator.HashToken(rawRefreshToken);

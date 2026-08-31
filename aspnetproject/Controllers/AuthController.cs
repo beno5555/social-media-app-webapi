@@ -76,7 +76,7 @@ public class AuthController : ControllerBase
 
     [HttpPost]
     [Route("forgot-password")]
-    // [EnableRateLimiting(RateLimitConfig.Policies.ForgotPassword)]
+    [EnableRateLimiting(RateLimitConfig.Policies.ForgotPassword)]
     public async Task<ActionResult<ApplicationResponse>> ForgotPassword(ForgotPasswordDto forgotPasswordDto)
     {
         var response = await _authService.ForgotPasswordAsync(forgotPasswordDto);

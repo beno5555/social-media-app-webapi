@@ -34,4 +34,6 @@ public class PasswordHasher
         bool isValid = CryptographicOperations.FixedTimeEquals(hashBytes, Convert.FromBase64String(storedHash));
         return isValid;
     }
+    
+    public bool IsDifferentPassword(string newPassword, string oldPasswordHash, string oldPasswordSalt) => !VerifyPassword(newPassword, oldPasswordHash, oldPasswordSalt);
 }

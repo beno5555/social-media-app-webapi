@@ -2,29 +2,34 @@
 using aspnetproject.Common.Responses;
 using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories;
+using aspnetproject.Hubs;
 using aspnetproject.Infrastructure.Dtos.Comments;
 using aspnetproject.Infrastructure.Mappers;
 using aspnetproject.Infrastructure.Services.Base;
 using aspnetproject.Infrastructure.Services.Logging;
+using Microsoft.AspNetCore.SignalR;
 
 namespace aspnetproject.Infrastructure.Services.BusinessLogic;
 
 public class CommentService : BaseService
 {
-    private readonly CommentRepository _commentRepository;
-    private readonly PostRepository    _postRepository;
-    private readonly UserRepository    _userRepository;
+    private readonly CommentRepository       _commentRepository;
+    private readonly PostRepository          _postRepository;
+    private readonly UserRepository          _userRepository;
+    private readonly IHubContext<MessageHub> _hubContext;
 
     public CommentService(
         CommentRepository commentRepository,
         PostRepository postRepository,
         UserRepository userRepository,
+        IHubContext<MessageHub> hubContext,
         DatabaseLogger dbLogger
         ) : base(dbLogger)
     {
         _commentRepository = commentRepository;
         _postRepository = postRepository;
         _userRepository = userRepository;
+        _hubContext = hubContext;
     }
     
     public async Task<ApplicationResponse<FullCommentDto>> GetCommentByIdAsync(int id)
@@ -48,20 +53,26 @@ public class CommentService : BaseService
         return response;
     }
 
-    public async Task<ApplicationResponse<FullCommentDto>> AddCommentAsync(int authorId, CreateCommentDto createCommentDto)
+    public async Task<ApplicationResponse<FullCommentDto>> AddCommentAsync(int commentAuthorId, int postId, CreateCommentDto createCommentDto)
     {
         var response   = new ApplicationResponse<FullCommentDto>();
         
-        var userExists = await _userRepository.ExistsByIdAsync(authorId);
+        var userExists = await _userRepository.ExistsByIdAsync(commentAuthorId);
         
         if (userExists)
         {
-            var postExists = await _postRepository.ExistsByIdAsync(createCommentDto.PostId);
+            var post = await _postRepository.GetByIdAsync(postId);
             
-            if (postExists)
+            if (post is not null)
             {
-                var comment      = CommentMapper.ToEntity(authorId, createCommentDto);
+                var comment      = CommentMapper.ToEntity(commentAuthorId, postId, createCommentDto);
                 var addedComment = await _commentRepository.AddCommentAsync(comment);
+
+                if (commentAuthorId != post.UserId)
+                {
+                    var commentNotification = CommentMapper.ToNotification(addedComment);
+                    await _hubContext.Clients.Group(post.UserId.ToString()).SendAsync("ReceiveComment", commentNotification);
+                }
             
                 var commentDto = CommentMapper.ToFullDisplay(addedComment);
                 response.Ok(commentDto, ResponseMessages.CommentUploaded);

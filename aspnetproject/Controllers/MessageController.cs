@@ -22,10 +22,7 @@ public class MessageController : BaseController
     
     [HttpPost]
     [Route("{receiverId:int}")]
-    public async Task<ActionResult<ApplicationResponse<SentMessageDto>>> SendMessage(
-        int                         receiverId, 
-        [FromBody] CreateMessageDto createMessageDto
-    )
+    public async Task<ActionResult<ApplicationResponse<SentMessageDto>>> SendMessage(int receiverId, [FromBody] CreateMessageDto createMessageDto)
     {
         var userId   = GetUserId();
         var response = await _messageService.SendMessageAsync(userId, receiverId, createMessageDto);

@@ -20,11 +20,11 @@ public class CommentController : BaseController
     }
 
     [HttpPost]
-    [Route("")]
-    public async Task<ActionResult<ApplicationResponse<FullCommentDto>>> CreateComment([FromBody] CreateCommentDto createCommentDto)
+    [Route("posts/{postId:int}")]
+    public async Task<ActionResult<ApplicationResponse<FullCommentDto>>> CreateComment([FromRoute] int postId, [FromBody] CreateCommentDto createCommentDto)
     {
         var userId   = GetUserId();
-        var response = await _commentService.AddCommentAsync(userId, createCommentDto);
+        var response = await _commentService.AddCommentAsync(userId, postId, createCommentDto);
 
         if (response.Succeeded)
         {

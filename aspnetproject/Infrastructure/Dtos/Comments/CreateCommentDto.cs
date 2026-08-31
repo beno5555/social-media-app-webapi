@@ -6,7 +6,6 @@ namespace aspnetproject.Infrastructure.Dtos.Comments;
 public class CreateCommentDto
 {
     [MaxLength(Constants.CommentMaxLength)]
+    [Required]
     public string Content  { get; set; } = string.Empty;
-    
-    public int      PostId        { get; set; }
 }

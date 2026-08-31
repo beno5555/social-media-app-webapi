@@ -7,10 +7,12 @@ namespace aspnetproject.Infrastructure.Dtos.Auth;
 public class LoginDto
 {
     [MaxLength(Constants.UsernameMaxlength)]
+    [Required]
     [DefaultValue("boba")]
     public string UniqueIdentifier { get; set; } = string.Empty;
 
     [MinLength(Constants.PasswordMinLength), MaxLength(Constants.PasswordMaxLength)]
+    [Required]
     [DefaultValue("password123")]
     public string Password { get; set; } = string.Empty;
 }

@@ -1,20 +1,7 @@
-using System.Text;
 using aspnetproject.Data;
-using aspnetproject.Data.Repositories;
 using aspnetproject.Extensions;
 using aspnetproject.Hubs;
-using aspnetproject.Infrastructure.Dtos.Auth.Email;
-using aspnetproject.Infrastructure.Mappers;
-using aspnetproject.Infrastructure.Services.BusinessLogic;
-using aspnetproject.Infrastructure.Services.Helpers;
-using aspnetproject.Infrastructure.Services.Logging;
-using aspnetproject.Infrastructure.Services.Websockets;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.IdentityModel.Tokens;
-using Microsoft.OpenApi;
-using Swashbuckle.AspNetCore.Filters;
 
 namespace aspnetproject;
 
@@ -23,175 +10,55 @@ public class Program
     public static void Main(string[] args)
     {
         var builder = WebApplication.CreateBuilder(args);
-
-        builder.Services.AddDbContext<ApplicationDbContext>(options =>
         {
-            string? connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
-            options.UseSqlServer(connectionString);
-        });
-
-        builder.Services.AddControllers();
-        
-        builder.Services.AddEndpointsApiExplorer();
-        builder.Services.AddSwaggerGen(options =>
-        {
-            options.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
+            builder.Services.AddDbContext<ApplicationDbContext>(options =>
             {
-                Description = "Standard authorization header using bearer scheme. Example: \"bearer {token}\"",
-                Name = "Authorization",
-                In = ParameterLocation.Header,
-                Type = SecuritySchemeType.ApiKey,
+                string? connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+                options.UseSqlServer(connectionString);
             });
+
+            builder.Services.AddControllers();
+            builder.Services.AddHttpContextAccessor();
             
-            options.OperationFilter<SecurityRequirementsOperationFilter>();
-        });
-        builder.Services.AddOpenApi();
+            builder.Services.AddSwaggerConfiguration();
+            builder.Services.AddOpenApi();
+            builder.Services.AddEndpointsApiExplorer();
 
-        builder.Services.AddHttpContextAccessor();
+            builder.Services.AddJwtAuthentication(builder.Configuration);
+            builder.Services.AddAuthorization();
 
-        builder.Services
-            .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
-            {
-                var     jwtSection = builder.Configuration.GetSection("Jwt");
-                var signInKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(jwtSection["Key"]!));
-                
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuerSigningKey = true,
-                    IssuerSigningKey = signInKey,
-                    ValidateIssuer = false,
-                    ValidateAudience = false,
-                    
-                    ClockSkew = TimeSpan.FromMinutes(1)
-                };
+            builder.Services.AddApplicationRateLimiting();
+            builder.Services.AddCorsPolicies(builder.Configuration);
+            
+            builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
+            builder.Services.AddProblemDetails();
 
-                options.Events = new JwtBearerEvents
-                {
-                    OnMessageReceived = context =>
-                    {
-                        var accessToken = context.Request.Query["access_token"];
-                        var path        = context.HttpContext.Request.Path;
-
-                        if (!string.IsNullOrEmpty(accessToken) && path.StartsWithSegments("/hubs"))
-                        {
-                            context.Token = accessToken;
-                        }
-
-                        return Task.CompletedTask;
-                    }
-                };
-            });
-        
-        builder.Services.AddAuthorization();
-
-        builder.Services.AddSignalR();
-        builder.Services.AddCors(options =>
-        {
-            var allowedOrigins = builder.Configuration
-                .GetSection("Cors:AllowedOrigins")
-                .Get<string[]>() ?? [];
-
-            options.AddPolicy("SignalRTestPolicy", policy =>
-            {
-                policy.WithOrigins(allowedOrigins)
-                    .AllowAnyHeader()
-                    .AllowAnyMethod()
-                    .AllowCredentials();
-            });
-        });
-
-        builder.Services.AddApplicationRateLimiting();
-        
-        builder.Services.AddScoped<CommentRepository>();
-        builder.Services.AddScoped<FriendshipRepository>();
-        builder.Services.AddScoped<MessageRepository>();
-        builder.Services.AddScoped<PostRepository>();
-        builder.Services.AddScoped<UserRepository>();
-        builder.Services.AddScoped<RefreshTokenRepository>();
-        
-        builder.Services.AddScoped<AccountService>();
-        builder.Services.AddScoped<CommentService>();
-        builder.Services.AddScoped<FriendshipService>();
-        builder.Services.AddScoped<MessageService>();
-        builder.Services.AddScoped<PostService>();
-        builder.Services.AddScoped<AuthService>();
-        builder.Services.AddScoped<PresenceService>();
-        builder.Services.AddScoped<LogService>();
-        
-        builder.Services.AddScoped<PasswordHasher>();
-        builder.Services.AddScoped<TokenGenerator>();
-        builder.Services.AddSingleton<UserConnectionTracker>();
-
-        builder.Services.AddScoped<SystemLogger>();
-        builder.Services.AddScoped<DatabaseLogger>();
-
-        builder.Services.Configure<EmailConfiguration>(builder.Configuration.GetSection("EmailConfiguration"));
-
-        builder.Services.AddTransient<EmailSender>();
+            builder.Services.AddApplicationServices(builder.Configuration);
+        }
         
         var app = builder.Build();
-
-        if (app.Environment.IsDevelopment())
         {
-            app.MapSwagger();
-            app.MapSwaggerUI();
-            app.MapOpenApi();
-        }
-
-        app.UseExceptionHandler(errorApp =>
-        {
-            errorApp.Run(async context =>
+            if (app.Environment.IsDevelopment())
             {
-                var exceptionFeature = context.Features.Get<IExceptionHandlerFeature>();
-                var exception        = exceptionFeature?.Error;
+                app.MapSwagger();
+                app.MapSwaggerUI();
+                app.MapOpenApi();
+            }
 
-                if (exception is not null)
-                {
-                    var sysLogger = context.RequestServices.GetRequiredService<SystemLogger>();
-                    await sysLogger.LogEndpointErrorAsync(exception, context.Request.Method, context.Request.Path);
+            app.UseExceptionHandler();
+            app.UseHttpsRedirection();
+            app.UseRouting();
+            
+            app.UseCors("SignalRTestPolicy");
+            app.UseRateLimiter();
 
-                    if (exception is DbUpdateException)
-                    {
-                        context.Response.StatusCode = StatusCodes.Status409Conflict;
-                    }
-                    else
-                    {
-                        context.Response.StatusCode = StatusCodes.Status500InternalServerError;
-                    }
+            app.UseAuthentication();
+            app.UseAuthorization();
+            app.MapControllers();
 
-                    context.Response.ContentType = "application/json";
+            app.MapHub<MessageHub>("hubs/messages");
 
-                    var environment = context.RequestServices.GetRequiredService<IWebHostEnvironment>();
-                    if (environment.IsDevelopment())
-                    {
-                        var body = new
-                        {
-                            error = exception.Message,
-                            stackTrace = exception.StackTrace
-                        };
-
-                        await context.Response.WriteAsJsonAsync(body);
-                    }
-                    else
-                    {
-                        await context.Response.WriteAsync("{\"error\":\"An unexpected error occurred.\"}");
-                    }
-                }
-            });
-        });
-
-        app.UseHttpsRedirection();
-        app.UseRouting();
-        app.UseCors("SignalRTestPolicy");
-        app.UseRateLimiter();
-
-        app.UseAuthentication();
-        app.UseAuthorization();
-        app.MapControllers();
-
-        app.MapHub<MessageHub>("hubs/messages");
-
-        app.Run();
+            app.Run();
+        }
     }
 }

@@ -80,6 +80,7 @@ public static class ResponseMessages
     public const string InvalidPasswordResetToken          = "Invalid reset token";
     public const string InvalidOrExpiredPasswordResetToken = "Invalid or expired reset token";
     public const string PasswordResetSuccessful            = "Password reset successful";
+    public const string NewPasswordCannotBeTheSame            = "New Password cannot be the same as old password";
     
     #endregion
     

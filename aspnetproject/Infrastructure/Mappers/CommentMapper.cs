@@ -6,13 +6,13 @@ namespace aspnetproject.Infrastructure.Mappers;
 
 public static class CommentMapper 
 {
-    public static Comment ToEntity(int authorId, CreateCommentDto createCommentDto)
+    public static Comment ToEntity(int authorId, int postId, CreateCommentDto createCommentDto)
     {
         return new Comment
         {
             CommentContent = createCommentDto.Content,
             CommenterUserId = authorId,
-            PostId = createCommentDto.PostId,
+            PostId =  postId,
         };
     }
 
@@ -44,6 +44,16 @@ public static class CommentMapper
 
             UploadedAt = comment.CreatedAt,
             LastUpdatedAt = comment.LastUpdatedAt
+        };
+    }
+
+    public static NotifyCommentDto ToNotification(Comment comment)
+    {
+        return new NotifyCommentDto
+        {
+            Id = comment.Id,
+            Content = comment.CommentContent,
+            AuthorUsername = comment.CommenterUser!.Username
         };
     }
 }

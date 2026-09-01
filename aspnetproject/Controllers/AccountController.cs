@@ -1,11 +1,13 @@
 ﻿using aspnetproject.Common.ProjectConstants.Enums;
 using aspnetproject.Common.Responses;
 using aspnetproject.Controllers.Base;
+using aspnetproject.Extensions;
 using aspnetproject.Infrastructure.Dtos.Accounts;
 using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Infrastructure.Services.BusinessLogic;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace aspnetproject.Controllers;
 
@@ -22,6 +24,7 @@ public class AccountController : BaseController
 
     [HttpDelete]
     [Route("mine")]
+    [EnableRateLimiting(RateLimitConfig.Policies.DeleteOwnAccount)]
     public async Task<ActionResult<ApplicationResponse>> DeleteOwnAccount()
     {
         int userId   = GetUserId();
@@ -38,6 +41,7 @@ public class AccountController : BaseController
     [HttpDelete]
     [Route("{id:int}")]
     [Authorize(Roles = "Administrator")]
+    [EnableRateLimiting(RateLimitConfig.Policies.AdminDeleteAccount)]
     public async Task<ActionResult<ApplicationResponse>> DeleteUserAccount(int id)
     {
         var response = await _accountService.DeleteAccountAsync(id);
@@ -52,6 +56,7 @@ public class AccountController : BaseController
 
     [HttpPatch]
     [Route("mine/deactivate")]
+    [EnableRateLimiting(RateLimitConfig.Policies.AdminDeactivateAccount)]
     public async Task<ActionResult<ApplicationResponse>> DeactivateOwnAccount()
     {
         int userId   = GetUserId();
@@ -67,6 +72,7 @@ public class AccountController : BaseController
 
     [HttpPatch]
     [Route("{id:int}/deactivate")]
+    [EnableRateLimiting(RateLimitConfig.Policies.DeactivateOwnAccount)]
     public async Task<ActionResult<ApplicationResponse>> DeactivateAccount(int id)
     {
         var response = await _accountService.DeactivateAccountAsync(id);
@@ -82,6 +88,7 @@ public class AccountController : BaseController
     [HttpPatch]
     [Route("{id:int}/activate")]
     [Authorize(Roles = nameof(RoleName.Administrator))]
+    [EnableRateLimiting(RateLimitConfig.Policies.AdminActivateAccount)]
     public async Task<ActionResult<ApplicationResponse<FullUserDto>>> ActivateAccount(int id)
     {
         var response = await _accountService.ReactivateAccountAsync(id);
@@ -97,6 +104,7 @@ public class AccountController : BaseController
     [HttpPatch]
     [Route("activate")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitConfig.Policies.ConfirmActivation)]
     public async Task<ActionResult<ApplicationResponse<FullUserDto>>> ActivateAccount([FromBody] ActivateAccountDto activateAccountDto)
     {
         var response = await _accountService.ReactivateOwnAccountAsync(activateAccountDto.ActivationToken);
@@ -112,6 +120,7 @@ public class AccountController : BaseController
     [HttpPatch]
     [Route("{email}/request-activate")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitConfig.Policies.RequestActivation)]
     public async Task<ActionResult<ApplicationResponse<FullUserDto>>> RequestAccountActivation(string email)
     {
         var response = await _accountService.RequestAccountActivationAsync(email);

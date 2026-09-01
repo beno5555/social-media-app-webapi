@@ -1,11 +1,13 @@
 ﻿using aspnetproject.Common.Responses;
 using aspnetproject.Controllers.Base;
+using aspnetproject.Extensions;
 using aspnetproject.Infrastructure.Dtos.Auth;
 using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Infrastructure.Queries;
 using aspnetproject.Infrastructure.Services.BusinessLogic;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace aspnetproject.Controllers;
 
@@ -24,6 +26,7 @@ public class UserController : BaseController
 
     [HttpPost]
     [Authorize(Roles = "Administrator")]
+    [EnableRateLimiting(RateLimitConfig.Policies.AdminCreateUser)]
     public async Task<ActionResult<ApplicationResponse<FullUserDto>>> CreateUser(RegisterDto registerDto)
     {
         var response = await _authService.RegisterAsync(registerDto);
@@ -39,6 +42,7 @@ public class UserController : BaseController
     [HttpGet]
     [Route("{username}")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitConfig.Policies.ReadUserProfile)]
     public async Task<ActionResult<ApplicationResponse<StandardUserDto>>> GetByUsername(string username)
     {
         var response = await _userService.GetByUsername(username);
@@ -52,6 +56,7 @@ public class UserController : BaseController
 
     [HttpGet]
     [Route("mine")]
+    [EnableRateLimiting(RateLimitConfig.Policies.ReadUserProfile)]
     public async Task<ActionResult<ApplicationResponse<FullUserDto>>> GetProfile()
     {
         var username = GetUsername();
@@ -68,6 +73,7 @@ public class UserController : BaseController
     [HttpGet]
     [Route("search")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitConfig.Policies.SearchUsers)]
     public async Task<ActionResult<ListResponse<MinimalUserDto>>> SearchUsers(
         [FromQuery] SearchUserQuery searchUserQuery)
     {
@@ -87,6 +93,7 @@ public class UserController : BaseController
 
     [HttpPut]
     [Route("mine")]
+    [EnableRateLimiting(RateLimitConfig.Policies.UpdateOwnProfile)]
     public async Task<ActionResult<ApplicationResponse<FullUserDto>>> EditOwnProfile([FromBody] EditUserDto editUserDto)
     {
         int userId   = GetUserId();
@@ -103,6 +110,7 @@ public class UserController : BaseController
     [HttpPut]
     [Route("{id:int}")]
     [Authorize(Roles = "Administrator")]
+    [EnableRateLimiting(RateLimitConfig.Policies.AdminUpdateUser)]
     public async Task<ActionResult<ApplicationResponse<FullUserDto>>> EditUserProfile(int id, [FromBody] EditUserDto editUserDto)
     {
         var response = await _userService.EditUserProfileAsync(id, editUserDto);

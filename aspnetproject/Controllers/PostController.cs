@@ -1,10 +1,12 @@
 ﻿using aspnetproject.Common.Responses;
 using aspnetproject.Controllers.Base;
+using aspnetproject.Extensions;
 using aspnetproject.Infrastructure.Dtos.Posts;
 using aspnetproject.Infrastructure.Queries;
 using aspnetproject.Infrastructure.Services.BusinessLogic;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace aspnetproject.Controllers;
 
@@ -20,6 +22,7 @@ public class PostController : BaseController
     }
     
     [HttpPost]
+    [EnableRateLimiting(RateLimitConfig.Policies.CreatePost)]
     public async Task<ActionResult<ApplicationResponse<FullPostDisplayDto>>> CreatePost([FromBody] CreatePostDto createPostDto)
     {
         if (string.IsNullOrEmpty(createPostDto.PostTitle))
@@ -39,6 +42,7 @@ public class PostController : BaseController
     
     [HttpGet]
     [Route("feed")]
+    [EnableRateLimiting(RateLimitConfig.Policies.ReadPosts)]
     public async Task<ActionResult<ListResponse<StandardPostDisplayDto>>> GetFeed([FromQuery] PageQuery query)
     {
         int userId = GetUserId();
@@ -48,6 +52,7 @@ public class PostController : BaseController
     
     [HttpGet]
     [Route("mine")]
+    [EnableRateLimiting(RateLimitConfig.Policies.ReadPosts)]
     public async Task<ActionResult<ListResponse<StandardPostDisplayDto>>> GetOwnPosts([FromQuery] PageQuery query)
     {
         int userId   = GetUserId();
@@ -64,6 +69,7 @@ public class PostController : BaseController
     [HttpGet]
     [Route("{id:int}")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitConfig.Policies.ReadPosts)]
     public async Task<ActionResult<ApplicationResponse<FullPostDisplayDto>>> GetPostById(int id)
     {
         var response = await _postService.GetPostByIdAsync(id);
@@ -79,6 +85,7 @@ public class PostController : BaseController
     [HttpGet]
     [Route("user/{userId:int}")]
     [AllowAnonymous]
+    [EnableRateLimiting(RateLimitConfig.Policies.ReadPosts)]
     public async Task<ActionResult<ListResponse<StandardPostDisplayDto>>> GetPostsByUser(int userId, [FromQuery] PageQuery                                                                query)
     {
         var response = await _postService.GetByUserIdAsync(userId, query.PageNumber, query.PageSize);
@@ -93,6 +100,7 @@ public class PostController : BaseController
     
     [HttpPut]
     [Route("{id:int}")]
+    [EnableRateLimiting(RateLimitConfig.Policies.UpdatePost)]
     public async Task<ActionResult<ApplicationResponse<FullPostDisplayDto>>> UpdatePost(int id, [FromBody] UpdatePostDto updatePostDto)
     {
         var userId   = GetUserId();
@@ -108,6 +116,7 @@ public class PostController : BaseController
     
     [HttpDelete]
     [Route("{id:int}")]
+    [EnableRateLimiting(RateLimitConfig.Policies.DeletePost)]
     public async Task<ActionResult<ApplicationResponse>> DeletePost(int id)
     {
         int  userId  = GetUserId();

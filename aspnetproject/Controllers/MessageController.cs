@@ -1,11 +1,13 @@
 ﻿using aspnetproject.Common.Responses;
 using aspnetproject.Controllers.Base;
+using aspnetproject.Extensions;
 using aspnetproject.Infrastructure.Dtos.Messages;
 using aspnetproject.Infrastructure.Dtos.Users.Friends;
 using aspnetproject.Infrastructure.Queries;
 using aspnetproject.Infrastructure.Services.BusinessLogic;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace aspnetproject.Controllers;
 
@@ -22,6 +24,7 @@ public class MessageController : BaseController
     
     [HttpPost]
     [Route("{receiverId:int}")]
+    [EnableRateLimiting(RateLimitConfig.Policies.SendMessage)]
     public async Task<ActionResult<ApplicationResponse<SentMessageDto>>> SendMessage(int receiverId, [FromBody] CreateMessageDto createMessageDto)
     {
         var userId   = GetUserId();
@@ -37,6 +40,7 @@ public class MessageController : BaseController
 
     [HttpGet]
     [Route("conversation/{otherUserId:int}")]
+    [EnableRateLimiting(RateLimitConfig.Policies.ReadMessages)]
     public async Task<ActionResult<ListResponse<StandardMessageDto>>> GetConversation(int otherUserId, [FromQuery] PageQuery query) 
     {
         var userId = GetUserId();
@@ -52,6 +56,7 @@ public class MessageController : BaseController
     
     [HttpGet]
     [Route("friends/conversation")]
+    [EnableRateLimiting(RateLimitConfig.Policies.ReadMessages)]
     public async Task<ActionResult<ListResponse<ConversationFriendDto>>> GetConversationFriends([FromQuery] PageQuery query) 
     {
         var userId   = GetUserId();
@@ -67,6 +72,7 @@ public class MessageController : BaseController
     
     [HttpGet]
     [Route("friends/no-conversation")]
+    [EnableRateLimiting(RateLimitConfig.Policies.ReadMessages)]
     public async Task<ActionResult<ListResponse<DisplayFriendDto>>> GetNonConversationFriends([FromQuery] PageQuery query) 
     {
         var userId = GetUserId();
@@ -81,7 +87,8 @@ public class MessageController : BaseController
     }
     
     [HttpGet]
-    [Route("conversation/unread")]
+    [Route("conversations/unread")]
+    [EnableRateLimiting(RateLimitConfig.Policies.ReadMessages)]
     public async Task<ActionResult<int>> Unread() 
     {
         var userId = GetUserId();
@@ -91,6 +98,7 @@ public class MessageController : BaseController
 
     [HttpPut]
     [Route("conversation/{otherUserId:int}/mark-as-read")]
+    [EnableRateLimiting(RateLimitConfig.Policies.MarkConversationAsRead)]
     public async Task<ActionResult> MarkAsRead(int otherUserId)
     {
         int userId = GetUserId();
@@ -100,6 +108,7 @@ public class MessageController : BaseController
 
     [HttpPut]
     [Route("{id:int}")]
+    [EnableRateLimiting(RateLimitConfig.Policies.EditMessage)]
     public async Task<ActionResult<ApplicationResponse<StandardMessageDto>>> EditMessage(int id, EditMessageDto editMessageDto)
     {
         var userId   = GetUserId();
@@ -115,6 +124,7 @@ public class MessageController : BaseController
 
     [HttpDelete]
     [Route("{id:int}")]
+    [EnableRateLimiting(RateLimitConfig.Policies.DeleteMessage)]
     public async Task<ActionResult<ApplicationResponse>> DeleteMessage(int id)
     {
         var userId   = GetUserId();

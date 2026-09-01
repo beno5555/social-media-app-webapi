@@ -1,12 +1,14 @@
 ﻿using aspnetproject.Common.ProjectConstants.Enums;
 using aspnetproject.Common.Responses;
 using aspnetproject.Controllers.Base;
+using aspnetproject.Extensions;
 using aspnetproject.Infrastructure.Dtos.Friendships;
 using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Infrastructure.Queries;
 using aspnetproject.Infrastructure.Services.BusinessLogic;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace aspnetproject.Controllers;
 
@@ -23,6 +25,7 @@ public class FriendshipController : BaseController
 
     [HttpPost]
     [Route("{addresseeId:int}")]
+    [EnableRateLimiting(RateLimitConfig.Policies.SendFriendRequest)]
     public async Task<ActionResult<ApplicationResponse<MinimalFriendshipDto>>> SendRequest(int addresseeId) 
     {
         var userId   = GetUserId();
@@ -38,6 +41,7 @@ public class FriendshipController : BaseController
 
     [HttpGet]
     [Route("{friendId:int}")]
+    [EnableRateLimiting(RateLimitConfig.Policies.ReadFriendships)]
     public async Task<ActionResult<ApplicationResponse<StandardFriendshipDto>>> GetRelationship(int friendId) 
     {
         var userId   = GetUserId();
@@ -53,6 +57,7 @@ public class FriendshipController : BaseController
 
     [HttpGet]
     [Route("accepted/{friendId:int}")]
+    [EnableRateLimiting(RateLimitConfig.Policies.ReadFriendships)]
     public async Task<ActionResult<ApplicationResponse<AcceptedFriendshipDto>>> GetAcceptedFriendship(int friendId)
     {
         var userId   = GetUserId();
@@ -67,7 +72,8 @@ public class FriendshipController : BaseController
     }
     
     [HttpGet]
-    [Route("mine")]
+    [Route("accepted")]
+    [EnableRateLimiting(RateLimitConfig.Policies.ReadFriendships)]
     public async Task<ActionResult<ListResponse<StandardFriendshipDto>>> GetFriendships([FromQuery] PageQuery query) 
     {
         int userId   = GetUserId();
@@ -83,6 +89,7 @@ public class FriendshipController : BaseController
     
     [HttpGet]
     [Route("pending")]
+    [EnableRateLimiting(RateLimitConfig.Policies.ReadFriendships)]
     public async Task<ActionResult<ListResponse<StandardFriendshipDto>>> GetPendingRequests([FromQuery] PageQuery query) 
     {
         int userId   = GetUserId();
@@ -98,6 +105,7 @@ public class FriendshipController : BaseController
     
     [HttpGet]
     [Route("sent")]
+    [EnableRateLimiting(RateLimitConfig.Policies.ReadFriendships)]
     public async Task<ActionResult<ListResponse<StandardFriendshipDto>>> GetSentRequests([FromQuery] PageQuery query) 
     {
         int userId   = GetUserId();
@@ -113,6 +121,7 @@ public class FriendshipController : BaseController
 
     [HttpGet]
     [Route("user/{userId:int}")]
+    [EnableRateLimiting(RateLimitConfig.Policies.ReadFriendships)]
     public async Task<ActionResult<ListResponse<MinimalUserDto>>> GetFriendsOf(int userId, [FromQuery] PageQuery query) 
     {
         var response = await _friendshipService.GetFriendshipsAsync(userId, query.PageNumber, query.PageSize);
@@ -127,6 +136,7 @@ public class FriendshipController : BaseController
     
     [HttpPut]
     [Route("{requesterId:int}/accept")]
+    [EnableRateLimiting(RateLimitConfig.Policies.RespondFriendRequest)]
     public async Task<ActionResult<ApplicationResponse<StandardFriendshipDto>>> AcceptRequest(int requesterId) 
     {
         var userId   = GetUserId();
@@ -142,6 +152,7 @@ public class FriendshipController : BaseController
 
     [HttpPut]
     [Route("{requesterId:int}/decline")]
+    [EnableRateLimiting(RateLimitConfig.Policies.RespondFriendRequest)]
     public async Task<ActionResult<ApplicationResponse<StandardFriendshipDto>>> DeclineRequest(int requesterId) 
     {
         var userId   = GetUserId();
@@ -157,6 +168,7 @@ public class FriendshipController : BaseController
 
     [HttpDelete]
     [Route("{friendId:int}")]
+    [EnableRateLimiting(RateLimitConfig.Policies.RemoveFriend)]
     public async Task<ActionResult<ApplicationResponse>> RemoveRelationship(int friendId) 
     {
         int userId = GetUserId();

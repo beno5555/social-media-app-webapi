@@ -73,16 +73,6 @@ public class UserRepository : BaseEntityRepository<User>
         return await ExistsByIgnoringQueryFilterAsync(user => user.Username == username.ToLower());
     }
 
-    public async Task<bool> ExistsByEmailAsync(string email)
-    {
-        return await ExistsByIgnoringQueryFilterAsync(user => user.Email == email);
-    }
-    
-    public async Task<List<User>> GetUsersAsync(int excludedUserId, int? pageNumber, int? pageSize)
-    {
-        return await GetWhereAsync(user => user.Id != excludedUserId, pageNumber, pageSize);
-    }
-
     public async Task<List<User>> SearchByUsernameAsync(string usernameInput, int? pageNumber, int? pageSize)
     {
         return await GetWhereAsync(user => user.Username.Contains(usernameInput), pageNumber, pageSize);
@@ -199,5 +189,26 @@ public class UserRepository : BaseEntityRepository<User>
 
         user.ResetTokenHash = null;
         user.ResetTokenExpiresAt = null;
+    }
+
+    public async Task<int> DeleteSoftDeletedUsersAsync(DateTime cutoff, int batchSize,
+        CancellationToken                                       cancellationToken)
+    {
+        int deletedCount = 0;
+        List<int> userIds = await _dbSet
+            .Where(user => user.AccountDeletedAt != null && user.AccountDeletedAt < cutoff)
+            .Take(batchSize)
+            .Select(user => user.Id)
+            .ToListAsync(cancellationToken);
+
+        if (userIds.Count > 0)
+        {
+            await _dbContext.Friendships
+                .Where(friendship => userIds.Contains(friendship.RequesterUserId) ||
+                                     userIds.Contains(friendship.AddresseeUserId))
+                .ExecuteDeleteAsync(cancellationToken);
+        }
+        
+        return deletedCount;
     }
 }

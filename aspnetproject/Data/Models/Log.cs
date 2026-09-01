@@ -12,6 +12,6 @@ public class Log : BaseEntity
     public string  Action  { get; set; } = string.Empty;
     public string? Details { get; set; }
 
-    public string? EntityName { get; set; } = string.Empty;
+    public string? EntityName { get; set; } 
     public int?    EntityId   { get; set; }
 }

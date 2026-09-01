@@ -51,6 +51,10 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .IsRequired(false)
             .HasDefaultValueSql("NULL");
 
-        builder.HasQueryFilter(user => user.AccountDeactivatedAt == null);
+        builder.Property(user => user.AccountDeletedAt)
+            .IsRequired(false)
+            .HasDefaultValueSql("NULL");
+
+        builder.HasQueryFilter(user => user.AccountDeactivatedAt == null && user.AccountDeletedAt == null);
     }
 }

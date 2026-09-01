@@ -37,10 +37,11 @@ public class RefreshTokenRepository : BaseEntityRepository<RefreshToken>
             });
     }
 
-    public async Task DeleteExpiredAsync()
+    // background job methods
+    public async Task<int> DeleteExpiredAsync(CancellationToken cancellationToken)
     {
-        await _dbSet
-            .Where(refreshToken => refreshToken.ExpiresAt < DateTime.UtcNow)
-            .ExecuteDeleteAsync();
+        return await _dbSet
+            .Where(refreshToken => refreshToken.ExpiresAt < DateTime.UtcNow && refreshToken.RevokedAt != null)
+            .ExecuteDeleteAsync(cancellationToken);
     }
 }

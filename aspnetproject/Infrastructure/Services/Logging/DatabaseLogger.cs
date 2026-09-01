@@ -24,7 +24,7 @@ public class DatabaseLogger
         _systemLogger = systemLogger;
     }
 
-    public async Task LogAsync(CreateLogDto createLogDto)
+    public async Task LogUserActionAsync(CreateLogDto createLogDto)
     {
         try
         {
@@ -72,5 +72,30 @@ public class DatabaseLogger
         var isAuthorized = int.TryParse(userIdRaw, out int userId);
         
         return (isAuthorized, userId);
+    }
+
+    public async Task LogSystemActionAsync(CreateLogDto createLogDto)
+    {
+        var logToAdd = new Log
+        {
+            AuthorizedRequest = false,
+            UserId = null,
+
+            Succeeded = createLogDto.Succeeded,
+            Action = createLogDto.Action,
+            Details = createLogDto.Details,
+            EntityId = createLogDto.EntityId,
+            EntityName = createLogDto.EntityName,
+        };
+
+        try
+        {
+            await _dbContext.Logs.AddAsync(logToAdd);
+            await _dbContext.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            await _systemLogger.LoggingErrorAsync(ex, $"Failed to write log entry {createLogDto.Action}");
+        }
     }
 }

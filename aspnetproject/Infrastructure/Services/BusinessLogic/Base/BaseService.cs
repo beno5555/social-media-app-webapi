@@ -33,6 +33,6 @@ public class BaseService
             EntityId = entityId
         };
 
-        await _dbLogger.LogAsync(log);
+        await _dbLogger.LogUserActionAsync(log);
     }
 }

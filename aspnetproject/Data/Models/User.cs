@@ -22,6 +22,7 @@ public class User : BaseEntity
     public DateTime? ResetTokenExpiresAt { get; set; }
 
     public DateTime? AccountDeactivatedAt { get; set; }
+    public DateTime? AccountDeletedAt { get; set; }
 
     [NotMapped] 
     public bool IsAccountEnabled => AccountDeactivatedAt == null;

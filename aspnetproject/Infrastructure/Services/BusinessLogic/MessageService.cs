@@ -7,7 +7,7 @@ using aspnetproject.Hubs;
 using aspnetproject.Infrastructure.Dtos.Messages;
 using aspnetproject.Infrastructure.Dtos.Users.Friends;
 using aspnetproject.Infrastructure.Mappers;
-using aspnetproject.Infrastructure.Services.Base;
+using aspnetproject.Infrastructure.Services.BusinessLogic.Base;
 using aspnetproject.Infrastructure.Services.Logging;
 using Microsoft.AspNetCore.SignalR;
 using Constants = aspnetproject.Common.ProjectConstants.Constants;

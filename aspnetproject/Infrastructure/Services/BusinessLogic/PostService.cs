@@ -4,7 +4,7 @@ using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Infrastructure.Dtos.Posts;
 using aspnetproject.Infrastructure.Mappers;
-using aspnetproject.Infrastructure.Services.Base;
+using aspnetproject.Infrastructure.Services.BusinessLogic.Base;
 using aspnetproject.Infrastructure.Services.Logging;
 
 namespace aspnetproject.Infrastructure.Services.BusinessLogic;

@@ -1,8 +1,7 @@
-﻿using System.Security.Cryptography;
-using aspnetproject.Infrastructure.Dtos.DatabaseLogs;
+﻿using aspnetproject.Infrastructure.Dtos.DatabaseLogs;
 using aspnetproject.Infrastructure.Services.Logging;
 
-namespace aspnetproject.Infrastructure.Services.Base;
+namespace aspnetproject.Infrastructure.Services.BusinessLogic.Base;
 
 public class BaseService
 {

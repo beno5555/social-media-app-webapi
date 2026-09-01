@@ -6,7 +6,7 @@ using aspnetproject.Infrastructure.Dtos.Auth;
 using aspnetproject.Infrastructure.Dtos.Auth.Password;
 using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Infrastructure.Mappers;
-using aspnetproject.Infrastructure.Services.Base;
+using aspnetproject.Infrastructure.Services.BusinessLogic.Base;
 using aspnetproject.Infrastructure.Services.Helpers;
 using aspnetproject.Infrastructure.Services.Logging;
 

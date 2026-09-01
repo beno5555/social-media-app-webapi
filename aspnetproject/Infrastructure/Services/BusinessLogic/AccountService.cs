@@ -4,7 +4,7 @@ using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Infrastructure.Mappers;
-using aspnetproject.Infrastructure.Services.Base;
+using aspnetproject.Infrastructure.Services.BusinessLogic.Base;
 using aspnetproject.Infrastructure.Services.Helpers;
 using aspnetproject.Infrastructure.Services.Logging;
 

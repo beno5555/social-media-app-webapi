@@ -51,6 +51,7 @@ public static class UserMapper
             Username = user.Username,
             Email = user.Email,
             Bio = user.Bio,
+            Roles = user.UserRoles.Select(userRole => userRole.Role).Select(role => role!.Name).ToList(),
             RegisteredAt = user.CreatedAt,
             DateOfBirth = user.DateOfBirth
         };

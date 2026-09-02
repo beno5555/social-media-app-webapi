@@ -19,6 +19,8 @@ public static class ApplicationServicesExtensions
         services.AddScoped<MessageRepository>();
         services.AddScoped<PostRepository>();
         services.AddScoped<UserRepository>();
+        services.AddScoped<RoleRepository>();
+        services.AddScoped<UserRoleRepository>();
         services.AddScoped<RefreshTokenRepository>();
         
         services.AddScoped<UserService>();

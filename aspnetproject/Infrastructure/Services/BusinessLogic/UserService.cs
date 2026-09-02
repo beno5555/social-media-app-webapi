@@ -63,7 +63,7 @@ public class UserService : BaseService
     {
         var response = new ApplicationResponse<FullUserDto>();
 
-        var user = await _userRepository.GetByUniqueIdentifierAsync(username);
+        var user = await _userRepository.GetByUniqueIdentifierWithRolesAsync(username);
         if (user is not null)
         {
             var userDto = UserMapper.ToFullDisplay(user);
@@ -95,7 +95,7 @@ public class UserService : BaseService
     {
         var response = new ApplicationResponse<FullUserDto>();
         
-        var userToEdit = await _userRepository.GetByIdAsync(id);
+        var userToEdit = await _userRepository.GetUserByIdAsync(id);
 
         if (userToEdit is not null)
         {
@@ -108,8 +108,8 @@ public class UserService : BaseService
             if (!cooldownActive)
             {
                 await _userRepository.EditUserProfileAsync(userToEdit, editUserDto);
-                
                 var userDto = UserMapper.ToFullDisplay(userToEdit);
+                
                 response.Ok(userDto, ResponseMessages.ProfileEdited);
                 await LogResultAsync(response.Succeeded, nameof(EditUserProfileAsync), nameof(User), null, id);
             }

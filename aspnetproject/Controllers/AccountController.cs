@@ -3,6 +3,7 @@ using aspnetproject.Common.Responses;
 using aspnetproject.Controllers.Base;
 using aspnetproject.Extensions;
 using aspnetproject.Infrastructure.Dtos.Accounts;
+using aspnetproject.Infrastructure.Dtos.UserRoles;
 using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Infrastructure.Services.BusinessLogic;
 using Microsoft.AspNetCore.Authorization;
@@ -20,6 +21,38 @@ public class AccountController : BaseController
     public AccountController(AccountService accountService)
     {
         _accountService = accountService;
+    }
+
+    [HttpPut]
+    [Route("{id:int}/assign-administrator")]
+    [Authorize(Roles = nameof(RoleName.Administrator))]
+    [EnableRateLimiting(RateLimitConfig.Policies.AdminActivateAccount)]
+    public async Task<ActionResult<ApplicationResponse<DisplayUserRoleDto>>> AssignAdminRole(int id)
+    {
+        var response = await _accountService.AssignAdminRoleAsync(id);
+
+        if (response.Succeeded)
+        {
+            return Ok(response);
+        }
+
+        return BadRequest(response);
+    }
+    
+    [HttpPut]
+    [Route("{id:int}/remove-administrator")]
+    [Authorize(Roles = nameof(RoleName.Administrator))]
+    [EnableRateLimiting(RateLimitConfig.Policies.AdminActivateAccount)]
+    public async Task<ActionResult<ApplicationResponse>> UnassignAdminRole(int id)
+    {
+        var response = await _accountService.UnassignAdminRoleAsync(id);
+
+        if (response.Succeeded)
+        {
+            return Ok(response);
+        }
+
+        return BadRequest(response);
     }
 
     [HttpDelete]

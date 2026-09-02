@@ -77,6 +77,12 @@ public static class ResponseMessages
 
     public const string AccountDeactivatedUsername = "account_deactivated";
     public const string AccountDeletedUsername     = "account_deleted";
+
+    public const string AdministratorPrivilegesAssignedToUser = "Administrator privileges assigned to user";
+    public const string RoleAlreadyAssigned                   = "Role is already assigned to User";
+    public const string RoleNotFound                          = $"Role {NotFound}";
+    public const string UserRoleNotFound                          = $"User Role {NotFound}";
+    public const string RoleUnassignedFromUser                = $"Role Unassigned from user";
     
     #endregion
     

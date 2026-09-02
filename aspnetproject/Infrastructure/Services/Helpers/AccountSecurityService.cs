@@ -130,5 +130,4 @@ public class AccountSecurityService
             "<p>Your password was just reset.</p><p>If you did not do this, please contact support immediately.</p>"
         );
     }
-    
 }

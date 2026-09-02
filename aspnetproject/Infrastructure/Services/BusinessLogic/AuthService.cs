@@ -50,9 +50,9 @@ public class AuthService : BaseService
                 var (hash, salt) = _passwordHasher.HashPassword(registerDto.Password);
                 User userToRegister = AuthMapper.ToRegisteredEntity(registerDto, hash, salt);
             
-                await _userRepository.AddAsync(userToRegister);
-
-                var displayDto = UserMapper.ToFullDisplay(userToRegister);
+                User addedUser = await _userRepository.AddUserAsync(userToRegister);
+                var displayDto = UserMapper.ToFullDisplay(addedUser);
+                
                 response.Ok(displayDto, ResponseMessages.RegistrationSuccessful);
                 await LogResultAsync(response.Succeeded, nameof(RegisterAsync), nameof(User), null, userToRegister.Id);
             }

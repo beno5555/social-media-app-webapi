@@ -16,7 +16,13 @@ public class UserRepository : BaseEntityRepository<User>
 
     }
 
-    public async Task<User?> GetUserByIdAsyncNoFilter(int id)
+    public async Task<User> AddUserAsync(User user)
+    {
+        await AddAsync(user);
+        return (await GetByUniqueIdentifierWithRolesAsync(user.Username))!;
+    }
+
+    public async Task<User?> GetUserByIdNoFilterAsync(int id)
     {
         return await GetSingleByIgnoringQueryFilterAsync(user => user.Id == id);
     }
@@ -30,35 +36,41 @@ public class UserRepository : BaseEntityRepository<User>
 
     public async Task<User?> GetByUniqueIdentifierWithRolesAsync(string uniqueIdentifier)
     {
-        return await _dbSet
-            .Include(user => user.UserRoles)
-            .ThenInclude(userRole => userRole.Role)
+        return await IncludeRoles()
             .FirstOrDefaultAsync(user => user.Email    == uniqueIdentifier ||
                                          user.Username == uniqueIdentifier);
     }
 
     public async Task<User?> GetDeactivatedByIdAsync(int id)
     {
-        return await GetSingleByIgnoringQueryFilterAsync(user => user.Id                   == id &&
-                                                                 user.AccountDeactivatedAt != null);
+        return await GetDeactivatedAccountAsync(user => user.Id == id);
     }
     public async Task<User?> GetDeactivatedByEmailAsync(string email)
     {
-        return await GetSingleByIgnoringQueryFilterAsync(user => user.Email                == email &&
-                                                                 user.AccountDeactivatedAt != null);
+        return await GetDeactivatedAccountAsync(user => user.Email == email);
     }
     public async Task<User?> GetDeactivatedAccountByActivationTokenHashAsync(string activationTokenHash)
     {
-        return await GetSingleByIgnoringQueryFilterAsync(user => user.ResetTokenHash       == activationTokenHash &&
-                                                                 user.ResetTokenExpiresAt  > DateTime.UtcNow      &&
-                                                                 user.AccountDeactivatedAt != null);
+        return await GetDeactivatedAccountAsync(user => user.ResetTokenHash      == activationTokenHash &&
+                                                        user.ResetTokenExpiresAt > DateTime.UtcNow);
+    }
+
+    private async Task<User?> GetDeactivatedAccountAsync(Expression<Func<User, bool>> predicate)
+    {
+        return await IncludeRoles()
+            .IgnoreQueryFilters()
+            .Where(user => user.AccountDeactivatedAt != null && user.AccountDeletedAt == null)
+            .FirstOrDefaultAsync(predicate);
+    }
+    
+    private IQueryable<User> IncludeRoles()
+    {
+        return _dbSet.Include(user => user.UserRoles).ThenInclude(userRole => userRole.Role);
     }
     
     public async Task<User?> GetUserByIdAsync(int id)
     {
-        return await _dbSet
-            .Include(user => user.UserRoles)
-                .ThenInclude(userRole => userRole.Role)
+        return await IncludeRoles()
             .FirstOrDefaultAsync(user => user.Id == id);
     }
     
@@ -221,4 +233,6 @@ public class UserRepository : BaseEntityRepository<User>
         
         return deletedCount;
     }
+
+     
 }

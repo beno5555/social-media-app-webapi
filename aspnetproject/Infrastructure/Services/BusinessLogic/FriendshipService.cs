@@ -47,7 +47,7 @@ public class FriendshipService : BaseService
 
                     var friendshipDto = FriendshipMapper.ToMinimalDisplay(friendship);
                     response.Ok(friendshipDto, ResponseMessages.FriendRequestSent);
-                    await LogResultAsync(response.Succeeded, nameof(SendRequest), nameof(Friendship), null, null);
+                    await LogResultAsync(response.Succeeded, nameof(SendRequest), nameof(Friendship), null, friendship.Id);
                 }
                 else
                 {
@@ -75,12 +75,12 @@ public class FriendshipService : BaseService
         if (relationship.FriendshipStatus == FriendshipStatus.Accepted)
         {
             response.Fail(ResponseMessages.AlreadyFriends);
-            await LogResultAsync(response.Succeeded, nameof(SendRequest), nameof(Friendship), "The requester is already friends with the addressee.", null);
+            await LogResultAsync(response.Succeeded, nameof(SendRequest), nameof(Friendship), "The requester is already friends with the addressee.", relationship.Id);
         }
         else if (relationship.FriendshipStatus == FriendshipStatus.Pending)
         {
             response.Fail(ResponseMessages.PendingRequestAlreadyExists);
-            await LogResultAsync(response.Succeeded, nameof(SendRequest), nameof(Friendship), response.Message, null);
+            await LogResultAsync(response.Succeeded, nameof(SendRequest), nameof(Friendship), response.Message, relationship.Id);
         }
         else if (relationship.FriendshipStatus == FriendshipStatus.Declined)
         {
@@ -106,7 +106,7 @@ public class FriendshipService : BaseService
             
             var friendshipDto = FriendshipMapper.ToMinimalDisplay(finalRelationship);
             response.Ok(friendshipDto, ResponseMessages.FriendRequestSent);
-            await LogResultAsync(response.Succeeded, nameof(SendRequest), nameof(Friendship), null, null);
+            await LogResultAsync(response.Succeeded, nameof(SendRequest), nameof(Friendship), null, relationship.Id);
         }
 
         return response;
@@ -170,7 +170,7 @@ public class FriendshipService : BaseService
         {
             var relationshipDto = FriendshipMapper.ToStandardDisplay(relationship, currentUserId);
             response.Ok(relationshipDto, ResponseMessages.RelationshipFetched);
-            await LogResultAsync(response.Succeeded, nameof(GetRelationshipAsync), nameof(Friendship), null, null);
+            await LogResultAsync(response.Succeeded, nameof(GetRelationshipAsync), nameof(Friendship), null, relationship.Id);
         }
         else
         {
@@ -194,7 +194,7 @@ public class FriendshipService : BaseService
             
             var friendshipDto = FriendshipMapper.ToAcceptedDisplay(friendship, otherUser!);
             response.Ok(friendshipDto, ResponseMessages.RelationshipFetched);           
-            await LogResultAsync(response.Succeeded, nameof(GetAcceptedFriendshipAsync), nameof(Friendship), null, null);
+            await LogResultAsync(response.Succeeded, nameof(GetAcceptedFriendshipAsync), nameof(Friendship), null, friendship.Id);
         }
         else
         {
@@ -221,7 +221,7 @@ public class FriendshipService : BaseService
                 await _friendshipRepository.SaveChangesAsync();
                 
                 response.Ok(friendshipDto, ResponseMessages.ResponseSent(status));
-                await LogResultAsync(response.Succeeded, nameof(RespondToRequestAsync), nameof(Friendship), null, null);
+                await LogResultAsync(response.Succeeded, nameof(RespondToRequestAsync), nameof(Friendship), null, friendship.Id);
             }
             else
             {
@@ -251,7 +251,7 @@ public class FriendshipService : BaseService
                 await _friendshipRepository.DeleteAsync(friendship);
             
                 response.Ok(ResponseMessages.RelationshipRemoved);
-                await LogResultAsync(response.Succeeded, nameof(RemoveRelationshipAsync), nameof(Friendship), null, null);
+                await LogResultAsync(response.Succeeded, nameof(RemoveRelationshipAsync), nameof(Friendship), null, friendship.Id);
             }
             else
             {

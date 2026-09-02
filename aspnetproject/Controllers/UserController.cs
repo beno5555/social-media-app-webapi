@@ -38,6 +38,21 @@ public class UserController : BaseController
 
         return BadRequest(response);
     }
+    
+    [HttpGet]
+    [Route("{id:int}")]
+    [AllowAnonymous]
+    [EnableRateLimiting(RateLimitConfig.Policies.ReadUserProfile)]
+    public async Task<ActionResult<ApplicationResponse<StandardUserDto>>> GetByUsername(int id)
+    {
+        var response = await _userService.GetById(id);
+        if (response.Succeeded)
+        {
+            return Ok(response);
+        }
+
+        return NotFound(response);
+    }
         
     [HttpGet]
     [Route("{username}")]

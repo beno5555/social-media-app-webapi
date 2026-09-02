@@ -3,6 +3,7 @@ using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using aspnetproject.Data;
 
@@ -11,9 +12,11 @@ using aspnetproject.Data;
 namespace aspnetproject.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    partial class ApplicationDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260902004141_NullableUserIdAndIntPkFriendship")]
+    partial class NullableUserIdAndIntPkFriendship
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -64,7 +67,7 @@ namespace aspnetproject.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
-                    b.Property<int>("AddresseeUserId")
+                    b.Property<int?>("AddresseeUserId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("CreatedAt")
@@ -78,7 +81,7 @@ namespace aspnetproject.Migrations
                     b.Property<DateTime?>("LastUpdatedAt")
                         .HasColumnType("datetime2(3)");
 
-                    b.Property<int>("RequesterUserId")
+                    b.Property<int?>("RequesterUserId")
                         .HasColumnType("int");
 
                     b.Property<DateTime>("SentAt")
@@ -91,7 +94,8 @@ namespace aspnetproject.Migrations
                     b.HasIndex("AddresseeUserId");
 
                     b.HasIndex("RequesterUserId", "AddresseeUserId")
-                        .IsUnique();
+                        .IsUnique()
+                        .HasFilter("[RequesterUserId] IS NOT NULL AND [AddresseeUserId] IS NOT NULL");
 
                     b.ToTable("Friendships", (string)null);
                 });
@@ -166,7 +170,7 @@ namespace aspnetproject.Migrations
                         .HasMaxLength(1000)
                         .HasColumnType("nvarchar(1000)");
 
-                    b.Property<int>("ReceiverUserId")
+                    b.Property<int?>("ReceiverUserId")
                         .HasColumnType("int");
 
                     b.Property<bool>("Seen")
@@ -175,7 +179,7 @@ namespace aspnetproject.Migrations
                     b.Property<DateTime?>("SeenAt")
                         .HasColumnType("datetime2(3)");
 
-                    b.Property<int>("SenderUserId")
+                    b.Property<int?>("SenderUserId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
@@ -211,7 +215,7 @@ namespace aspnetproject.Migrations
                         .HasMaxLength(100)
                         .HasColumnType("nvarchar(100)");
 
-                    b.Property<int>("UserId")
+                    b.Property<int?>("UserId")
                         .HasColumnType("int");
 
                     b.HasKey("Id");
@@ -473,7 +477,7 @@ namespace aspnetproject.Migrations
                     b.HasOne("aspnetproject.Data.Models.User", "User")
                         .WithMany()
                         .HasForeignKey("UserId")
-                        .OnDelete(DeleteBehavior.NoAction);
+                        .OnDelete(DeleteBehavior.SetNull);
 
                     b.Navigation("User");
                 });

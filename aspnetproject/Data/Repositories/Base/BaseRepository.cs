@@ -18,9 +18,16 @@ public class BaseRepository<T> where T : class
         Expression<Func<T, bool>>? predicate,
         int? pageNumber = null,
         int? pageSize = null,
-        Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null)
+        Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
+        bool ignoreQueryFilters = false)
     {
         var query = Query();
+        
+        if (ignoreQueryFilters)
+        {
+            query =  query.IgnoreQueryFilters();
+        }
+        
         if (predicate is not null)
         {
             query = query.Where(predicate);
@@ -30,7 +37,7 @@ public class BaseRepository<T> where T : class
         {
             query = orderBy(query);
         }
-        
+
         if (pageNumber.HasValue && pageSize.HasValue)
         {
             query = query

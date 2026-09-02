@@ -9,7 +9,10 @@ public class FriendshipConfiguration : IEntityTypeConfiguration<Friendship>
     public void Configure(EntityTypeBuilder<Friendship> builder)
     {
         builder.ToTable("Friendships");
-        builder.HasKey(friendship => new { friendship.RequesterUserId, friendship.AddresseeUserId });
+        builder.HasKey(friendship => friendship.Id);
+
+        builder.HasIndex(friendship => new { friendship.RequesterUserId, friendship.AddresseeUserId })
+            .IsUnique();
 
         builder.Property(friendship => friendship.FriendshipStatus)
             .IsRequired()
@@ -19,16 +22,17 @@ public class FriendshipConfiguration : IEntityTypeConfiguration<Friendship>
         builder.Property(friendship => friendship.SentAt)
             .HasDefaultValueSql("GETUTCDATE()");
         
+        // service implementation must manually set the user's friendships to null before deleting the user.
         builder.HasOne(friendship => friendship.RequesterUser)
             .WithMany()
             .HasForeignKey(friendship => friendship.RequesterUserId)
-            .OnDelete(DeleteBehavior.Restrict)
+            .OnDelete(DeleteBehavior.NoAction)
             .IsRequired(false);
 
         builder.HasOne(friendship => friendship.AddresseeUser)
             .WithMany()
             .HasForeignKey(friendship => friendship.AddresseeUserId)
-            .OnDelete(DeleteBehavior.Restrict)
+            .OnDelete(DeleteBehavior.NoAction)
             .IsRequired(false);
     }
 }

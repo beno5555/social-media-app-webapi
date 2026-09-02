@@ -45,6 +45,14 @@ public class CommentRepository : BaseEntityRepository<Comment>
         // await DeleteWhereAsync(comment => comment.CommenterUserId == userId);
     }
 
+    public async Task SetUserIdToNullInCommentsAsync(int userId)
+    {
+        int? newUserId = null;
+        await _dbSet.Where(comment => comment.CommenterUserId == userId)
+            .ExecuteUpdateAsync(setters => 
+                setters.SetProperty(comment => comment.CommenterUserId, newUserId));
+    }
+
     public async Task DeletePostCommentsAsync(int postId)
     {
         await DeleteWhereAsync(comment => comment.PostId == postId);

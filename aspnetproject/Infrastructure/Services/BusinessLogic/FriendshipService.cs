@@ -89,7 +89,7 @@ public class FriendshipService : BaseService
             if (relationship.RequesterUserId != requesterId)
             {
                 await _friendshipRepository.DeleteAsync(relationship);
-                
+
                 int oldRequesterId = relationship.RequesterUserId;
 
                 finalRelationship = UserMapper.ToFriendship(requesterId, oldRequesterId);
@@ -145,11 +145,7 @@ public class FriendshipService : BaseService
             var friendshipDtos = friendships
                 .Select(friendship =>
                 {
-                    var otherUser = friendship.RequesterUserId == userId
-                        ? friendship.AddresseeUser
-                        : friendship.RequesterUser;
-
-                    var friendshipDto = FriendshipMapper.ToStandardDisplay(friendship, otherUser!);
+                    var friendshipDto = FriendshipMapper.ToStandardDisplay(friendship, userId);
                     return friendshipDto;
                 })
                 .ToList();
@@ -172,11 +168,7 @@ public class FriendshipService : BaseService
         var relationship = await _friendshipRepository.GetRelationshipAsync(currentUserId, otherUserId, orderMatters);
         if (relationship is not null)
         {
-            var otherUser = relationship.RequesterUserId == otherUserId
-                ? relationship.RequesterUser
-                : relationship.AddresseeUser;
-            
-            var relationshipDto = FriendshipMapper.ToStandardDisplay(relationship, otherUser!);
+            var relationshipDto = FriendshipMapper.ToStandardDisplay(relationship, currentUserId);
             response.Ok(relationshipDto, ResponseMessages.RelationshipFetched);
             await LogResultAsync(response.Succeeded, nameof(GetRelationshipAsync), nameof(Friendship), null, null);
         }
@@ -225,7 +217,7 @@ public class FriendshipService : BaseService
             {
                 await _friendshipRepository.UpdateStatusAsync(friendship, status);
                 
-                var friendshipDto = FriendshipMapper.ToStandardDisplay(friendship, friendship.RequesterUser!);
+                var friendshipDto = FriendshipMapper.ToStandardDisplay(friendship, addresseeId);
                 await _friendshipRepository.SaveChangesAsync();
                 
                 response.Ok(friendshipDto, ResponseMessages.ResponseSent(status));

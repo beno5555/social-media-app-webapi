@@ -74,6 +74,9 @@ public static class ResponseMessages
 
     public const string CouldNotDeactivateAccount = $"{CouldNot} {Deactivate} Account";
     public const string ReactivationTokenSentOnEmail = $"Reativation token {Sent} on Email";
+
+    public const string AccountDeactivatedUsername = "account_deactivated";
+    public const string AccountDeletedUsername     = "account_deleted";
     
     #endregion
     

@@ -7,6 +7,9 @@ namespace aspnetproject.Infrastructure.Mappers;
 
 public static class FriendshipMapper
 {
+    /// <summary>
+    /// assumes not null User foreign keys
+    /// </summary>
     public static MinimalFriendshipDto ToMinimalDisplay(Friendship friendship)
     {
         return new MinimalFriendshipDto
@@ -18,14 +21,18 @@ public static class FriendshipMapper
         };
     }
 
-    public static StandardFriendshipDto ToStandardDisplay(Friendship friendship, User otherUser)
+    public static StandardFriendshipDto ToStandardDisplay(Friendship friendship, int currentUserId)
     {
+        (User? otherUser, int? otherUserId) = friendship.AddresseeUserId == currentUserId
+            ? (friendship.RequesterUser, friendship.RequesterUserId)
+            : (friendship.AddresseeUser, friendship.AddresseeUserId);
+        
         return new StandardFriendshipDto
         {
             OtherUser = new MinimalUserDto
             {
-                Id = otherUser.Id,
-                Username = otherUser.Username
+                Id = otherUserId,
+                Username = UsernameMapper.ResolveUsername(otherUser, otherUserId)
             },
             
             Status =  friendship.FriendshipStatus.ToString(),

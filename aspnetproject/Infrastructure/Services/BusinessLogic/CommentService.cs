@@ -8,7 +8,6 @@ using aspnetproject.Infrastructure.Mappers;
 using aspnetproject.Infrastructure.Services.BusinessLogic.Base;
 using aspnetproject.Infrastructure.Services.Logging;
 using Microsoft.AspNetCore.SignalR;
-using Org.BouncyCastle.Crypto.Digests;
 
 namespace aspnetproject.Infrastructure.Services.BusinessLogic;
 
@@ -56,8 +55,8 @@ public class CommentService : BaseService
 
     public async Task<ApplicationResponse<FullCommentDto>> AddCommentAsync(int commentAuthorId, int postId, CreateCommentDto createCommentDto)
     {
-        var response   = new ApplicationResponse<FullCommentDto>();
-        
+        var response = new ApplicationResponse<FullCommentDto>();
+
         var userExists = await _userRepository.ExistsByIdAsync(commentAuthorId);
         
         if (userExists)

@@ -29,9 +29,9 @@ public class FriendshipRepository : BaseRepository<Friendship>
     public async Task<List<Friendship>> GetSentRequestsAsync(int userId, int? pageNumber = null, int? pageSize = null)
     {
         return await GetWhereAsync(friendship =>
-            friendship.RequesterUserId == userId && friendship.FriendshipStatus == FriendshipStatus.Pending, pageNumber, pageSize);
+            friendship.RequesterUserId == userId && friendship.FriendshipStatus == FriendshipStatus.Pending, pageNumber, pageSize, ignoreQueryFilters: true);
     }
-
+    
     /// <summary>
     /// fetches the friendships that got sent to userId with optional status filter
     /// </summary>
@@ -44,18 +44,18 @@ public class FriendshipRepository : BaseRepository<Friendship>
     {
         return await GetWhereAsync(friendship => 
             friendship.AddresseeUserId == userId && (!status.HasValue || friendship.FriendshipStatus == status), // only checks for status if the parameter has value
-            pageNumber, pageSize); 
+            pageNumber, pageSize, ignoreQueryFilters: true); 
     }
 
     /// <summary>
-    /// fetches the friendships of userId which have been accepted (from either)
+    /// fetches the friendships of userId which have been accepted from either, including users who got deactivated/deleted
     /// </summary>
     public async Task<List<Friendship>> GetFriendshipsAsync(int userId, int? pageNumber = null, int? pageSize = null)
     {
         return await GetWhereAsync(friendship =>
             (friendship.RequesterUserId == userId || friendship.AddresseeUserId == userId) &&
             friendship.FriendshipStatus == FriendshipStatus.Accepted,
-            pageNumber, pageSize);
+            pageNumber, pageSize, ignoreQueryFilters: true);
     }
 
     public async Task<List<int>> GetFriendIdsAsync(int userId)

@@ -106,8 +106,10 @@ public class PostService : BaseService
         var response = new ListResponse<StandardPostDisplayDto>();
         
         var friends  = await _friendshipRepository.GetFriendshipsAsync(userId);
-        List<int> friendIds = friends.Select(friend =>
-            friend.RequesterUserId == userId ? friend.AddresseeUserId : friend.RequesterUserId).ToList();
+        List<int> friendIds = friends
+            .Select(friend =>
+            friend.RequesterUserId == userId ? friend.AddresseeUserId : friend.RequesterUserId)
+            .ToList();
 
         var posts    = await _postRepository.GetFeedAsync(friendIds, pageNumber, pageSize);
         var postDtos = posts.Select(PostMapper.ToStandardDisplay).ToList();

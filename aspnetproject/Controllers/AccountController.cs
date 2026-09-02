@@ -28,7 +28,7 @@ public class AccountController : BaseController
     public async Task<ActionResult<ApplicationResponse>> DeleteOwnAccount()
     {
         int userId   = GetUserId();
-        var response = await _accountService.DeleteAccountAsync(userId);
+        var response = await _accountService.SoftDeleteAccountAsync(userId);
 
         if (response.Succeeded)
         {
@@ -44,7 +44,7 @@ public class AccountController : BaseController
     [EnableRateLimiting(RateLimitConfig.Policies.AdminDeleteAccount)]
     public async Task<ActionResult<ApplicationResponse>> DeleteUserAccount(int id)
     {
-        var response = await _accountService.DeleteAccountAsync(id);
+        var response = await _accountService.SoftDeleteAccountAsync(id);
 
         if (response.Succeeded)
         {

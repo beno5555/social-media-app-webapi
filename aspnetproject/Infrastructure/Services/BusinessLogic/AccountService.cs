@@ -144,14 +144,14 @@ public class AccountService : BaseService
         return response;
     }
     
-    public async Task<ApplicationResponse> DeleteAccountAsync(int id)
+    public async Task<ApplicationResponse> SoftDeleteAccountAsync(int id)
     {
         var response = new ApplicationResponse();
 
         await _userRepository.ExecuteInTransactionAsync(async () =>
         {
             _userRepository.ClearTracker();
-            await DeleteUserRelatedData(id);
+            await NullifyUserIdForeignKeys(id);
             
             var userToDelete = await _userRepository.GetByIdAsync(id);
 
@@ -159,20 +159,20 @@ public class AccountService : BaseService
             {
                 await _userRepository.DeleteAsync(userToDelete);
                 response.Ok(ResponseMessages.AccountDeleted);
-                await LogResultAsync(response.Succeeded, nameof(DeleteAccountAsync), nameof(User), null, id);
+                await LogResultAsync(response.Succeeded, nameof(SoftDeleteAccountAsync), nameof(User), null, id);
             }
             else
             {
                 response.Fail(ResponseMessages.UserNotFound);
-                await LogResultAsync(response.Succeeded, nameof(DeleteAccountAsync), nameof(User), $"Could not delete: {response.Message}", id);
+                await LogResultAsync(response.Succeeded, nameof(SoftDeleteAccountAsync), nameof(User), $"Could not delete: {response.Message}", id);
             }
         });
 
         return response;
     }
-    private async Task DeleteUserRelatedData(int userId)
+    private async Task NullifyUserIdForeignKeys(int userId)
     {
-        await _commentRepository.DeleteUserCommentsAsync(userId);
+        await _commentRepository.SetUserIdToNullInCommentsAsync(userId);
         await _messageRepository.DeleteUserMessagesAsync(userId);
         await _friendshipRepository.DeleteUserFriendshipsAsync(userId);
     }

@@ -1,5 +1,4 @@
-﻿using aspnetproject.Common.ProjectConstants;
-using aspnetproject.Data.Models;
+﻿using aspnetproject.Data.Models;
 using aspnetproject.Infrastructure.Dtos.Comments;
 using aspnetproject.Infrastructure.Dtos.Posts;
 using aspnetproject.Infrastructure.Dtos.Users;
@@ -28,7 +27,7 @@ public static class PostMapper
             Author = new MinimalUserDto
             {
                 Id = post.UserId,
-                Username = post.User?.Username ?? Constants.DeactivatedAccount
+                Username = UsernameMapper.ResolveUsername(post.User, post.UserId)
             },
 
             PostContent = post.PostContent,
@@ -36,8 +35,12 @@ public static class PostMapper
             
             Comments = post.Comments.Select(comment => new StandardCommentDto
             {
-                Id = comment.Id,
-                AuthorUsername = comment.CommenterUser?.Username ?? Constants.DeactivatedAccount,
+                Id =  comment.Id,
+                Author = new MinimalUserDto
+                {
+                    Id = comment.CommenterUserId,
+                    Username =  UsernameMapper.ResolveUsername(comment.CommenterUser, comment.CommenterUserId)
+                },
                 Content = comment.CommentContent,
                 UploadedAt = comment.CreatedAt
             }).ToList()
@@ -51,8 +54,11 @@ public static class PostMapper
             Id = post.Id,
             Title = post.PostTitle,
 
-            UserId = post.UserId,
-            Username = post.User?.Username ?? Constants.DeactivatedAccount,
+            Author = new MinimalUserDto
+            {
+                Id = post.UserId,
+                Username = UsernameMapper.ResolveUsername(post.User, post.UserId)
+            },
 
             PostContent = post.PostContent,
             UploadedAt = post.CreatedAt,

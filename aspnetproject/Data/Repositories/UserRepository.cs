@@ -191,11 +191,11 @@ public class UserRepository : BaseEntityRepository<User>
         user.ResetTokenExpiresAt = null;
     }
 
-    public async Task<int> DeleteSoftDeletedUsersAsync(DateTime cutoff, int batchSize,
-        CancellationToken                                       cancellationToken)
+    public async Task<int> DeleteSoftDeletedUsersAsync(DateTime cutoff, int batchSize, CancellationToken cancellationToken)
     {
         int deletedCount = 0;
-        List<int> userIds = await _dbSet
+        var userIds = await _dbSet
+            .IgnoreQueryFilters()
             .Where(user => user.AccountDeletedAt != null && user.AccountDeletedAt < cutoff)
             .Take(batchSize)
             .Select(user => user.Id)
@@ -203,9 +203,9 @@ public class UserRepository : BaseEntityRepository<User>
 
         if (userIds.Count > 0)
         {
-            await _dbContext.Friendships
-                .Where(friendship => userIds.Contains(friendship.RequesterUserId) ||
-                                     userIds.Contains(friendship.AddresseeUserId))
+            deletedCount = await _dbSet
+                .IgnoreQueryFilters()
+                .Where(user => userIds.Contains(user.Id))
                 .ExecuteDeleteAsync(cancellationToken);
         }
         

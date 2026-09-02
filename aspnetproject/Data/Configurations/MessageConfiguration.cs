@@ -20,18 +20,18 @@ public class MessageConfiguration : IEntityTypeConfiguration<Message>
             .HasDefaultValue(null);
 
         builder.HasIndex(message => new { message.SenderUserId, message.ReceiverUserId, message.CreatedAt });
-
-        // service implementation must manually delete the user's messages before deleting the user.
+        
+        // service implementation must manually set the user's messages to null before deleting the user.
         builder.HasOne(message => message.SenderUser)
             .WithMany()
             .HasForeignKey(message => message.SenderUserId)
-            .OnDelete(DeleteBehavior.SetNull)
+            .OnDelete(DeleteBehavior.NoAction)
             .IsRequired(false);
         
         builder.HasOne(message => message.ReceiverUser)
             .WithMany()
             .HasForeignKey(message => message.ReceiverUserId)
-            .OnDelete(DeleteBehavior.SetNull)
+            .OnDelete(DeleteBehavior.NoAction)
             .IsRequired(false);
     }
 }

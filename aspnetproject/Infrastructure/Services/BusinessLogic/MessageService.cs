@@ -72,27 +72,17 @@ public class MessageService : BaseService
 
         if (callerExists)
         {
-            var friendshipCheck = await ValidFriendship(readerId, otherUserId);
-
-            if (friendshipCheck.Succeeded)
-            {
-                var messages = await _messageRepository.GetConversationAsync(readerId, otherUserId, pageNumber, pageSize);
-                messages.Reverse(); // Repository fetches the messages in descending order to fetch the latest ones. we should reverse it.
-            
-                await MarkAsReadAsync(readerId, otherUserId);
-            
-                var messageDtos = messages.Select(MessageMapper.ToStandardDisplay).ToList();
-                response.Ok(messageDtos, ResponseMessages.ConversationRetrievedSuccessfully);
-            }
-            else
-            {
-                response.Fail(friendshipCheck.Message);
-                await LogResultAsync(response.Succeeded, nameof(GetConversationAsync), nameof(Message), $"Could not fetch conversation of two users: {response.Message}", null);
-            }
+            var messages = await _messageRepository.GetConversationAsync(readerId, otherUserId, pageNumber, pageSize);
+            messages.Reverse(); // Repository fetches the messages in descending order to fetch the latest ones. we should reverse it.
+        
+            await MarkAsReadAsync(readerId, otherUserId);
+        
+            var messageDtos = messages.Select(MessageMapper.ToStandardDisplay).ToList();
+            response.Ok(messageDtos, ResponseMessages.ConversationRetrievedSuccessfully);
         }
         else
         {
-            response.Fail("Invalid request");
+            response.Fail(ResponseMessages.InvalidRequest);
             await LogResultAsync(response.Succeeded, nameof(GetConversationAsync), nameof(Message), $"Could not fetch conversation of two users: {response.Message}", null);
         }
 

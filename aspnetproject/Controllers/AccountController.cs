@@ -118,12 +118,12 @@ public class AccountController : BaseController
     }
     
     [HttpPatch]
-    [Route("{email}/request-activate")]
+    [Route("request-activate")]
     [AllowAnonymous]
     [EnableRateLimiting(RateLimitConfig.Policies.RequestActivation)]
-    public async Task<ActionResult<ApplicationResponse<FullUserDto>>> RequestAccountActivation(string email)
+    public async Task<ActionResult<ApplicationResponse<FullUserDto>>> RequestAccountActivation([FromBody] ActivationRequestDto activationRequestDto)
     {
-        var response = await _accountService.RequestAccountActivationAsync(email);
+        var response = await _accountService.RequestAccountActivationAsync(activationRequestDto.Email);
 
         if (response.Succeeded)
         {

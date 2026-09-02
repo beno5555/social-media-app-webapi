@@ -91,6 +91,14 @@ public class AccountSecurityService
         return tokens;
     }
 
+    public async Task NotifyAccountDeactivation(string userEmail)
+    {
+        await _emailSender.SendAsync(
+            userEmail,
+            "Your account has been deactivated", 
+            "<p>Your account has been deactivated. To reactivate it, request a reactivation link using this email address.</p><p>If you did not expect this, please contact support.</p>"
+        );
+    }
     private async Task<bool> NotifyAccountReactivationRequest(string userEmail, string activationToken)
     {
         return await _emailSender.SendAsync(
@@ -122,4 +130,5 @@ public class AccountSecurityService
             "<p>Your password was just reset.</p><p>If you did not do this, please contact support immediately.</p>"
         );
     }
+    
 }

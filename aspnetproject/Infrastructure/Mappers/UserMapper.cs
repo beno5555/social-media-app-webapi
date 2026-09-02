@@ -1,4 +1,5 @@
-﻿using aspnetproject.Data.Models;
+﻿using aspnetproject.Common.ProjectConstants;
+using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories.Dtos;
 using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Infrastructure.Dtos.Users.Friends;
@@ -62,7 +63,7 @@ public static class UserMapper
             ConversationFriend = new DisplayFriendDto
             {
                 Id = friend.FriendId,
-                Username = friend.FriendUsername,
+                Username = friend.IsDeleted ? ResponseMessages.AccountDeletedUsername : friend.IsDeactivated ? ResponseMessages.AccountDeactivatedUsername : friend.FriendUsername,
                 LastActiveAt = friend.FriendLastActiveAt,
             },
             

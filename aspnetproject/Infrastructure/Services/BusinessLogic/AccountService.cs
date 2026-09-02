@@ -14,18 +14,12 @@ public class AccountService : BaseService
 {
     private readonly UserRepository         _userRepository;
     private readonly RefreshTokenRepository _refreshTokenRepository;
-    private readonly MessageRepository      _messageRepository;
-    private readonly FriendshipRepository   _friendshipRepository;
-    private readonly CommentRepository      _commentRepository;
     private readonly AccountSecurityService _accountSecurityService;
-    private readonly TokenGenerator _tokenGenerator;
+    private readonly TokenGenerator         _tokenGenerator;
 
     public AccountService(
         UserRepository userRepository,
         RefreshTokenRepository refreshTokenRepository,
-        MessageRepository messageRepository,
-        FriendshipRepository friendshipRepository,
-        CommentRepository commentRepository,
         AccountSecurityService accountSecurityService,
         TokenGenerator tokenGenerator,
         DatabaseLogger dbLogger
@@ -33,9 +27,6 @@ public class AccountService : BaseService
     {
         _userRepository = userRepository;
         _refreshTokenRepository = refreshTokenRepository;
-        _messageRepository = messageRepository;
-        _friendshipRepository = friendshipRepository;
-        _commentRepository = commentRepository;
         _accountSecurityService = accountSecurityService;
         _tokenGenerator = tokenGenerator;
     }
@@ -54,6 +45,7 @@ public class AccountService : BaseService
             
             response.Ok(ResponseMessages.AccountDeactivated);
             await LogResultAsync(response.Succeeded, nameof(DeactivateAccountAsync), nameof(User), null, id);
+            await _accountSecurityService.NotifyAccountDeactivation(user.Email);
         }
         else
         {
@@ -151,29 +143,40 @@ public class AccountService : BaseService
         await _userRepository.ExecuteInTransactionAsync(async () =>
         {
             _userRepository.ClearTracker();
-            await NullifyUserIdForeignKeys(id);
+            await _refreshTokenRepository.RevokeAllForUserAsync(id);
             
-            var userToDelete = await _userRepository.GetByIdAsync(id);
+            var userToDelete = await _userRepository.GetUserByIdAsyncNoFilter(id);
 
             if (userToDelete is not null)
             {
-                await _userRepository.DeleteAsync(userToDelete);
-                response.Ok(ResponseMessages.AccountDeleted);
-                await LogResultAsync(response.Succeeded, nameof(SoftDeleteAccountAsync), nameof(User), null, id);
+                if (userToDelete.AccountDeletedAt == null)
+                {
+                    userToDelete.AccountDeletedAt = DateTime.UtcNow;
+                    await _userRepository.SaveChangesAsync();
+                    
+                    response.Ok(ResponseMessages.AccountDeleted);
+                    await LogResultAsync(response.Succeeded, nameof(SoftDeleteAccountAsync), nameof(User), null, id);
+                }
+                else
+                {
+                    response.Fail(ResponseMessages.UserNotFound);
+                    await LogResultAsync(response.Succeeded, nameof(SoftDeleteAccountAsync), nameof(User), $"Could not soft delete: user is already soft deleted", id);
+                }
             }
             else
             {
                 response.Fail(ResponseMessages.UserNotFound);
-                await LogResultAsync(response.Succeeded, nameof(SoftDeleteAccountAsync), nameof(User), $"Could not delete: {response.Message}", id);
+                await LogResultAsync(response.Succeeded, nameof(SoftDeleteAccountAsync), nameof(User), $"Could not soft delete: {response.Message}", id);
             }
         });
 
         return response;
     }
-    private async Task NullifyUserIdForeignKeys(int userId)
-    {
-        await _commentRepository.SetUserIdToNullInCommentsAsync(userId);
-        await _messageRepository.DeleteUserMessagesAsync(userId);
-        await _friendshipRepository.DeleteUserFriendshipsAsync(userId);
-    }
+    // private async Task UpdateUserRelatedDataAsync(int userId)
+    // {
+    //     await _refreshTokenRepository.RevokeAllForUserAsync(userId);
+    //     await _commentRepository.SetUserIdToNullInCommentsAsync(userId);
+    //     await _messageRepository.DeleteUserMessagesAsync(userId);
+    //     await _friendshipRepository.DeleteUserFriendshipsAsync(userId);
+    // }
 }

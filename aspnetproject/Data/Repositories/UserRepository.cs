@@ -16,6 +16,11 @@ public class UserRepository : BaseEntityRepository<User>
 
     }
 
+    public async Task<User?> GetUserByIdAsyncNoFilter(int id)
+    {
+        return await GetSingleByIgnoringQueryFilterAsync(user => user.Id == id);
+    }
+
     public async Task<User?> GetByUniqueIdentifierAsync(string uniqueIdentifier)
     {
         return await _dbSet
@@ -78,6 +83,7 @@ public class UserRepository : BaseEntityRepository<User>
         return await GetWhereAsync(user => user.Username.Contains(usernameInput), pageNumber, pageSize);
     }
 
+    // ignores query filters automatically which is fine for now. we want to fetch conversations with deactivated/soft deleted users
     public async Task<List<ConversationFriendProjection>> GetConversationFriendsAsync(int userId, int? pageNumber, int? pageSize)
     {
         const string sql = """
@@ -85,6 +91,8 @@ public class UserRepository : BaseEntityRepository<User>
                 u.Id AS FriendId,
                 u.Username AS FriendUsername,
                 u.LastOnlineAt AS FriendLastActiveAt,
+                CAST(CASE WHEN u.AccountDeletedAt IS NOT NULL THEN 1 ELSE 0 END AS bit) AS IsDeleted,
+                CAST(CASE WHEN u.AccountDeactivatedAt IS NOT NULL THEN 1 ELSE 0 END AS bit) AS IsDeactivated,
                 lm.MessageContent AS LastMessageContent,
                 lm.CreatedAt AS LastMessageSentAt,
                 lm.SenderUserId AS LastMessageSenderId,
@@ -189,6 +197,8 @@ public class UserRepository : BaseEntityRepository<User>
 
         user.ResetTokenHash = null;
         user.ResetTokenExpiresAt = null;
+
+        user.LastUpdatedAt = DateTime.UtcNow;
     }
 
     public async Task<int> DeleteSoftDeletedUsersAsync(DateTime cutoff, int batchSize, CancellationToken cancellationToken)

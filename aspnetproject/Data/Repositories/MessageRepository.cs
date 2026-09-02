@@ -44,7 +44,8 @@ public class MessageRepository : BaseEntityRepository<Message>
                        (message.SenderUserId == userB && message.ReceiverUserId == userA),
             pageNumber,
             pageSize,
-            orderBy: query => query.OrderByDescending(message => message.CreatedAt));
+            orderBy: query => query.OrderByDescending(message => message.CreatedAt),
+            ignoreQueryFilters: true);
     }
 
     public async Task DeleteUserMessagesAsync(int userId)

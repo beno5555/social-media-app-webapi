@@ -172,7 +172,7 @@ public static class ResponseMessages
     public const string CouldNotDeletePost = $"{CouldNot} {Delete} Post";
 
     public const string Feed = "See what your friends have been up to!";
-    public const string UserPostsRetrieved = $"User Posts{Retrieved} {Successfully}";
+    public const string UserPostsRetrieved = $"User Posts {Retrieved} {Successfully}";
 
     #endregion
 

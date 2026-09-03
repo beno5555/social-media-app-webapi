@@ -38,10 +38,23 @@ public class RefreshTokenRepository : BaseEntityRepository<RefreshToken>
     }
 
     // background job methods
-    public async Task<int> DeleteExpiredAsync(CancellationToken cancellationToken)
+    public async Task<int> DeleteExpiredAsync(int batchSize, CancellationToken cancellationToken)
     {
-        return await _dbSet
+        int deletedCount = 0;
+        var ids = await _dbSet
             .Where(refreshToken => refreshToken.ExpiresAt < DateTime.UtcNow && refreshToken.RevokedAt != null)
-            .ExecuteDeleteAsync(cancellationToken);
+            .OrderBy(refreshToken => refreshToken.Id)
+            .Take(batchSize)
+            .Select(refreshToken => refreshToken.Id)
+            .ToListAsync(cancellationToken);
+
+        if (ids.Count > 0)
+        {
+            deletedCount = await _dbSet
+                .Where(refreshToken => ids.Contains(refreshToken.Id))
+                .ExecuteDeleteAsync(cancellationToken);
+        }
+
+        return deletedCount;
     }
 }

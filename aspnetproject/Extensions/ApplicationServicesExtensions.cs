@@ -1,6 +1,10 @@
 ﻿using aspnetproject.Data.Repositories;
 using aspnetproject.Infrastructure.Dtos.Auth.Email;
+using aspnetproject.Infrastructure.Services.BackgroundJobs;
+using aspnetproject.Infrastructure.Services.BackgroundJobs.Configuration;
 using aspnetproject.Infrastructure.Services.BusinessLogic;
+using aspnetproject.Infrastructure.Services.BusinessLogic.Content;
+using aspnetproject.Infrastructure.Services.BusinessLogic.Users;
 using aspnetproject.Infrastructure.Services.Helpers;
 using aspnetproject.Infrastructure.Services.Logging;
 using aspnetproject.Infrastructure.Services.Websockets;
@@ -22,10 +26,12 @@ public static class ApplicationServicesExtensions
         services.AddScoped<RoleRepository>();
         services.AddScoped<UserRoleRepository>();
         services.AddScoped<RefreshTokenRepository>();
+        services.AddScoped<LogRepository>();
         
         services.AddScoped<UserService>();
         services.AddScoped<AuthService>();
-        services.AddScoped<AccountService>();
+        services.AddScoped<AccountManagementService>();
+        services.AddScoped<AccountActivationService>();
         services.AddScoped<AccountSecurityService>();
         services.AddScoped<CommentService>();
         services.AddScoped<FriendshipService>();
@@ -42,6 +48,14 @@ public static class ApplicationServicesExtensions
 
         services.Configure<EmailConfiguration>(configuration.GetSection("EmailConfiguration"));
         services.AddTransient<EmailSender>();
+        
+        services.Configure<OldLogsCleanupConfiguration>(configuration.GetSection("CleanupConfiguration:OldLogs"));
+        services.Configure<RefreshTokenCleanupConfiguration>(configuration.GetSection("CleanupConfiguration:RefreshTokens"));
+        services.Configure<SoftDeletedUsersCleanupConfiguration>(configuration.GetSection("CleanupConfiguration:SoftDeletedUsers"));
+
+        services.AddHostedService<RefreshTokenCleanupService>();
+        services.AddHostedService<SoftDeletedUsersCleanupService>();
+        services.AddHostedService<OldLogsCleanupService>();
 
         return services;
     }

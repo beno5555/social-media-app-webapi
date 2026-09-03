@@ -4,8 +4,11 @@ using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories.Base;
 using aspnetproject.Data.Repositories.Dtos;
 using aspnetproject.Infrastructure.Dtos.Users;
+using aspnetproject.Infrastructure.Services.BackgroundJobs.Common;
+using aspnetproject.Infrastructure.Services.BackgroundJobs.Configuration;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Scaffolding;
 
 namespace aspnetproject.Data.Repositories;
 
@@ -213,26 +216,101 @@ public class UserRepository : BaseEntityRepository<User>
         user.LastUpdatedAt = DateTime.UtcNow;
     }
 
-    public async Task<int> DeleteSoftDeletedUsersAsync(DateTime cutoff, int batchSize, CancellationToken cancellationToken)
+    public async Task<SoftDeleteCleanupResult> DeleteSoftDeletedUsersBatchAsync(DateTime cutoff, SoftDeletedUsersCleanupConfiguration config, CancellationToken cancellationToken)
     {
-        int deletedCount = 0;
+        var result = new SoftDeleteCleanupResult();
+        
         var userIds = await _dbSet
             .IgnoreQueryFilters()
             .Where(user => user.AccountDeletedAt != null && user.AccountDeletedAt < cutoff)
-            .Take(batchSize)
+            .Take(config.BatchSize)
             .Select(user => user.Id)
             .ToListAsync(cancellationToken);
 
         if (userIds.Count > 0)
         {
-            deletedCount = await _dbSet
+            result.MessagesDeletedCount += await DeleteUsersMessagesAsync(userIds, config.NestedBatchSize, cancellationToken);
+            result.FriendshipsDeletedCount += await DeleteUsersFriendshipsAsync(userIds, config.NestedBatchSize, cancellationToken);
+            result.PostsDeletedCount += await DeleteUsersPostsAsync(userIds, config.NestedBatchSize, cancellationToken);
+            
+            result.UsersDeletedCount = await _dbSet
                 .IgnoreQueryFilters()
                 .Where(user => userIds.Contains(user.Id))
                 .ExecuteDeleteAsync(cancellationToken);
         }
         
-        return deletedCount;
+        return result;
     }
 
-     
+    private async Task<int> DeleteUsersMessagesAsync(List<int> userIds, int batchSize, CancellationToken cancellationToken)
+    {
+        int totalDeleted = 0;
+        int deletedThisBatch = 0;
+
+        do
+        {
+            var messageIds = await _dbContext.Messages
+                .Where(message => userIds.Contains(message.ReceiverUserId) || userIds.Contains(message.SenderUserId))
+                .OrderBy(message => message.Id)
+                .Take(batchSize)
+                .Select(message => message.Id)
+                .ToListAsync(cancellationToken);
+
+            deletedThisBatch = await _dbContext.Messages
+                .Where(message => messageIds.Contains(message.Id))
+                .ExecuteDeleteAsync(cancellationToken);
+
+            totalDeleted += deletedThisBatch;
+        } while (deletedThisBatch > 0);
+
+        return totalDeleted;
+    }
+    
+    private async Task<int> DeleteUsersPostsAsync(List<int> userIds, int batchSize, CancellationToken cancellationToken)
+    {
+        int totalDeleted     = 0;
+        int deletedThisBatch = 0;
+
+        do
+        {
+            var postIds = await _dbContext.Posts
+                .Where(post => userIds.Contains(post.UserId))
+                .OrderBy(post => post.Id)
+                .Take(batchSize)
+                .Select(post => post.Id)
+                .ToListAsync(cancellationToken);
+
+            deletedThisBatch = await _dbContext.Posts
+                .Where(post => postIds.Contains(post.Id))
+                .ExecuteDeleteAsync(cancellationToken);
+
+            totalDeleted += deletedThisBatch;
+        } while (deletedThisBatch > 0);
+
+        return totalDeleted;
+    }
+    
+    private async Task<int> DeleteUsersFriendshipsAsync(List<int> userIds, int batchSize, CancellationToken cancellationToken)
+    {
+        int totalDeleted     = 0;
+        int deletedThisBatch = 0;
+
+        do
+        {
+            var postIds = await _dbContext.Friendships
+                .Where(friendship => userIds.Contains(friendship.AddresseeUserId) || userIds.Contains(friendship.RequesterUserId))
+                .OrderBy(friendship => friendship.Id)
+                .Take(batchSize)
+                .Select(friendship => friendship.Id)
+                .ToListAsync(cancellationToken);
+
+            deletedThisBatch = await _dbContext.Friendships
+                .Where(friendship => postIds.Contains(friendship.Id))
+                .ExecuteDeleteAsync(cancellationToken);
+
+            totalDeleted += deletedThisBatch;
+        } while (deletedThisBatch > 0);
+
+        return totalDeleted;
+    }
 }

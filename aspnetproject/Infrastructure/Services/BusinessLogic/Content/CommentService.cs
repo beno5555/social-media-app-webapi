@@ -9,7 +9,7 @@ using aspnetproject.Infrastructure.Services.BusinessLogic.Base;
 using aspnetproject.Infrastructure.Services.Logging;
 using Microsoft.AspNetCore.SignalR;
 
-namespace aspnetproject.Infrastructure.Services.BusinessLogic;
+namespace aspnetproject.Infrastructure.Services.BusinessLogic.Content;
 
 public class CommentService : BaseService
 {

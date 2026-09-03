@@ -10,7 +10,7 @@ using aspnetproject.Infrastructure.Services.BusinessLogic.Base;
 using aspnetproject.Infrastructure.Services.Helpers;
 using aspnetproject.Infrastructure.Services.Logging;
 
-namespace aspnetproject.Infrastructure.Services.BusinessLogic;
+namespace aspnetproject.Infrastructure.Services.BusinessLogic.Users;
 
 public class AuthService : BaseService
 {

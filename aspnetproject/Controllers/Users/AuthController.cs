@@ -3,11 +3,11 @@ using aspnetproject.Extensions;
 using aspnetproject.Infrastructure.Dtos.Auth;
 using aspnetproject.Infrastructure.Dtos.Auth.Password;
 using aspnetproject.Infrastructure.Dtos.Users;
-using aspnetproject.Infrastructure.Services.BusinessLogic;
+using aspnetproject.Infrastructure.Services.BusinessLogic.Users;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
-namespace aspnetproject.Controllers;
+namespace aspnetproject.Controllers.Users;
 
 [ApiController]
 [Route("api/auth")]

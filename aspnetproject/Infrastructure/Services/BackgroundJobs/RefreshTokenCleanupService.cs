@@ -1,5 +1,4 @@
-﻿using aspnetproject.Data;
-using aspnetproject.Data.Models;
+﻿using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Infrastructure.Services.BackgroundJobs.Base;
 using aspnetproject.Infrastructure.Services.BackgroundJobs.Configuration;
@@ -10,9 +9,11 @@ namespace aspnetproject.Infrastructure.Services.BackgroundJobs;
 
 public class RefreshTokenCleanupService : PeriodicHostedService
 {
+    private readonly RefreshTokenCleanupConfiguration _config;
     public RefreshTokenCleanupService(IOptions<RefreshTokenCleanupConfiguration> config, IServiceScopeFactory scopeFactory) 
         : base(scopeFactory, config.Value.Interval)
     {
+        _config = config.Value;
     }
 
     protected override async Task RunCycleAsync(IServiceProvider serviceProvider, CancellationToken stoppingToken)
@@ -20,11 +21,19 @@ public class RefreshTokenCleanupService : PeriodicHostedService
         var repo = serviceProvider.GetRequiredService<RefreshTokenRepository>();
         var dbLogger = serviceProvider.GetRequiredService<DatabaseLogger>();
 
-        int deletedCount = await repo.DeleteExpiredAsync(stoppingToken);
+        int totalDeleted     = 0;
+        int deletedThisBatch = 0;
 
-        if (deletedCount > 0)
+        do
         {
-            await LogResultAsync(dbLogger, true, nameof(RefreshToken), null);
+            deletedThisBatch = await repo.DeleteExpiredAsync(_config.BatchSize, stoppingToken);
+            totalDeleted += deletedThisBatch;
+        }
+        while (deletedThisBatch > 0 && !stoppingToken.IsCancellationRequested);
+
+        if (totalDeleted > 0)
+        {
+            await LogResultAsync(dbLogger, true, nameof(RefreshToken), $"Removed {totalDeleted} expired tokens");
         }
     }
 }

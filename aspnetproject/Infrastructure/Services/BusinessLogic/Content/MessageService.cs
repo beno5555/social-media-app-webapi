@@ -12,7 +12,7 @@ using aspnetproject.Infrastructure.Services.Logging;
 using Microsoft.AspNetCore.SignalR;
 using Constants = aspnetproject.Common.ProjectConstants.Constants;
 
-namespace aspnetproject.Infrastructure.Services.BusinessLogic;
+namespace aspnetproject.Infrastructure.Services.BusinessLogic.Content;
 
 public class MessageService : BaseService
 {

@@ -4,12 +4,12 @@ using aspnetproject.Extensions;
 using aspnetproject.Infrastructure.Dtos.Auth;
 using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Infrastructure.Queries;
-using aspnetproject.Infrastructure.Services.BusinessLogic;
+using aspnetproject.Infrastructure.Services.BusinessLogic.Users;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.RateLimiting;
 
-namespace aspnetproject.Controllers;
+namespace aspnetproject.Controllers.Users;
 
 [Route("api/users")]
 [Authorize]

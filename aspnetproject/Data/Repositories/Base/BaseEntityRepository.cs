@@ -4,7 +4,7 @@ namespace aspnetproject.Data.Repositories.Base;
 
 public class BaseEntityRepository<T> : BaseRepository<T> where T : BaseEntity
 {
-    protected BaseEntityRepository(ApplicationDbContext dbContext) : base(dbContext)
+    public BaseEntityRepository(ApplicationDbContext dbContext) : base(dbContext)
     {
     }
     

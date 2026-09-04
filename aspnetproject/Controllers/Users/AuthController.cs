@@ -42,6 +42,7 @@ public class AuthController : ControllerBase
     public async Task<ActionResult<string>> Login(LoginDto loginDto)
     {
         var response = await _authService.LoginAsync(loginDto);
+        
         if (response.Succeeded)
         {
             SetRefreshTokenCookie(response.Data!.RefreshToken);
@@ -127,7 +128,7 @@ public class AuthController : ControllerBase
         Response.Cookies.Append("refreshToken", refreshToken, new CookieOptions
         {
             HttpOnly = true,
-            // Secure = true, // commented temporarily to enable testing on http://localhost
+            Secure = true, 
             SameSite = SameSiteMode.Strict,
             Expires = DateTime.UtcNow.AddDays(refreshTokenDays)
         });

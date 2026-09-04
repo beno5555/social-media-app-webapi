@@ -50,19 +50,17 @@ public static class ResponseMessages
     #region Accounts
     
     public static readonly Func<string, string> SearchResultsForUsername = usernameQuery => $"Search results for '{usernameQuery}':";
-
-    public static readonly Func<string, string> NoAccountsMatchingUsername =
-        usernameQuery => $"No Accounts matching '{usernameQuery}':";
+    public static readonly Func<string, string> NoAccountsMatchingUsername = usernameQuery => $"No Accounts matching '{usernameQuery}':";
 
     public static readonly Func<DateTime, string> UsernameCanBeChangedAgainOn = allowedChangeDate =>
         $"Username can be changed again on {allowedChangeDate:yyyy-MM-dd}";
     
-    public const string AccountRetrieved   = $"Account {Retrieved} {Successfully}";
-    public const string AccountDeleted     = $"Account {Deleted} {Successfully}";
-    public const string AccountDeactivated = $"Account {Deactivated} {Successfully}";
-    public const string AccountActivated   = $"Account {Activated} {Successfully}";
-    public const string AccountActivationTokenSentToEmail   = $"Account activation token {Sent} to Email";
-    public const string YouCanNowSignIn    = "You can now Sign In";
+    public const string AccountRetrieved                  = $"Account {Retrieved} {Successfully}";
+    public const string AccountDeleted                    = $"Account {Deleted} {Successfully}";
+    public const string AccountDeactivated                = $"Account {Deactivated} {Successfully}";
+    public const string AccountActivated                  = $"Account {Activated} {Successfully}";
+    public const string AccountActivationTokenSentToEmail = $"Account activation token {Sent} to Email";
+    public const string YouCanNowSignIn                   = "You can now Sign In";
 
     public const string UserWithEmailExists    = $"User with email {Exists}";
     public const string UserWithUsernameExists = $"User with username {Exists}";
@@ -72,7 +70,7 @@ public static class ResponseMessages
     public const string ProfileRetrieved = $"Profile {Retrieved} {Successfully}";
     public const string ProfileEdited    = $"Profile {Edited} {Successfully}";
 
-    public const string CouldNotDeactivateAccount = $"{CouldNot} {Deactivate} Account";
+    public const string CouldNotDeactivateAccount    = $"{CouldNot} {Deactivate} Account";
     public const string ReactivationTokenSentOnEmail = $"Reativation token {Sent} on Email";
 
     public const string AccountDeactivatedUsername = "account_deactivated";
@@ -81,7 +79,7 @@ public static class ResponseMessages
     public const string AdministratorPrivilegesAssignedToUser = "Administrator privileges assigned to user";
     public const string RoleAlreadyAssigned                   = "Role is already assigned to User";
     public const string RoleNotFound                          = $"Role {NotFound}";
-    public const string UserRoleNotFound                          = $"User Role {NotFound}";
+    public const string UserRoleNotFound                      = $"User Role {NotFound}";
     public const string RoleUnassignedFromUser                = $"Role Unassigned from user";
     
     #endregion
@@ -101,7 +99,7 @@ public static class ResponseMessages
     public const string InvalidPasswordResetToken          = "Invalid reset token";
     public const string InvalidOrExpiredPasswordResetToken = "Invalid or expired reset token";
     public const string PasswordResetSuccessful            = "Password reset successful";
-    public const string NewPasswordCannotBeTheSame            = "New Password cannot be the same as old password";
+    public const string NewPasswordCannotBeTheSame         = "New Password cannot be the same as old password";
 
     public const string CouldNotSendEmail = $"{CouldNot} {Send} Email";
     
@@ -125,16 +123,15 @@ public static class ResponseMessages
     #endregion
 
     #region Friendships
-
+    public static readonly Func<FriendshipStatus, string> ResponseSent = responseStatus => $"Request {responseStatus}";
+    
     public const string FriendRequestSent                  = $"Friend Request {Sent} {Successfully}";
     public const string AddresseeNotFound                  = $"Addressee {NotFound}";
     public const string FriendRequestCannotBeSentToOneself = $"Friend Request {CouldNot} be {Sent} to oneself";
 
     public const string AlreadyFriends              = "You are already friends with this user";
     public const string PendingRequestAlreadyExists = "A pending friend request already exists";
-    
-    public static readonly Func<FriendshipStatus, string> ResponseSent           = responseStatus => $"Request {responseStatus}";
-    public const string PendingRequestNotFound = $"Pending request {NotFound}";
+    public const string PendingRequestNotFound      = $"Pending request {NotFound}";
     
     public const string RelationshipRemoved = $"Relationship {Removed} {Successfully}";
     public const string FriendshipNotFound  = $"Friendship {NotFound}";
@@ -177,7 +174,7 @@ public static class ResponseMessages
     public const string CouldNotUpdatePost = $"{CouldNot} {Update} Post";
     public const string CouldNotDeletePost = $"{CouldNot} {Delete} Post";
 
-    public const string Feed = "See what your friends have been up to!";
+    public const string Feed               = "See what your friends have been up to!";
     public const string UserPostsRetrieved = $"User Posts {Retrieved} {Successfully}";
 
     #endregion
@@ -198,5 +195,4 @@ public static class ResponseMessages
     public const string InvalidRequest = "Invalid Request";
 
     #endregion
-
 }

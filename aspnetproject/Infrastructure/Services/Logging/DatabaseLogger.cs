@@ -28,12 +28,11 @@ public class DatabaseLogger
     {
         try
         {
-            var (authorized, userId) = GetUserId();
+            int userId = GetUserId();
 
-            createLogDto.AuthorizedRequest = authorized;
-
-            if (createLogDto.AuthorizedRequest)
+            if (userId != 0)
             {
+                createLogDto.AuthorizedRequest = true;
                 createLogDto.UserId = userId;
             }
 
@@ -65,14 +64,6 @@ public class DatabaseLogger
             await _systemLogger.LoggingErrorAsync(ex, $"Failed to write log entry {createLogDto.Action}");
         }
     }
-    
-    private (bool, int) GetUserId()
-    {
-        var userIdRaw    = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
-        var isAuthorized = int.TryParse(userIdRaw, out int userId);
-        
-        return (isAuthorized, userId);
-    }
 
     public async Task LogSystemActionAsync(CreateLogDto createLogDto)
     {
@@ -97,5 +88,13 @@ public class DatabaseLogger
         {
             await _systemLogger.LoggingErrorAsync(ex, $"Failed to write log entry {createLogDto.Action}");
         }
+    }
+    
+    private int GetUserId()
+    {
+        var userIdRaw    = _httpContextAccessor.HttpContext?.User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        int.TryParse(userIdRaw, out var userId);
+        
+        return userId;
     }
 }

@@ -17,12 +17,14 @@ public class User : BaseEntity
     public DateTime? LastOnlineAt { get; set; } = null; // null = online
 
     public string? Bio { get; set; }
+    
+    
 
     public string?   ResetTokenHash      { get; set; } = string.Empty;
     public DateTime? ResetTokenExpiresAt { get; set; }
 
     public DateTime? AccountDeactivatedAt { get; set; }
-    public DateTime? AccountDeletedAt { get; set; }
+    public DateTime? AccountDeletedAt     { get; set; }
 
     [NotMapped] 
     public bool IsAccountEnabled => AccountDeactivatedAt == null;

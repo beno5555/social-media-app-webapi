@@ -12,13 +12,13 @@ public class EditUserDto
     [Required]
     [RegularExpression(Constants.UsernameRegexPattern)]
     [DefaultValue("test")]
-    public string   Username    { get; set; } = string.Empty;
-    
+    public string Username { get; set; } = string.Empty;
+
     [ValidAge]
     [Required]
     [DefaultValue("2000-08-16T10:10:23.546Z")]
     public DateTime DateOfBirth { get; set; }
-    
+
     [MinLength(Constants.BioMinLength), MaxLength(Constants.BioMaxLength)]
-    public string?  Bio         { get; set; } = null;
+    public string? Bio { get; set; } = null;
 }

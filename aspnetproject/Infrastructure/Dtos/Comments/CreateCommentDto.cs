@@ -7,5 +7,5 @@ public class CreateCommentDto
 {
     [MaxLength(Constants.CommentMaxLength)]
     [Required]
-    public string Content  { get; set; } = string.Empty;
+    public string Content { get; set; } = string.Empty;
 }

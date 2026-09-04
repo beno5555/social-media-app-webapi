@@ -48,24 +48,6 @@ public class MessageRepository : BaseEntityRepository<Message>
             ignoreQueryFilters: true);
     }
 
-    public async Task DeleteUserMessagesAsync(int userId)
-    {
-        await _dbContext.Database.ExecuteSqlRawAsync(
-            "DELETE FROM Messages WHERE SenderUserId = {0} OR ReceiverUserId = {0}", userId);
-        // await DeleteWhereAsync(message => message.SenderUserId   == userId ||
-        //                                   message.ReceiverUserId == userId);
-    }
-
-    public async Task SetUserIdToNullInMessagesAsync(int userId)
-    {
-        int? newUserId = null;
-        await _dbSet.Where(message => message.SenderUserId == userId)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(message => message.SenderUserId, newUserId));
-        
-        await _dbSet.Where(message => message.ReceiverUserId == userId)
-            .ExecuteUpdateAsync(setters => setters.SetProperty(message => message.ReceiverUserId, newUserId));
-    }
-
     public async Task DeleteConversationAsync(int userA, int userB)
     {
         await DeleteWhereAsync(message => (message.SenderUserId == userA && message.ReceiverUserId == userB) ||

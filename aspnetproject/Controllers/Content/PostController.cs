@@ -3,7 +3,6 @@ using aspnetproject.Controllers.Base;
 using aspnetproject.Extensions;
 using aspnetproject.Infrastructure.Dtos.Posts;
 using aspnetproject.Infrastructure.Queries;
-using aspnetproject.Infrastructure.Services.BusinessLogic;
 using aspnetproject.Infrastructure.Services.BusinessLogic.Content;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -26,10 +25,6 @@ public class PostController : BaseController
     [EnableRateLimiting(RateLimitConfig.Policies.CreatePost)]
     public async Task<ActionResult<ApplicationResponse<FullPostDisplayDto>>> CreatePost([FromBody] CreatePostDto createPostDto)
     {
-        if (string.IsNullOrEmpty(createPostDto.PostTitle))
-        {
-            return BadRequest(createPostDto);
-        }
         var userId   = GetUserId();
         var response = await _postService.UploadPost(userId, createPostDto);
 

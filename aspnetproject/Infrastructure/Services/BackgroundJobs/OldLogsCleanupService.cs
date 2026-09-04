@@ -34,6 +34,5 @@ public class OldLogsCleanupService : PeriodicHostedService
         {
             await LogResultAsync(dbLogger, true, nameof(Log), $"Logs Deleted: {totalDeleted}");
         }
-
     }
 }

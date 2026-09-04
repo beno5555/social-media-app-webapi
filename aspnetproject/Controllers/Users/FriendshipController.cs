@@ -28,7 +28,7 @@ public class FriendshipController : BaseController
     [EnableRateLimiting(RateLimitConfig.Policies.SendFriendRequest)]
     public async Task<ActionResult<ApplicationResponse<MinimalFriendshipDto>>> SendRequest(int addresseeId) 
     {
-        var userId   = GetUserId();
+        int userId   = GetUserId();
         var response = await _friendshipService.SendRequest(userId, addresseeId);
 
         if (response.Succeeded)
@@ -44,7 +44,7 @@ public class FriendshipController : BaseController
     [EnableRateLimiting(RateLimitConfig.Policies.ReadFriendships)]
     public async Task<ActionResult<ApplicationResponse<StandardFriendshipDto>>> GetRelationship(int friendId) 
     {
-        var userId   = GetUserId();
+        int userId   = GetUserId();
         var response = await _friendshipService.GetRelationshipAsync(userId, friendId);
 
         if (response.Succeeded)
@@ -60,7 +60,7 @@ public class FriendshipController : BaseController
     [EnableRateLimiting(RateLimitConfig.Policies.ReadFriendships)]
     public async Task<ActionResult<ApplicationResponse<AcceptedFriendshipDto>>> GetAcceptedFriendship(int friendId)
     {
-        var userId   = GetUserId();
+        int userId   = GetUserId();
         var response = await _friendshipService.GetAcceptedFriendshipAsync(userId, friendId);
 
         if (response.Succeeded)
@@ -139,7 +139,7 @@ public class FriendshipController : BaseController
     [EnableRateLimiting(RateLimitConfig.Policies.RespondFriendRequest)]
     public async Task<ActionResult<ApplicationResponse<StandardFriendshipDto>>> AcceptRequest(int requesterId) 
     {
-        var userId   = GetUserId();
+        int userId   = GetUserId();
         var response = await _friendshipService.RespondToRequestAsync(requesterId, userId, FriendshipStatus.Accepted);
 
         if (response.Succeeded)
@@ -155,7 +155,7 @@ public class FriendshipController : BaseController
     [EnableRateLimiting(RateLimitConfig.Policies.RespondFriendRequest)]
     public async Task<ActionResult<ApplicationResponse<StandardFriendshipDto>>> DeclineRequest(int requesterId) 
     {
-        var userId   = GetUserId();
+        int userId   = GetUserId();
         var response = await _friendshipService.RespondToRequestAsync(requesterId, userId, FriendshipStatus.Declined);
 
         if (response.Succeeded)
@@ -171,7 +171,7 @@ public class FriendshipController : BaseController
     [EnableRateLimiting(RateLimitConfig.Policies.RemoveFriend)]
     public async Task<ActionResult<ApplicationResponse>> RemoveRelationship(int friendId) 
     {
-        int userId = GetUserId();
+        int userId   = GetUserId();
         var response = await _friendshipService.RemoveRelationshipAsync(userId, friendId);
 
         if (response.Succeeded)

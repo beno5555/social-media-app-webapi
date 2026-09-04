@@ -55,7 +55,7 @@ public class TokenGenerator
         var token = Convert.ToBase64String(bytes)
             .TrimEnd('=')
             .Replace('+', '-')
-            .Replace('/', '_');
+            .Replace('/', '_'); // safe to use in a url
         
         return token;
     }

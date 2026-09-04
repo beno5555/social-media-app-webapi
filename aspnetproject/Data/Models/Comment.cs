@@ -8,5 +8,5 @@ public class Comment : BaseEntity
     public User? CommenterUser   { get; set; }
 
     public int   PostId { get; set; }
-    public Post? Post   { get; set; } 
+    public Post? Post   { get; set; }
 }

@@ -13,9 +13,4 @@ public class RoleRepository : BaseEntityRepository<Role>
     {
         return await GetFirstAsync(role => role.Name == roleName);
     }
-
-    public async Task<bool> ExistsByNameAsync(string roleName)
-    {
-        return await ExistsAsync(role => role.Name == roleName);
-    }
 }

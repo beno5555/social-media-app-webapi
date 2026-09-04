@@ -11,10 +11,10 @@ public class Message : BaseEntity
     
     public bool Seen { get; set; } = false;
 
-    public int  SenderUserId { get; set; }
+    public int   SenderUserId { get; set; }
     public User? SenderUser   { get; set; }
 
-    public int  ReceiverUserId { get; set; }
+    public int   ReceiverUserId { get; set; }
     public User? ReceiverUser   { get; set; }
 
     [NotMapped]

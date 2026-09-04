@@ -87,20 +87,6 @@ public class PostService : BaseService
         return response;
     }
     
-    public async Task<ListResponse<MinimalPostDisplayDto>> GetAllPostsAsync(int? pageNumber, int? pageSize)
-    {
-        var response = new ListResponse<MinimalPostDisplayDto>();
-        
-        var posts    = await _postRepository.GetAllAsync(pageNumber, pageSize);
-        var postDtos = posts
-            .Select(PostMapper.ToMinimalDisplay)
-            .ToList();
-
-        response.Ok(postDtos);
-
-        return response;
-    }
-    
     public async Task<ListResponse<StandardPostDisplayDto>> GetFeedAsync(int userId, int? pageNumber, int? pageSize)
     {
         var response = new ListResponse<StandardPostDisplayDto>();

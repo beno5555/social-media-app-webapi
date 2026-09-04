@@ -1,6 +1,7 @@
 ﻿using aspnetproject.Common.ProjectConstants;
 using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories.Dtos;
+using aspnetproject.Infrastructure.Dtos.Auth;
 using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Infrastructure.Dtos.Users.Friends;
 
@@ -8,7 +9,8 @@ namespace aspnetproject.Infrastructure.Mappers;
 
 public static class UserMapper 
 {
-    public static User ToEntity(CreateAccountDto registerDto, string passwordHash, string passwordSalt)
+    
+    public static User ToRegisteredEntity(RegisterDto registerDto, string passwordHash, string passwordSalt)
     {
         return new User
         {
@@ -20,7 +22,6 @@ public static class UserMapper
             DateOfBirth = registerDto.DateOfBirth
         };
     }
-
     public static MinimalUserDto ToMinimalDisplay(User user)
     {
         return new MinimalUserDto

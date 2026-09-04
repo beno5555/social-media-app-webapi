@@ -146,12 +146,4 @@ public class AccountManagementService : BaseService
 
         return response;
     }
-    
-    // private async Task UpdateUserRelatedDataAsync(int userId)
-    // {
-    //     await _refreshTokenRepository.RevokeAllForUserAsync(userId);
-    //     await _commentRepository.SetUserIdToNullInCommentsAsync(userId);
-    //     await _messageRepository.DeleteUserMessagesAsync(userId);
-    //     await _friendshipRepository.DeleteUserFriendshipsAsync(userId);
-    // }
 }

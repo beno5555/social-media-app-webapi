@@ -8,7 +8,6 @@ using aspnetproject.Infrastructure.Services.BackgroundJobs.Common;
 using aspnetproject.Infrastructure.Services.BackgroundJobs.Configuration;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Scaffolding;
 
 namespace aspnetproject.Data.Repositories;
 
@@ -18,6 +17,8 @@ public class UserRepository : BaseEntityRepository<User>
     {
 
     }
+    
+    #region Business Logic calls
 
     public async Task<User> AddUserAsync(User user)
     {
@@ -215,6 +216,10 @@ public class UserRepository : BaseEntityRepository<User>
 
         user.LastUpdatedAt = DateTime.UtcNow;
     }
+    
+    #endregion
+    
+    #region Background job calls
 
     public async Task<SoftDeleteCleanupResult> DeleteSoftDeletedUsersBatchAsync(DateTime cutoff, SoftDeletedUsersCleanupConfiguration config, CancellationToken cancellationToken)
     {
@@ -313,4 +318,6 @@ public class UserRepository : BaseEntityRepository<User>
 
         return totalDeleted;
     }
+    
+    #endregion
 }

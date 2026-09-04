@@ -48,7 +48,7 @@ public class AuthService : BaseService
             if (!usernameExists)
             {
                 var (hash, salt) = _passwordHasher.HashPassword(registerDto.Password);
-                User userToRegister = AuthMapper.ToRegisteredEntity(registerDto, hash, salt);
+                User userToRegister = UserMapper.ToRegisteredEntity(registerDto, hash, salt);
             
                 User addedUser = await _userRepository.AddUserAsync(userToRegister);
                 var displayDto = UserMapper.ToFullDisplay(addedUser);

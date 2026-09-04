@@ -46,6 +46,7 @@ public class UserController : BaseController
     public async Task<ActionResult<ApplicationResponse<StandardUserDto>>> GetByUsername(int id)
     {
         var response = await _userService.GetById(id);
+        
         if (response.Succeeded)
         {
             return Ok(response);
@@ -61,6 +62,7 @@ public class UserController : BaseController
     public async Task<ActionResult<ApplicationResponse<StandardUserDto>>> GetByUsername(string username)
     {
         var response = await _userService.GetByUsername(username);
+        
         if (response.Succeeded)
         {
             return Ok(response);
@@ -74,8 +76,8 @@ public class UserController : BaseController
     [EnableRateLimiting(RateLimitConfig.Policies.ReadUserProfile)]
     public async Task<ActionResult<ApplicationResponse<FullUserDto>>> GetProfile()
     {
-        var username = GetUsername();
-        var response = await _userService.GetByUsernameFull(username);
+        string username = GetUsername();
+        var    response = await _userService.GetByUsernameFull(username);
 
         if (response.Succeeded)
         {

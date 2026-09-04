@@ -6,7 +6,7 @@ namespace aspnetproject.Infrastructure.Mappers;
 public static class UsernameMapper
 {
     /// <summary>
-    /// assumes applied .Include() on a query
+    /// assumes applied .Include() on user navigation property
     /// </summary>
     public static string ResolveUsername(User? user, int? userId)
     {

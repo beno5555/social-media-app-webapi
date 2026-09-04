@@ -8,9 +8,9 @@ public class Friendship : BaseEntity
 
     public DateTime SentAt { get; set; } = DateTime.UtcNow;
 
-    public int  RequesterUserId { get; set; }
+    public int   RequesterUserId { get; set; }
     public User? RequesterUser   { get; set; }
 
-    public int AddresseeUserId { get; set; }
+    public int   AddresseeUserId { get; set; }
     public User? AddresseeUser   { get; set; }
 }

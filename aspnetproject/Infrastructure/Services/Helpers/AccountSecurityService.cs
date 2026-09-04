@@ -6,9 +6,9 @@ namespace aspnetproject.Infrastructure.Services.Helpers;
 
 public class AccountSecurityService
 {
-    private readonly UserRepository _userRepository;
-    private readonly TokenGenerator _tokenGenerator;
-    private readonly EmailSender    _emailSender;
+    private readonly UserRepository         _userRepository;
+    private readonly TokenGenerator         _tokenGenerator;
+    private readonly EmailSender            _emailSender;
     private readonly RefreshTokenRepository _refreshTokenRepository;
 
     private readonly int _resetTokenMinutes;

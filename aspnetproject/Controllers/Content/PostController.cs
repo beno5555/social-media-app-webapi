@@ -99,7 +99,7 @@ public class PostController : BaseController
     [EnableRateLimiting(RateLimitConfig.Policies.UpdatePost)]
     public async Task<ActionResult<ApplicationResponse<FullPostDisplayDto>>> UpdatePost(int id, [FromBody] UpdatePostDto updatePostDto)
     {
-        var userId   = GetUserId();
+        int userId   = GetUserId();
         var response = await _postService.UpdatePost(id, userId, updatePostDto);
 
         if (response.Succeeded)

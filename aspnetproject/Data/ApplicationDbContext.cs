@@ -1,4 +1,5 @@
 ﻿using aspnetproject.Data.Models;
+using aspnetproject.Data.Seed;
 using Microsoft.EntityFrameworkCore;
 
 namespace aspnetproject.Data;
@@ -23,11 +24,6 @@ public class ApplicationDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.ApplyConfigurationsFromAssembly(typeof(ApplicationDbContext).Assembly);
-        //
-        // var messageEntity = modelBuilder.Entity<Message>().Metadata;
-        // var fkIndex = messageEntity.GetIndexes()
-        //     .FirstOrDefault(i => i.Properties.Count == 1 && i.Properties[0].Name == nameof(Message.ReceiverUserId));
-        // if (fkIndex is not null)
-        //     messageEntity.RemoveIndex(fkIndex.Properties);
+        modelBuilder.SeedDeterministicFixture();
     }
 }

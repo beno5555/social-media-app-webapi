@@ -1,3 +1,4 @@
 <Solution>
+  <Project Path="aspnetproject.IntegrationTests/aspnetproject.IntegrationTests.csproj" />
   <Project Path="aspnetproject/aspnetproject.csproj" />
 </Solution>

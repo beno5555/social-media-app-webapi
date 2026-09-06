@@ -496,3 +496,4 @@ $RECYCLE.BIN/
 
 appsettings.json
 appsettings.Development.json
+appsettings.Testing.json

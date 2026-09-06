@@ -107,11 +107,21 @@ public class UserService : BaseService
 
             if (!cooldownActive)
             {
-                await _userRepository.EditUserProfileAsync(userToEdit, editUserDto);
-                var userDto = UserMapper.ToFullDisplay(userToEdit);
+                bool userWithUsernameExists = await _userRepository.OtherUserByUsernameExistsAsync(editUserDto.Username, userToEdit.Id);
+
+                if (!userWithUsernameExists)
+                {
+                    await _userRepository.EditUserProfileAsync(userToEdit, editUserDto);
+                    var userDto = UserMapper.ToFullDisplay(userToEdit);
                 
-                response.Ok(userDto, ResponseMessages.ProfileEdited);
-                await LogResultAsync(response.Succeeded, nameof(EditUserProfileAsync), nameof(User), null, id);
+                    response.Ok(userDto, ResponseMessages.ProfileEdited);
+                    await LogResultAsync(response.Succeeded, nameof(EditUserProfileAsync), nameof(User), null, id);
+                }
+                else
+                {
+                    response.Fail(ResponseMessages.UsernameIsAlreadyTaken);
+                    await LogResultAsync(response.Succeeded, nameof(EditUserProfileAsync), nameof(User), $"Edit invalidated. {response.Message}", id);
+                }
             }
             else
             {

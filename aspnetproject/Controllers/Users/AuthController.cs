@@ -69,10 +69,10 @@ public class AuthController : ControllerBase
                 return Ok(new { accessToken = response.Data!.AccessToken });
             }
 
-            return BadRequest(response.Message);
+            return Unauthorized(response.Message);
         }
 
-        return BadRequest(new { Message = "No refresh token provided" });
+        return Unauthorized(new { Message = "No refresh token provided" });
     }
 
     [HttpPost]

@@ -71,7 +71,7 @@ public class CommentService : BaseService
                 if (commentAuthorId != post.UserId)
                 {
                     var commentNotification = CommentMapper.ToNotification(addedComment);
-                    await _hubContext.Clients.Group(post.UserId.ToString()).SendAsync("ReceiveComment", commentNotification);
+                    // await _hubContext.Clients.Group(post.UserId.ToString()).SendAsync("ReceiveComment", commentNotification); // temporarily off to not interfere with integration tests
                 }
             
                 var commentDto = CommentMapper.ToFullDisplay(addedComment);

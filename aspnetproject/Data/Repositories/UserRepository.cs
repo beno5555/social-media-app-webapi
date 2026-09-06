@@ -94,6 +94,10 @@ public class UserRepository : BaseEntityRepository<User>
         return await ExistsByIgnoringQueryFilterAsync(user => user.Username == username.ToLower());
     }
 
+    public async Task<bool> OtherUserByUsernameExistsAsync(string username, int currentUserId)
+    {
+        return await ExistsByIgnoringQueryFilterAsync(user => user.Username == username.ToLower() && user.Id != currentUserId);
+    }
     public async Task<List<User>> SearchByUsernameAsync(string usernameInput, int? pageNumber, int? pageSize)
     {
         return await GetWhereAsync(user => user.Username.Contains(usernameInput), pageNumber, pageSize);

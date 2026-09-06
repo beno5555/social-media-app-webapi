@@ -71,12 +71,12 @@ public class AccountActivationService : BaseService
             await _accountSecurityService.NotifyAccountReactivation(user.Email);
             
             response.Ok(userDto, ResponseMessages.AccountActivated);
-            await LogResultAsync(response.Succeeded, nameof(ReactivateOwnAccountAsync), nameof(User), null, id);
+            await LogResultAsync(response.Succeeded, nameof(ReactivateAccountAsync), nameof(User), null, id);
         }
         else
         {
             response.Fail(ResponseMessages.UserNotFound);
-            await LogResultAsync(response.Succeeded, nameof(ReactivateOwnAccountAsync), nameof(User), response.Message, null);
+            await LogResultAsync(response.Succeeded, nameof(ReactivateAccountAsync), nameof(User), response.Message, null);
         }
 
         return response;
@@ -118,13 +118,12 @@ public class AccountActivationService : BaseService
         
         if (user is not null)
         {
-            user.AccountDeactivatedAt = null;
-            await _userRepository.SaveChangesAsync();
+            await _userRepository.ActivateAccountAsync(user);
             
             var userDto = UserMapper.ToFullDisplay(user);
-
             response.Ok(userDto, ResponseMessages.AccountActivated + ". " + ResponseMessages.YouCanNowSignIn);
             await LogResultAsync(response.Succeeded, nameof(ReactivateOwnAccountAsync), nameof(User), null, user.Id);
+            
             await _accountSecurityService.NotifyAccountReactivation(user.Email);
         }
         else

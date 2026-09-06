@@ -1,165 +1,203 @@
 ﻿# AspNetProject — Controllers
 
-> Part of the AspNetProject doc set. See also: `core.md`, `data.md`, `auth.md`, `controllers.md`.
+> Part of the AspNetProject doc set. See also: `core.md`, `data.md`, `auth.md`, `controllers.md`, `signalr.md`, `background-jobs.md`.
 
 ---
 
 ## Controllers Layer
 
-### `BaseController`
+All routes are prefixed `api/` (e.g. `api/posts`, not `/posts`). Nearly every action carries `[EnableRateLimiting(RateLimitConfig.Policies.X)]` — omitted from the tables below for brevity; see `auth.md`/`RateLimitConfig.cs` for the concrete limits.
 
-Abstract, carries `[ApiController]` (inherited automatically by every derived controller — no need to repeat it) and `[Authorize]` is instead applied per-controller, not here, so controllers with mostly-public endpoints can invert it.
+### `BaseController`
 
 ```csharp
 [ApiController]
 public abstract class BaseController : ControllerBase
 {
-    protected int GetUserId()
-    {
-        var userIdRaw = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
-        return int.Parse(userIdRaw);
-    }
+    protected int    GetUserId()       // NameIdentifier claim, parsed to int
+    protected string GetUsername()     // Name claim
+    protected bool   IsAdministrator() // User.IsInRole(nameof(RoleName.Administrator))
 }
 ```
 
-`GetUserId()` reads the caller's own id from JWT claims. Note: claims are populated by `UseAuthentication` on every request regardless of whether the hit endpoint carries `[Authorize]` — `[Authorize]` only gates rejection of unauthenticated requests, it doesn't control whether `HttpContext.User` gets parsed.
+`[Authorize]` is applied per-controller, not here, so controllers with mostly-public endpoints can invert it with `[AllowAnonymous]`.
 
-Kept as a method, not a property — it does work (parses a claim) and can throw if called on an anonymous-allowed endpoint hit without a token; properties are conventionally expected to be cheap and non-throwing, so a method name is the more honest signal.
+### `PageQuery` / `SearchUserQuery`
 
-### `PageQuery`
-
-Shared query-binding DTO for paginated list endpoints, in `/Common/Dtos/Common/`:
+In `/Infrastructure/Queries/`:
 
 ```csharp
 public class PageQuery
 {
-    public int? PageNumber { get; set; }
-    public int? PageSize { get; set; }
+    public int PageNumber { get; set; } = 1;
+
+    [Range(1, Constants.MaxPageSize)]
+    public int PageSize { get; set; } = Constants.DefaultPageSize;
+}
+
+public class SearchUserQuery : PageQuery
+{
+    [MinLength(1), MaxLength(Constants.UsernameMaxlength)]
+    public string Username { get; set; } = string.Empty;
 }
 ```
 
-Bound via `[FromQuery]`. Properties are defaulted, deliberately: several service methods (e.g. `GetFeedAsync`) treat `null` page/size as "no pagination, return everything," a mode used by internal/non-API callers (cascade cleanup, seeding). Controllers unpack `PageQuery` into the individual `page`/`pageSize` primitives before calling a service — the service layer does not take a dependency on `PageQuery` itself. No size clamping/validation yet.
-
-Reused as-is by `CommentController`'s paginated endpoints.
-
-### `PostsController`
-
-Route: `/posts`. Inherits `BaseController`. `[Authorize]` at the controller level, with `[AllowAnonymous]` on the public-read endpoints — most actions require auth, so this reads better than tagging most methods individually.
-
-| Method | Route | Auth | Notes |
-|---|---|---|---|
-| GET | `/posts/{id}` | Anonymous | Single post |
-| GET | `/posts` | Anonymous | Paginated list |
-| GET | `/posts/feed` | Required | Friends-only, via `PostService.GetFeedAsync` |
-| GET | `/posts/mine` | Required | Caller's own posts, `userId` from JWT |
-| GET | `/posts/user/{userId}` | Anonymous | Any user's posts — public-profile-style visibility, mirrors platforms where post history is public even to logged-out viewers; not gated by friendship |
-| POST | `/posts` | Required | Create |
-| PUT | `/posts/{id}` | Required | Update, ownership-scoped |
-| DELETE | `/posts/{id}` | Required | Delete, ownership-scoped |
-
-Route ordering (`feed`, `mine`, `user/{id}` vs `{id}`) resolves correctly without explicit constraints — a literal segment always wins over a route parameter in ASP.NET Core's routing.
-
-`GetOwnPosts` (`/mine`) and `GetPostsByUser` (`/user/{userId}`) share one service method, `PostService.GetByUserAsync(userId, page, pageSize)` — they differ only in whether `userId` comes from `GetUserId()` or the route.
-
-**Ownership checks** (`Update`/`Delete`) are done via a scoped query in the service — `WHERE Id = @id AND UserId = @userId` — rather than a separate resource-based authorization step. A dedicated authorization check (`IAuthorizationService.AuthorizeAsync` against a pre-fetched entity) would cleanly separate "is this allowed" from "do the update," but costs an extra DB round-trip to fetch the entity before the service call that touches it again; not worth it for a project this size. Both failure paths return `NotFound`, not `Forbidden`/`Unauthorized`, so a caller can't distinguish "post doesn't exist" from "post exists but isn't yours" — same oracle-avoidance reasoning as the auth failure messages.
-
-**Visibility model, and the inconsistency it creates:** `feed`/`mine` are friends-gated (via `GetFeedAsync`'s friendship lookup); `GetById`/`GetAll`/`GetPostsByUser` are fully public. This isn't a bug — it mirrors real platforms where the home feed is curated but profile pages are public — but it means "who can see a post" currently depends on which endpoint is hit, not a single rule on the `Post` resource. Revisit if/when private accounts become a feature; that check would live in `GetPostsByUser`.
-
-### `CommentController`
-
-Route: `/comments`. Inherits `BaseController`. Same `[Authorize]`-at-controller-level-plus-`[AllowAnonymous]`-on-reads pattern as `PostsController`.
-
-| Method | Route | Auth | Notes |
-|---|---|---|---|
-| GET | `/comments/{id}` | Anonymous | Single comment |
-| GET | `/comments/post/{postId}` | Anonymous | Paginated, comments for a post |
-| GET | `/comments/mine` | Required | Caller's own comments, `userId` from JWT |
-| POST | `/comments` | Required | Create |
-| PUT | `/comments/{id}` | Required | Update, ownership-scoped |
-| DELETE | `/comments/{id}` | Required | Delete, ownership-scoped |
-
-Route ordering (`mine`, `post/{postId}` vs `{id}`) is safe for the same reason as `PostsController`.
-
-**Ownership checks and NotFound-for-both** follow the exact same pattern as `PostsController`: scoped query (`WHERE Id = @id AND UserId = @userId`), `Update`/`Delete` return `NotFound` for both "doesn't exist" and "not yours."
-
-No `/comments` (all-comments, unscoped) endpoint — unlike `PostsController`'s `GetAll`, there's no use case for listing every comment across the whole app; comments are always fetched scoped to a post or a user.
-
-Backed by `CommentService`.
-
-### `FriendshipController`
-
-Route: `/friendships`. Inherits `BaseController`. `[Authorize]` at the controller level, with **no** `[AllowAnonymous]` overrides — unlike `PostsController`/`CommentController`, friendship data has no public-read case; every action requires an authenticated caller.
-
-| Method | Route | Notes |
-|---|---|---|
-| GET | `/friendships/{otherUserId}` | Caller's relationship with a specific user, order-independent |
-| GET | `/friendships/mine` | Caller's own accepted friends |
-| GET | `/friendships/pending-requests` | Incoming requests (caller is addressee) |
-| GET | `/friendships/sent-requests` | Outgoing requests (caller is requester) |
-| GET | `/friendships/user/{userId}` | Any user's accepted friends, public-profile-style view |
-| POST | `/friendships/{addresseeId}` | Send a friend request |
-| PUT | `/friendships/{requesterId}/accept` | Accept a pending request |
-| PUT | `/friendships/{requesterId}/decline` | Decline a pending request |
-| DELETE | `/friendships/{friendId}` | Remove an existing relationship |
-
-**No `{id}` route, by design.** `Friendship` has a composite PK (`RequesterId`, `AddresseeId`) and doesn't inherit `BaseEntity`, so there's no single `Id` to route on the way `PostsController`/`CommentController` do. Every mutating route instead identifies the relationship by *the other user's id*, with the caller's own id always coming from `GetUserId()`. This also makes ownership implicit rather than a separate check: passing `GetUserId()` as `addresseeId` in `RespondToRequestAsync`, for example, means only the actual addressee can accept/decline a given `requesterId` — the service's own "is this pending, for this pair" lookup fails to match otherwise.
-
-**`GetFriends` lives at `/mine`, not the bare route.** Matches the `-mine` convention already used on Posts/Comments. Unlike Posts, there's no legitimate "list every friendship in the system" use case for Friendships (privacy, not just scale), so the bare `/friendships` route is simply unused rather than repurposed for something else.
-
-**Self-request guards live in the service, not the controller.** 
-
-**Status-code mapping.** `ApplicationResponse` carries only a bool + message, no error-type enum, so the controller can only safely distinguish HTTP statuses when a service method's failure paths share one meaning:
-- `RemoveRelationship` — single failure path ("not found") → `NotFound`.
-- `SendRequest` — three different failure meanings share one `Fail(...)` call (addressee not found / already friends / pending exists already), indistinguishable without parsing `Message` text → all collapse to `BadRequest`.
-- `RespondToRequest` — similarly collapses to `BadRequest` since self-request and no-pending-request failures aren't told apart.
-  **No 2-user-id admin lookup.** An endpoint letting any caller check the relationship between two *arbitrary* other users was considered and rejected — without a role/permission system (deferred indefinitely for this project), it's a straightforward privacy leak. Revisit only if an admin panel with real roles gets built.
+Bound via `[FromQuery]`. Unlike the earlier nullable design, both properties now default and validate (`PageSize` capped via `[Range]`) — no more unpaginated "return everything" mode reachable from the API surface (internal/background callers still pass `null`/`null` directly to repository methods).
 
 ---
 
+### `PostController`
+
+Route: `api/posts`. Inherits `BaseController`. `[Authorize]` at controller level, `[AllowAnonymous]` on public-read endpoints.
+
+| Method | Route                     | Auth      | Notes                                              |
+|--------|---------------------------|-----------|----------------------------------------------------|
+| POST   | `api/posts`               | Required  | Create                                             |
+| GET    | `api/posts/feed`          | Required  | Friends-only, via `PostService.GetFeedAsync`       |
+| GET    | `api/posts/mine`          | Required  | Caller's own posts                                 |
+| GET    | `api/posts/{id}`          | Anonymous | Single post (with comments, split query)           |
+| GET    | `api/posts/user/{userId}` | Anonymous | Any user's posts — public-profile-style visibility |
+| PUT    | `api/posts/{id}`          | Required  | Update, ownership-scoped                           |
+| DELETE | `api/posts/{id}`          | Required  | Delete, ownership-scoped **or admin**              |
+
+`GetOwnPosts` (`/mine`) and `GetPostsByUser` (`/user/{userId}`) both call `PostService.GetByUserIdAsync`.
+
+**Ownership checks** (`Update`) remain a scoped comparison in the service (`post.UserId == userId`) rather than a separate authorization step. **Delete now also accepts admins**: `DeletePostAsync(callerId, isAdmin, id)` allows the post owner *or* a caller with the `Administrator` role, sourced from `BaseController.IsAdministrator()`.
+
+**Visibility model, and the inconsistency it creates:** `feed`/`mine` are friends-gated; `GetById`/`GetPostsByUser` are fully public. Mirrors real platforms where the home feed is curated but profile pages are public — but "who can see a post" still depends on which endpoint is hit, not a single rule on the `Post` resource.
+
+Deleting a post runs inside a transaction: comments are deleted first (`CommentRepository.DeletePostCommentsAsync`), then the post (`DeleteWithoutChangeTrackingAsync`), avoiding change-tracker/FK ordering issues.
+
+### `CommentController`
+
+Route: `api/comments`. Inherits `BaseController`. Same `[Authorize]`-at-controller-level-plus-`[AllowAnonymous]`-on-reads pattern.
+
+| Method | Route                         | Auth      | Notes                                     |
+|--------|-------------------------------|-----------|-------------------------------------------|
+| POST   | `api/comments/posts/{postId}` | Required  | Create                                    |
+| GET    | `api/comments/mine`           | Required  | Caller's own comments                     |
+| GET    | `api/comments/post/{postId}`  | Anonymous | Paginated, comments for a post            |
+| GET    | `api/comments/{id}`           | Anonymous | Single comment                            |
+| PUT    | `api/comments/{id}`           | Required  | Update, ownership-scoped                  |
+| DELETE | `api/comments/{id}`           | Required  | Delete — commenter, post author, or admin |
+
+Note the create/read route naming is inconsistent: creating posts a comment under `api/comments/posts/{postId}` (plural `posts`), while listing a post's comments reads from `api/comments/post/{postId}` (singular `post`) — not a typo to "fix" without checking client code depends on it.
+
+**Delete permission is three-way**: `belongsToCaller || isPostAuthor || isAdmin` — a post author can remove any comment on their own post, not just the comment's author. Wider than the plain ownership check the console-migration doc originally described.
+
+**Live notification**: creating a comment pushes a `ReceiveComment` SignalR event (payload: `NotifyCommentDto` — Id, AuthorUsername, Content) to the post author's group, unless the commenter is the post author themselves. See `signalr.md`.
+
+No `api/comments` (all-comments, unscoped) endpoint — comments are always fetched scoped to a post or a user.
+
+### `FriendshipController`
+
+Route: `api/friendships`. Inherits `BaseController`. `[Authorize]` at controller level, no `[AllowAnonymous]` overrides — no public-read case for friendship data.
+
+| Method | Route                                   | Notes                                                                                                                                                          |
+|--------|-----------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| POST   | `api/friendships/{addresseeId}`         | Send a friend request                                                                                                                                          |
+| GET    | `api/friendships/{friendId}`            | Caller's relationship with a user, **any status**                                                                                                              |
+| GET    | `api/friendships/accepted/{friendId}`   | Caller's relationship with a user, **accepted-only**, richer DTO                                                                                               |
+| GET    | `api/friendships/accepted`              | Caller's own accepted friends (`PageQuery`)                                                                                                                    |
+| GET    | `api/friendships/pending`               | Incoming requests (caller is addressee)                                                                                                                        |
+| GET    | `api/friendships/sent`                  | Outgoing requests (caller is requester)                                                                                                                        |
+| GET    | `api/friendships/user/{userId}`         | Any user's accepted friends — reuses `GetFriendshipsAsync` against the route's `userId`, not the caller; shows *that user's* friend list, public-profile-style |
+| PUT    | `api/friendships/{requesterId}/accept`  | Accept a pending request                                                                                                                                       |
+| PUT    | `api/friendships/{requesterId}/decline` | Decline a pending request                                                                                                                                      |
+| DELETE | `api/friendships/{friendId}`            | Remove an existing relationship                                                                                                                                |
+
+**Two tiers of "get relationship."** `GetRelationship` (`GET /{friendId}`) returns any status via `StandardFriendshipDto` (other user as `MinimalUserDto`, `Status`, `SentAt`, `LastUpdatedAt`). `GetAcceptedFriendship` (`GET /accepted/{friendId}`) is accepted-only and returns `AcceptedFriendshipDto` (other user as the richer `DisplayFriendDto`, which includes `LastActiveAt`/`IsActive` presence data) — a deliberately different shape for the "you're already friends" case versus the general relationship-status case.
+
+**`Friendship` now has an `Id`** (inherits `BaseEntity`), but routes still identify relationships by *the other user's id*, not `Friendship.Id` — unchanged in spirit from the original composite-PK design even though the underlying PK isn't composite anymore.
+
+**Declined-request resend logic** (`FriendshipService.HandleExistingRelationship`): if the *original addressee* now sends a request back to the original requester, the old `Declined` row is deleted and a fresh `Friendship` created with the roles reversed; if the *original requester* re-sends, the same row is flipped back to `Pending` with `SentAt` refreshed in place (no new row).
+
+**Status-code mapping.** `ApplicationResponse` carries only a bool + message, no error-type enum, so the controller can only safely distinguish HTTP statuses when a service method's failure paths share one meaning:
+- `RemoveRelationship` — single failure path ("not found") → `NotFound`.
+- `SendRequest` — several distinct failure meanings (addressee not found / self-request / already friends / pending exists) collapse to `BadRequest`.
+- `RespondToRequest` — collapses to `BadRequest` similarly.
+
+Removing a relationship also deletes the pair's message history (`MessageRepository.DeleteConversationAsync`) before deleting the `Friendship` row.
+
 ### `MessageController`
 
-Route: `/messages`. Inherits `BaseController`. 
+Route: `api/messages`. Inherits `BaseController`.
 
-No `Update`/`Delete` actions — not supported by the service; deferred, not designed.
+No `GetMessage(id)` action — a single message isn't fetched by id from the client; `SendMessage`'s `Created()` response builds its location string manually rather than via `CreatedAtAction`.
 
-No `GetMessage(id)` action — no real chat UX fetches a single message by id (conversations are bulk-loaded per page; per-message "details" are fields already present in the row, not a new fetch). `SendMessage`'s `Created()` response uses a manually built location string instead of `CreatedAtAction`, so no phantom endpoint exists just to support it.
+| Method | Route                                                  | Notes                                                                                                                                                    |
+|--------|--------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
+| POST   | `api/messages/{receiverId}`                            | Send a message. Body: `CreateMessageDto`. Response: `SentMessageDto`. Pushes `ReceiveMessage` (payload `PushMessageDto`) to the receiver's SignalR group |
+| GET    | `api/messages/conversation/{otherUserId}`              | Paginated (`PageQuery`), `ListResponse<StandardMessageDto>`. Also marks the caller's unread incoming messages in that conversation as read               |
+| GET    | `api/messages/friends/conversation`                    | Caller's friends with an existing conversation (chat list); `ListResponse<ConversationFriendDto>`                                                        |
+| GET    | `api/messages/friends/no-conversation`                 | Caller's friends with no conversation yet; `ListResponse<DisplayFriendDto>`                                                                              |
+| GET    | `api/messages/conversations/unread`                    | `{ UnreadCount: int }` — distinct-sender count of unread messages, via `GetUnreadConversationsCount`                                                     |
+| PUT    | `api/messages/conversation/{otherUserId}/mark-as-read` | Mark the conversation as read. No content                                                                                                                |
+| PUT    | `api/messages/{id}`                                    | Edit own message, sender-scoped, time-limited to `Constants.EditMessageWindow` (20 minutes). Pushes `MessageEdited`                                      |
+| DELETE | `api/messages/{id}`                                    | Delete own message, sender-scoped. Not time-limited                                                                                                      |
 
-| Method | Route                                      | Notes                                                                                                                                                                                                                                                                                                                                                                            |
-|--------|--------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| POST   | `/messages/{receiverId}`                   | Send a message. Receiver in the route, not the DTO — same convention as `FriendshipController.SendRequest`. Body: `CreateMessageDto` (`MessageContent` only). Response: `SentMessageDto`                                                                                                                                                                                         |
-| GET    | `/messages/conversation/{otherUserId}`     | Paginated (`PageQuery`), returns `ListResponse<StandardMessageDto>`. Fetching also marks the caller's unread incoming messages as read (reference-type mutation off `MarkAsReadAsync`, no separate loop needed). `ValidFriendship` failures collapse to `BadRequest` — same as `FriendshipController.SendRequest`, can't distinguish failure meanings from `ApplicationResponse` |
-| GET    | `/messages/conversations`                  | Caller's friends with an existing conversation (chat list). Returns `List<ConversationFriendDto>`                                                                                                                                                                                                                                                                                |
-| GET    | `/messages/friends/no-conversation`        | Caller's friends with no conversation yet (start-new-chat picker). Returns `List<UserSummaryDto>` directly — no dedicated DTO, no relationship metadata exists yet for this pairing                                                                                                                                                                                              |
-| GET    | `/messages/unread`                         | Unread conversation count (int), via `GetUnreadConversationsCount`                                                                                                                                                                                                                                                                                                               |
-| PUT    | `/messages/conversation/{id}/mark-as-read` | Mark the entire conversation as read. No content.                                                                                                                                                                                                                                                                                                                                |
-| PUT    | `/messages/{id}`                           | Edit own message, sender-scoped. Time-limited to a configurable edit window.                                                                                                                                                                                                                                                                                                     |
-| DELETE | `/messages/{id}`                           | Delete own message, sender-scoped. Not time-limited                                                                                                                                                                                                                                                                                                                              |
+**`ValidFriendship` check** (`MessageService`) gates `SendMessage`: rejects self-messaging, nonexistent receiver, and non-friends, collapsing to one `ApplicationResponse.Fail` → `BadRequest`, same oracle-avoidance reasoning as elsewhere.
 
-**`GetConversationFriends`/`GetNonConversationFriends` live here despite returning user-shaped DTOs** — controller placement follows which service backs the logic, not the response DTO's shape. Same reasoning as `GetPostsByUser` living under `/posts`.
+**Repository note:** `GetConversationFriendsAsync` uses raw SQL (`SqlQueryRaw<T>`) — grouped latest-message-per-partner via `CROSS APPLY`, plus explicit `IsDeleted`/`IsDeactivated` bit-cast columns since raw SQL bypasses the `User` query filter entirely. Projection type (`ConversationFriendProjection`) is flat; reshaped into `ConversationFriendDto` in the mapper.
 
-**Repository note:** conversation-friends query uses raw SQL (`SqlQueryRaw<T>`), not LINQ — grouped latest-message-per-partner plus a conditional join key was judged too high-risk for silent EF translation failure/client-eval fallback. Projection type is flat (`FriendId`, `FriendUsername`, ...) — `SqlQueryRaw<T>` can't map onto nested/owned types; nesting into `UserSummaryDto` happens in the mapper afterward.
+**Possible bug — edit-window comparison looks inverted.** `EditMessage`'s check is `bool canEdit = DateTime.UtcNow - message.CreatedAt > Constants.EditMessageWindow;` — as written, `canEdit` is `true` once *more* time than the window has elapsed (i.e. after the window closes), and `false` while still inside it. That's the opposite of "editable within a 20-minute window" as described elsewhere in this doc set and in `Constants.EditMessageWindow`'s name. Worth confirming against actual behavior before relying on either reading.
 
-### `AccountController`
+### `AuthController`
 
-Route: `/accounts`. Inherits `BaseController`. `[Authorize]` at controller level, with `[AllowAnonymous]` on public reads — same pattern as `PostsController`/`CommentController`.
+Route: `api/auth`. `[ApiController]` directly (not `BaseController` — no authenticated user context needed for any action here). See `auth.md` for the full flow (register/login/refresh/logout/password-reset).
 
-| Method | Route | Auth | Notes |
-|---|---|---|---|
-| GET | `/accounts/{username}` | Anonymous | Single user, public view. Returns `StandardUserDto` (no email) |
-| GET | `/accounts/search` | Anonymous | Username substring search, paginated via `SearchUsersQuery : PageQuery`. Returns `UserSummaryDto` (id + username only) |
-| PUT | `/accounts/mine` | Required | Edit own profile (username, DOB, bio — email excluded). Returns `UserDetailDto` |
-| DELETE | `/accounts/mine` | Required | Delete own account. No content |
-| POST | `/accounts` | Required, `Roles = "Admin"` | Admin-create. Returns `UserDetailDto` |
+### `UserController`
 
-No bare `GET /accounts` (list-all). Considered and dropped — no concrete admin or user workflow needs an unfiltered, unranked dump of every user; search already covers lookup, and a real admin queue would need filters/sort this doesn't have.
+Route: `api/users`. Inherits `BaseController`. `[Authorize]` at controller level, `[AllowAnonymous]` on public reads.
 
-**DTO tiers**, mirroring the Friendship pattern of shape-by-audience rather than one DTO for everything:
-- `UserDetailDto` — full, includes email. Used only where the caller is looking at a record they have elevated claim to: their own profile after an edit, or a newly admin-created account.
-- `StandardUserDto` — everything `UserDetailDto` has, minus email. Public single-fetch (`GetByUsername`).
-- `UserSummaryDto` — id + username only. List/search results, on the theory that browsing a result set shouldn't pull full profile data the caller may never open; a second fetch (`GetByUsername`) covers the rest if needed.
+| Method | Route                  | Auth            | Notes                                                                                            |
+|--------|------------------------|-----------------|--------------------------------------------------------------------------------------------------|
+| POST   | `api/users`            | `Administrator` | Admin-create account, delegates to `AuthService.RegisterAsync`                                   |
+| GET    | `api/users/{id:int}`   | Anonymous       | Single user by id, `StandardUserDto`                                                             |
+| GET    | `api/users/{username}` | Anonymous       | Single user by username, `StandardUserDto` (route-constraint-disambiguated from the id overload) |
+| GET    | `api/users/mine`       | Required        | Caller's own full profile, `FullUserDto` (includes email + roles)                                |
+| GET    | `api/users/search`     | Anonymous       | Username-substring search, `SearchUserQuery`, `ListResponse<MinimalUserDto>`                     |
+| PUT    | `api/users/mine`       | Required        | Edit own profile (username, DOB, bio)                                                            |
+| PUT    | `api/users/{id:int}`   | `Administrator` | Edit another user's profile                                                                      |
 
-**`POST /accounts` routes through `AccountService`, not `AuthService`**, despite functionally creating a user the same way registration does — kept separate so admin-created-account messaging/response shape can diverge from self-registration without `AuthService.RegisterAsync` growing a caller-context branch. `[Authorize(Roles = "Admin")]` is currently inert: no role claims are issued anywhere in the project (RBAC deferred indefinitely), so this fails closed rather than open — endpoint is unreachable by design until roles exist, not a gap to patch now.
+**`POST api/users` reuses `AuthService.RegisterAsync`** rather than a separate admin-create path in `AccountManagementService` — unlike the earlier design note that anticipated keeping admin-create and self-registration deliberately separate, they now share one code path; admin-vs-self distinction is only the route/authorization, not the underlying service call.
 
-**Username change cooldown.** `User.UsernameLastChangedAt` (nullable `DateTime`, null = never changed). `UpdateProfileAsync` (service-level) only rejects a username change if one already happened within the cooldown window; a bio/DOB-only edit never touches this field. Collapses into the same mixed-meaning `BadRequest` bucket as `FriendshipController`'s `SendRequest`/`RespondToRequest` — "not found" vs. "cooldown active" aren't told apart at the HTTP layer, same reasoning (`ApplicationResponse` has no error-type enum).
+**DTO tiers**, shape-by-audience:
+- `FullUserDto` — Id, Username, Email, Bio, `Roles` (list of role names), RegisteredAt, DateOfBirth. Only returned for the caller's own profile or a freshly-registered account.
+- `StandardUserDto` — Id, Username, Bio, RegisteredAt, DateOfBirth (no email, no roles). Public single-fetch.
+- `MinimalUserDto` — nullable Id + Username. List/search results.
 
-**DOB validation** via a custom `ValidAgeAttribute` (13–130, rejects future dates) on the DTO, mirroring the existing DB check constraint rather than duplicating magic numbers inline; shared between `RegisterDto` and the edit-profile DTO.
+**Username change cooldown.** `User.UsernameLastChangedAt` (nullable, null = never changed). `EditUserProfileAsync` only blocks the edit if the username itself changed and the cooldown (`Constants.UsernameChangeCooldownDays`, 20 days) hasn't elapsed; a bio/DOB-only edit never touches this field or the cooldown. Collapses into the same mixed-meaning `BadRequest` bucket ("not found" vs. "cooldown active" aren't told apart at the HTTP layer).
+
+**DOB validation** via `ValidAgeAttribute` (`Constants.MinAge`/`MaxAge` = 13/100, rejects future dates), mirroring the DB check constraint; shared between `RegisterDto` and `EditUserDto`.
+
+### `AccountManagementController`
+
+Route: `api/accounts`. Inherits `BaseController`. `[Authorize]` at controller level.
+
+| Method | Route                                    | Auth            | Notes                         |
+|--------|------------------------------------------|-----------------|-------------------------------|
+| PUT    | `api/accounts/{id}/assign-administrator` | `Administrator` | Grant the Administrator role  |
+| PUT    | `api/accounts/{id}/remove-administrator` | `Administrator` | Revoke the Administrator role |
+| DELETE | `api/accounts/mine`                      | Required        | Soft-delete own account       |
+| DELETE | `api/accounts/{id}`                      | `Administrator` | Soft-delete another account   |
+
+**Soft delete, not hard delete.** `SoftDeleteAccountAsync` runs inside `ExecuteInTransactionAsync`: clears the tracker, revokes all refresh tokens, then sets `AccountDeletedAt` (idempotency-checked — fails if already soft-deleted). No cascading data removal happens here; that's the background job's job (see `background-jobs.md`).
+
+**Role assignment** goes through `UserRoleRepository`/`RoleRepository` directly — checks the user exists, the `Administrator` role row exists (seeded, so effectively always), and the `UserRole` pairing doesn't already exist before inserting/deleting.
+
+### `AccountActivationController`
+
+Route: `api/accounts` (shares the prefix with `AccountManagementController` — they're two controllers on the same route, split by concern rather than by URL segment). Inherits `BaseController`.
+
+| Method | Route                           | Auth            | Notes                                                                                                                         |
+|--------|---------------------------------|-----------------|-------------------------------------------------------------------------------------------------------------------------------|
+| PATCH  | `api/accounts/mine/deactivate`  | Required        | Self-deactivate                                                                                                               |
+| PATCH  | `api/accounts/{id}/deactivate`  | Required        | Deactivate another account — no `[Authorize(Roles = ...)]`, reachable by any authenticated caller despite the "admin" framing |
+| PATCH  | `api/accounts/{id}/activate`    | `Administrator` | Admin-reactivate, immediate                                                                                                   |
+| PATCH  | `api/accounts/activate`         | Anonymous       | Self-reactivate via emailed token (body: `ActivateAccountDto`)                                                                |
+| PATCH  | `api/accounts/request-activate` | Anonymous       | Request a reactivation token by email (body: `ActivationRequestDto`)                                                          |
+
+See `auth.md` for the full activation/deactivation flow and email notifications.
+
+**Rate-limit policy names look swapped.** `mine/deactivate` (self-service) is annotated `[EnableRateLimiting(RateLimitConfig.Policies.AdminDeactivateAccount)]` (30/hour — generous), while `{id}/deactivate` (deactivating *another* account, unrestricted by role as noted above) is annotated `Policies.DeactivateOwnAccount` (5/hour — restrictive). The policy names read backwards relative to which route they're on; worth confirming which limit was actually intended for which route before treating either as load-bearing for abuse prevention.

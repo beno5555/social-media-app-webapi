@@ -22,7 +22,7 @@ public class UserRoleConfiguration : IEntityTypeConfiguration<UserRole>
             .OnDelete(DeleteBehavior.Cascade)
             .IsRequired(false);
 
-        builder.HasData(new UserRole { UserId = 3114, RoleId = 1 });
-        builder.HasData(new UserRole { UserId = 3114, RoleId = 2 });
+        builder.HasData(new UserRole { UserId = 1, RoleId = 1 });
+        builder.HasData(new UserRole { UserId = 1, RoleId = 2 });
     }
 }

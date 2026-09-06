@@ -1,44 +1,61 @@
 ﻿# AspNetProject — Authentication & Authorization
 
-> Part of the AspNetProject doc set. See also: `core.md`, `data.md`, `auth.md`, `controllers.md`.
+> Part of the AspNetProject doc set. See also: `core.md`, `data.md`, `auth.md`, `controllers.md`, `signalr.md`, `background-jobs.md`.
 
 ---
 
 ## Authentication & Authorization
 
-Password hashing/salting is retained from the console app. JWT access tokens + rotating refresh tokens are implemented. Role/permission scheme not yet implemented — deferred; ownership-style checks (e.g. can only delete own comment) continue to be handled in services against `HttpContext.User`'s claims rather than through roles, since most authorization needs so far are ownership checks, not role checks.
+Password hashing is PBKDF2 (`Rfc2898DeriveBytes.Pbkdf2`, 100,000 iterations, SHA-256, 32-byte salt and hash, both stored base64) — replaced the console app's original hashing scheme (`PasswordHasher`). JWT access tokens + rotating refresh tokens are implemented. Role-based authorization now exists (`User`/`Administrator`, via `Role`/`UserRole`); ownership-style checks (e.g. can only delete own comment, or a post author/admin can delete any comment on their post) continue to be handled in services against claims, alongside role checks for admin-only actions.
 
 ### Access tokens
 
-- `TokenHelper.GenerateToken(userId, username)` issues a JWT signed with `HmacSha512Signature`, claims: `NameIdentifier`, `Name`.
-- Lifetime controlled by `Jwt:AccessTokenMinutes` in config; validation side (`AddJwtBearer` in `Program.cs`) reads `Jwt:Issuer`/`Jwt:Audience`/`Jwt:Key`, `ValidateIssuer`/`ValidateAudience` currently `false` (single-client setup), `ValidateLifetime` true, `ClockSkew` tightened to 1 minute.
-- Delivered to the client in the JSON response body, attached by the client as `Authorization: Bearer {token}`. Necessarily body-delivered rather than cookie-delivered, since Bearer auth requires client-side JS to read and attach it.
+- `TokenGenerator.GenerateAccessToken(user)` issues a JWT signed with `HmacSha512Signature`, claims: `NameIdentifier`, `Name`, plus one `ClaimTypes.Role` claim per role the user holds (`user.UserRoles`).
+- Lifetime controlled by `Jwt:AccessTokenMinutes`; validation side (`AuthenticationExtensions.AddJwtAuthentication`) reads `Jwt:Key`, `ValidateIssuer`/`ValidateAudience` currently `false` (single-client setup), `ValidateLifetime` true, `ClockSkew` 1 minute.
+- Delivered to the client in the JSON response body, attached by the client as `Authorization: Bearer {token}`.
 
 ### Refresh tokens
 
-- `RefreshToken : BaseEntity` — `UserId` (FK to `User`, `OnDelete(Cascade)`, no `User` collection nav property — only `RefreshToken.User` many-to-one, added only where an `Include` is actually needed), `TokenHash` (`MaxLength(44)`, unique-indexed — SHA256 digest is a fixed 32 bytes / 44 base64 chars), `ExpiresAt`, nullable `RevokedAt` (`null` = active).
-- `TokenHelper.GenerateRefreshToken()` — 64 random bytes via `RandomNumberGenerator` (not `Guid`, which has no documented cryptographic-randomness guarantee), base64-encoded. `TokenHelper.HashToken(token)` — SHA256, not PBKDF2/bcrypt: the token is high-entropy and machine-generated (not human-chosen/guessable), so a slow KDF buys nothing against brute-force here; hashing at rest still matters as a defense against DB-read/leak exposure, same reasoning as password hashing but against a different threat (leak, not guessing).
-- `RefreshTokenRepository` — `GetActiveByHashAsync(tokenHash)` and `RevokeAllForUserAsync(userId)` query `_dbSet` directly (bypassing the `Query()` override's `Include(rt => rt.User)`) since neither needs the loaded `User` navigation. `RevokeAsync(token)` sets `RevokedAt` and saves.
-- Delivered via `HttpOnly; Secure; SameSite=Strict` cookie, set/read/cleared in `AuthController` (cookie access is `HttpContext`-scoped, not a service concern). `Expires` mirrors `Jwt:RefreshTokenDays`; the DB-side `ExpiresAt` is the authoritative check, the cookie's `Expires` is browser-side hygiene only.
-- Rotated on every refresh: old token revoked, new one issued. Revoked (not deleted) on logout, to preserve an audit trail.
-- No FK/schema changes were needed on `User` — refresh tokens live entirely in their own table.
+- `RefreshToken : BaseEntity` — `UserId` (FK, cascade delete), `TokenHash` (`MaxLength(44)`, unique-indexed — SHA-256 digest, 44 base64 chars), `ExpiresAt`, nullable `RevokedAt` (`null` = active).
+- `TokenGenerator.GenerateRefreshToken()` — 64 random bytes via `RandomNumberGenerator`, URL-safe base64-encoded (`+`/`/` replaced, padding trimmed). `TokenGenerator.HashToken(token)` — SHA-256.
+- `RefreshTokenRepository.GetActiveByHashAsync(hash)`, `RevokeAsync(token)`, `RevokeAllForUserAsync(userId)` (bulk `ExecuteUpdateAsync`, used on password reset, deactivation, and soft-delete).
+- Delivered via `HttpOnly; Secure; SameSite=Strict` cookie, set/read/cleared in `AuthController`. `Expires` mirrors `Jwt:RefreshTokenDays`.
+- Rotated on every refresh: old token revoked, new one issued via the shared `AccountSecurityService.IssueAccessAndRefreshTokensAsync` helper. Revoked (not deleted) on logout; a background job (`RefreshTokenCleanupService`) later purges expired/revoked rows — see `background-jobs.md`.
 
 ### Auth flow
 
-1. **Login** (`POST /auth/login`) — validates credentials, issues access token (body) + refresh token (cookie) via a shared private `IssueTokensAsync` helper.
-2. **Authenticated requests** — client attaches `Authorization: Bearer {accessToken}`.
-3. **Refresh** (`POST /auth/refresh`) — no body needed; refresh token cookie is read automatically. Hashes the incoming token, looks it up, revokes it, issues a new pair via the same `IssueTokensAsync` helper.
-4. **Logout** (`POST /auth/logout`) — revokes the current refresh token (if any) and clears the cookie.
+1. **Register** (`POST api/auth/register`) — creates the user (no roles beyond none assigned at registration; roles are assigned separately by an admin). Fails on duplicate email or username. On duplicate email, triggers `AccountSecurityService.HandleFailedRegisterAttempt` — emails the existing account holder a password-reset token, in case the registration attempt was the real owner locked out of their account.
+2. **Login** (`POST api/auth/login`) — validates credentials, issues access token (body) + refresh token (cookie) via `IssueTokensAndRefreshAsync`-style helper (`AccountSecurityService.IssueAccessAndRefreshTokensAsync`).
+3. **Authenticated requests** — client attaches `Authorization: Bearer {accessToken}`.
+4. **Refresh** (`POST api/auth/refresh`) — no body; refresh token cookie read automatically, hashed, looked up, revoked, new pair issued.
+5. **Logout** (`POST api/auth/logout`) — revokes the current refresh token (if any) and clears the cookie.
+6. **Password reset** — `POST api/auth/request-password-reset` issues a reset token (reusing `User.ResetTokenHash`/`ResetTokenExpiresAt`) and emails it; `POST api/auth/reset-password` consumes it, rejects if the new password equals the current one, revokes all the user's refresh tokens (forces re-login everywhere), and emails a "your password was reset" notice.
+
+### Account activation / deactivation (separate from auth, own controller/service)
+
+- **Deactivation** (`AccountActivationController`/`AccountActivationService`) — sets `AccountDeactivatedAt`, revokes all refresh tokens immediately, emails the user. Self-service (`PATCH api/accounts/mine/deactivate`) and admin-on-other-user (`PATCH api/accounts/{id}/deactivate`) are separate endpoints/rate-limit policies but call the same service method.
+- **Reactivation** — two paths: admin-initiated (`PATCH api/accounts/{id}/activate`, `Administrator`-only, immediate) and self-service via emailed token (`PATCH api/accounts/request-activate` to request the token, `PATCH api/accounts/activate` with the token in the body to confirm — both `[AllowAnonymous]`, since a deactivated user can't authenticate).
+- Both activation-token issuance and password-reset-token issuance share `User.ResetTokenHash`/`ResetTokenExpiresAt` — different service methods (`HandleAccountActivationRequest` vs `HandlePasswordResetRequest`), same underlying fields, cleared on successful use.
+
+### Roles
+
+- Seeded via `RoleConfiguration.HasData`: `User` (Id 1), `Administrator` (Id 2). A user row is also seeded with both roles (`UserRoleConfiguration`, `UserId = 3114`) for local dev/testing.
+- `AccountManagementController` exposes `Administrator`-only assign/unassign endpoints (`PUT api/accounts/{id}/assign-administrator`, `PUT api/accounts/{id}/remove-administrator`).
+- `BaseController.IsAdministrator()` checks `User.IsInRole(nameof(RoleName.Administrator))`; used by `PostController`/`CommentController` to let an admin delete any post/comment, and by `AccountManagementController`/`AccountActivationController` for admin-vs-self routes.
+- No self-registration path grants roles — a new user has none until an admin assigns one.
 
 ### Error handling / response conventions
 
-- Auth failure messages are deliberately generic and uniform: login doesn't distinguish "no such user" from "wrong password"; refresh/logout don't distinguish missing, invalid, expired, or revoked token. This avoids giving a caller an oracle into account existence or token state.
-- Refresh/logout auth failures return `401`, not `400` — the request is well-formed, the credential just fails to authenticate.
-- `LogoutAsync` returns `void` (no `ApplicationResponse` wrapper) — it has no failure state by design (always looks like success to the caller, whether or not the token was valid), consistent with the existing convention of omitting the wrapper when no failure state is possible.
-- `RegisterAsync` returns `ApplicationResponse<UserDto>` with the created user (password hash/salt excluded), not a bare success/fail response — matches REST convention of returning the created resource. Registration does not implicitly log the user in (deferred; would be a small addition later via the existing `IssueTokensAsync` helper, not a rewrite).
-- `SessionUser` and its conversion methods were removed — dead code once `LoginAsync` issues tokens instead of a session object.
+- Auth failure messages are deliberately generic and uniform: login doesn't distinguish "no such user" from "wrong password."
+- `LogoutAsync` returns `void` — no failure state by design.
+- `RegisterAsync` returns `ApplicationResponse<FullUserDto>` with the created user, matching REST convention of returning the created resource. Registration does not implicitly log the user in.
+- Every `AuthService`/`AccountActivationService`/`AccountManagementService` method logs its outcome via `BaseService.LogResultAsync` (see `core.md`), in addition to returning an `ApplicationResponse`.
 
 ### Global exception handling
 
-- `UseExceptionHandler` + `SystemLogger` (file-based, environment-aware detail: full exception in `Development`, generic message otherwise).
-- A `DbUpdateException` → `409 Conflict` branch (rest fall through to `500`) covers a narrow TOCTOU race: a user could be deleted between an existence check and a dependent write (e.g. during refresh-token reissuance in `RefreshAsync`). Accepted as a rare, safely-failing edge case — the FK constraint guarantees no orphaned data either way — rather than adding `Serializable`-isolation transactions everywhere to close a near-impossible timing window.
+- `GlobalExceptionHandler : IExceptionHandler` (registered via `AddExceptionHandler<T>()` + `AddProblemDetails()`) logs the exception through `SystemLogger.LogEndpointErrorAsync`, then maps `DbUpdateException` → `409 Conflict` (everything else → `500`), with full exception detail returned only in `Development`.
+- `SystemLogger` writes to a rolling text file (`Logs/ErrorLogs.txt`) under a `SemaphoreSlim`-guarded async write — separate from the structured `DatabaseLogger` (DB-backed, per-action) used everywhere else.
+
+### Rate limiting
+
+Auth endpoints are limited per-IP (the caller isn't authenticated yet): `Login` (10/hour), `Register` (5/hour), `Refresh` (5/10min), `RequestPasswordReset` (3/15min), `ResetPassword` (5/15min). Account-management endpoints (deactivate/reactivate/delete) are limited per-user (or per-IP for the anonymous activation-confirmation endpoints). A global per-user sliding-window limiter (300/min) backstops everything. See `RateLimitConfig.cs` for exact figures per policy.

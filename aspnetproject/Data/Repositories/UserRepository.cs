@@ -320,4 +320,15 @@ public class UserRepository : BaseEntityRepository<User>
     }
     
     #endregion
+
+    public async Task ActivateAccountAsync(User user)
+    {
+        user.AccountDeactivatedAt = null;
+        user.AccountDeletedAt = null;
+        user.ResetTokenExpiresAt = null;
+        user.ResetTokenHash = null;
+        user.LastUpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
+    }
 }

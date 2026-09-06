@@ -56,5 +56,19 @@ public class UserConfiguration : IEntityTypeConfiguration<User>
             .HasDefaultValueSql("NULL");
 
         builder.HasQueryFilter(user => user.AccountDeactivatedAt == null && user.AccountDeletedAt == null);
+
+        builder.HasData(
+            new User
+            {
+                Id = 1,
+                Username = "sandro_beno",
+                Email = "benashvilisandro91@gmail.com",
+                Bio = "Admin",
+                PasswordHash = "x3UgoGJFZ2X3VJBAaQyF4J+M9+gfXP6vdO1W4jNwUzQ=", // password123
+                PasswordSalt = "o0wzhm224CIRy46p73NmiqjhaEtU5pyOuZ60rUHOM+g=",
+                DateOfBirth = new DateTime(2000, 8, 16, 2, 3, 9, DateTimeKind.Utc),
+                CreatedAt = new DateTime(2026, 9, 6, 11, 4, 0, DateTimeKind.Utc),
+            }
+        );
     }
 }

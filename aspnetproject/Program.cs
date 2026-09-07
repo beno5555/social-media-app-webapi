@@ -40,6 +40,8 @@ public partial class Program
         {
             if (app.Environment.IsDevelopment())
             {
+                // app.TestSeedEndpoint();
+                
                 app.MapSwagger();
                 app.MapSwaggerUI();
                 app.MapOpenApi();
@@ -49,7 +51,7 @@ public partial class Program
             app.UseHttpsRedirection();
             app.UseRouting();
             
-            app.UseCors("SignalRTestPolicy");
+            app.UseCors("OriginPolicy");
             app.UseRateLimiter();
 
             app.UseAuthentication();

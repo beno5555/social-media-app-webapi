@@ -9,6 +9,11 @@ public static class SwaggerExtensions
     {
         services.AddSwaggerGen(options =>
         {
+            options.SwaggerDoc("v1", new OpenApiInfo
+            {
+                Title = "WebCity API",
+                Version = "v1",
+            });
             options.AddSecurityDefinition("oauth2", new OpenApiSecurityScheme
             {
                 Description = "Standard authorization header using bearer scheme. Example: \"bearer {token}\"",

@@ -34,8 +34,8 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 services.Remove(serviceDescriptor);
             }
 
-            services.RemoveAll<IHubContext<MessageHub>>();
-            services.AddSingleton(Mock.Of<IHubContext<MessageHub>>());
+            // services.RemoveAll<IHubContext<MessageHub>>();
+            // services.AddSingleton(Mock.Of<IHubContext<MessageHub>>());
         });
     }
 }

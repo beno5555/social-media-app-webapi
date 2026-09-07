@@ -1,5 +1,5 @@
-﻿using aspnetproject.Common.ProjectConstants;
-using aspnetproject.Common.Responses;
+﻿using aspnetproject.Common.Domain;
+using aspnetproject.Common.ProjectConstants;
 using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Infrastructure.Dtos.Users;

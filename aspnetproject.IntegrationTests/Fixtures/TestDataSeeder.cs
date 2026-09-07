@@ -42,7 +42,7 @@ public static class TestDataSeeder
                 },
                 new User
                 {
-                    Id = 5, Username = "diana", Email = "diana@example.com", Bio = "Pending friendship user",
+                    Id = 5, Username = "diana", Email = "benashvilisandro780@gmail.com", Bio = "Pending friendship user",
                     DateOfBirth = new DateTime(2000, 1, 1), PasswordHash = SharedPasswordHash,
                     PasswordSalt = SharedPasswordSalt, CreatedAt = DateTime.UtcNow
                 },
@@ -230,9 +230,13 @@ public static class TestDataSeeder
     {
         await using var transaction = await db.Database.BeginTransactionAsync();
 
+#pragma warning disable EF1002
+        
         await db.Database.ExecuteSqlRawAsync($"SET IDENTITY_INSERT {tableName} ON");
         await insertAction();
         await db.Database.ExecuteSqlRawAsync($"SET IDENTITY_INSERT {tableName} OFF");
+        
+#pragma warning restore EF1002
 
         await transaction.CommitAsync();
     }

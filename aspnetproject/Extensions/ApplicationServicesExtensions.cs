@@ -13,7 +13,7 @@ namespace aspnetproject.Extensions;
 
 public static class ApplicationServicesExtensions
 {
-    public static IServiceCollection AddApplicationServices(this IServiceCollection services, IConfiguration configuration)
+    public static void AddApplicationServices(this IServiceCollection services, IConfiguration configuration)
     {
         services.AddSignalR();
         services.AddSingleton<UserConnectionTracker>();
@@ -56,7 +56,5 @@ public static class ApplicationServicesExtensions
         services.AddHostedService<RefreshTokenCleanupService>();
         services.AddHostedService<SoftDeletedUsersCleanupService>();
         services.AddHostedService<OldLogsCleanupService>();
-
-        return services;
     }
 }

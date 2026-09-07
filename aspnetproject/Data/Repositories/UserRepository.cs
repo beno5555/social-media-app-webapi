@@ -150,34 +150,25 @@ public class UserRepository : BaseEntityRepository<User>
     }
 
     /// <summary>
-    /// fetches friends with whom the user has or does not have a conversation, based on shouldHaveConversation parameter
+    /// fetches friends with whom the user does not have a conversation
     /// </summary>
-    public async Task<List<User>> GetFriendsByConversationStatusAsync(int userId, bool shouldHaveConversation, int? pageNumber, int? pageSize)
+    public async Task<List<User>> GetNonConversationFriendsAsync(int userId, int? pageNumber, int? pageSize)
     {
-        Expression<Func<User, bool>> areFriendsAndHaveConversation = user =>
+        // areFriends && haveNoConversation
+        Expression<Func<User, bool>> shouldFetch = user =>
             _dbContext.Friendships.Any(friendship =>
-                ((friendship.AddresseeUserId == userId  && friendship.RequesterUserId == user.Id) ||
-                 (friendship.AddresseeUserId == user.Id && friendship.RequesterUserId == userId)) &&
+                (friendship.AddresseeUserId == userId && friendship.RequesterUserId == user.Id) ||
+                (friendship.AddresseeUserId == user.Id && friendship.RequesterUserId == userId) &&
                 friendship.FriendshipStatus == FriendshipStatus.Accepted)
             &&
-            shouldHaveConversation == _dbContext.Messages.Any(message =>
+            !_dbContext.Messages.Any(message =>
                 (message.SenderUserId == userId  && message.ReceiverUserId == user.Id) ||
                 (message.SenderUserId == user.Id && message.ReceiverUserId == userId));
-
-        Func<IQueryable<User>, IOrderedQueryable<User>>? latest = shouldHaveConversation
-            ? query => query.OrderByDescending(u =>
-                _dbContext.Messages
-                    .Where(m =>
-                        (m.SenderUserId == userId && m.ReceiverUserId == u.Id) ||
-                        (m.SenderUserId == u.Id   && m.ReceiverUserId == userId))
-                    .Max(m => m.CreatedAt)) // last messaged sent in each conversation
-            : null;
-
+        
         return await GetWhereAsync(
-            areFriendsAndHaveConversation,
+            shouldFetch,
             pageNumber,
-            pageSize,
-            latest
+            pageSize
         );
     }
 
@@ -219,6 +210,17 @@ public class UserRepository : BaseEntityRepository<User>
         user.ResetTokenExpiresAt = null;
 
         user.LastUpdatedAt = DateTime.UtcNow;
+    }
+    
+    public async Task ActivateAccountAsync(User user)
+    {
+        user.AccountDeactivatedAt = null;
+        user.AccountDeletedAt = null;
+        user.ResetTokenExpiresAt = null;
+        user.ResetTokenHash = null;
+        user.LastUpdatedAt = DateTime.UtcNow;
+
+        await _dbContext.SaveChangesAsync();
     }
     
     #endregion
@@ -324,15 +326,4 @@ public class UserRepository : BaseEntityRepository<User>
     }
     
     #endregion
-
-    public async Task ActivateAccountAsync(User user)
-    {
-        user.AccountDeactivatedAt = null;
-        user.AccountDeletedAt = null;
-        user.ResetTokenExpiresAt = null;
-        user.ResetTokenHash = null;
-        user.LastUpdatedAt = DateTime.UtcNow;
-
-        await _dbContext.SaveChangesAsync();
-    }
 }

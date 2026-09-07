@@ -1,4 +1,4 @@
-﻿# AspNetProject
+﻿# Social Media Web Api
 
 An ASP.NET Core Web API, migrated from an earlier C# console application that simulated a basic social media platform. Core domain logic (entities, EF Core configuration, repositories, mappers, DTOs) carried over from the console app largely unchanged; the console-specific presentation layer was removed and replaced with a proper API layer.
 
@@ -6,7 +6,7 @@ An ASP.NET Core Web API, migrated from an earlier C# console application that si
 
 ## Migration Context
 
-This project began as a console application using EF Core code-first, layered architecture, and manual DI. The console app's job was learning-focused: build the domain and data layers correctly, with a hand-rolled menu system standing in for a UI.
+This project began as a console application using EF Core code-first, layered architecture, and manual DI. The console app's job was to build the domain and data layers correctly, with a hand-rolled console menu system standing in for a UI.
 
 Moving to a Web API meant replacing the presentation layer, not the domain. The menu system was doing the same job controllers do — routing user actions to services and rendering results — but shaped around a single-user, stateful console session. That shape doesn't fit a stateless, multi-client API.
 
@@ -40,7 +40,6 @@ Moving to a Web API meant replacing the presentation layer, not the domain. The 
 - Rate limiting (`Microsoft.AspNetCore.RateLimiting`) — per-endpoint sliding-window policies, IP-based pre-auth (login/register/refresh/password-reset) and user-based post-auth, plus a global per-user fallback limiter.
 - Presence tracking (`UserConnectionTracker`, `PresenceService`) — online/offline broadcast over SignalR, `User.LastOnlineAt` (`null` = online).
 - Live comment notifications — `CommentService` pushes a `ReceiveComment` event over the same `MessageHub` used for messages.
-- PBKDF2 password hashing (`Rfc2898DeriveBytes`, 100k iterations, SHA-256) replacing the console app's original hashing.
 
 ---
 
@@ -51,6 +50,7 @@ Moving to a Web API meant replacing the presentation layer, not the domain. The 
 - SignalR (real-time push: messages, comments, presence)
 - ASP.NET Core Rate Limiting middleware
 - MailKit / MimeKit (SMTP email delivery)
+- Bogus - Test data generation
 
 ## NuGet Packages
 
@@ -64,6 +64,7 @@ Microsoft.AspNetCore.OpenApi
 Swashbuckle.AspNetCore.Filters
 Swashbuckle.AspNetCore
 MailKit
+Bogus
 ```
 
 ---
@@ -87,14 +88,7 @@ MailKit
         UserRole.cs
     /Configurations
         UserConfiguration.cs
-        PostConfiguration.cs
-        CommentConfiguration.cs
-        FriendshipConfiguration.cs
-        MessageConfiguration.cs
-        LogConfiguration.cs
-        RefreshTokenConfiguration.cs
-        RoleConfiguration.cs
-        UserRoleConfiguration.cs
+        ...
     /Repositories
         /Base
             BaseRepository.cs
@@ -102,14 +96,7 @@ MailKit
         /Dtos
             ConversationFriendProjection.cs
         UserRepository.cs
-        PostRepository.cs
-        CommentRepository.cs
-        FriendshipRepository.cs
-        MessageRepository.cs
-        LogRepository.cs
-        RefreshTokenRepository.cs
-        RoleRepository.cs
-        UserRoleRepository.cs
+        ...
 /Common
     /Attributes/DataValidation
         ValidAgeAttribute.cs
@@ -124,38 +111,31 @@ MailKit
         ListResponse.cs
 /Infrastructure
     /Dtos
-        /Accounts, /Auth, /Comments, /DatabaseLogs, /Friendships,
-        /Messages, /Posts, /UserRoles, /Users, /WebsocketsTransfer
+        /Users
+        ...
     /Mappers
-        AuthMapper.cs, CommentMapper.cs, FriendshipMapper.cs,
-        MessageMapper.cs, PostMapper.cs, UserMapper.cs, UsernameMapper.cs
+        UserMapper.cs
+        ...
     /Queries
         PageQuery.cs, SearchUserQuery.cs
     /Services
         /BusinessLogic
-            /Base       BaseService.cs
-            /Content    PostService.cs, CommentService.cs, MessageService.cs
-            /Users      AuthService.cs, UserService.cs, AccountManagementService.cs,
-                        AccountActivationService.cs, FriendshipService.cs
+            /Base
+            /Content
+            /Users
             LogService.cs (registered placeholder; no public behavior yet)
-        /Helpers        PasswordHasher.cs, TokenGenerator.cs, EmailSender.cs,
-                        AccountSecurityService.cs, UserConnectionTracker.cs
-        /Logging        SystemLogger.cs, DatabaseLogger.cs
-        /Websockets     PresenceService.cs
+        /Helpers
+        /Logging
+        /Websockets
         /BackgroundJobs
-            /Base           PeriodicHostedService.cs
-            /Common         SoftDeleteCleanupResult.cs
-            /Configuration  OldLogsCleanupConfiguration.cs, RefreshTokenCleanupConfiguration.cs,
-                            SoftDeletedUsersCleanupConfiguration.cs
+            /Base 
+            /Common
+            /Configuration  
             OldLogsCleanupService.cs, RefreshTokenCleanupService.cs, SoftDeletedUsersCleanupService.cs
 /Controllers
     /Base
-        BaseController.cs
     /Content
-        PostController.cs, CommentController.cs, MessageController.cs
     /Users
-        AuthController.cs, UserController.cs, FriendshipController.cs,
-        AccountManagementController.cs, AccountActivationController.cs
 /Hubs
     MessageHub.cs
 /Extensions
@@ -292,7 +272,6 @@ Carried over from the console app:
 - No interfaces — concrete repository, service, and mapper classes only.
 - `ExecuteInTransactionAsync` — callable from any injected repository in a service; safe because all repositories share the same scoped `DbContext`.
 - `ClearTracker()` (now on `BaseEntityRepository<T>`, not `BaseRepository<T>`) — called before soft-delete's related-data cleanup to avoid change-tracker conflicts.
-- `ApplicationResponse` wrapper omitted when no failure state is possible.
 - No early returns outside controllers.
 
 New to the API version:
@@ -303,10 +282,9 @@ New to the API version:
 - Controller-level `[Authorize]` with `[AllowAnonymous]` overrides, rather than tagging every action, used where most of a controller's actions require auth.
 - `[EnableRateLimiting(RateLimitConfig.Policies.X)]` on nearly every action — see `controllers.md` per-controller, and `RateLimitConfig.cs` for the concrete limits (mostly per-user sliding windows; auth endpoints are per-IP since the caller isn't authenticated yet).
 - Global query filter on `User` (`AccountDeactivatedAt == null && AccountDeletedAt == null` — see `data.md`) means most repository reads transparently exclude deactivated/deleted accounts without each call site needing to remember to filter.
-- Password hashing moved to PBKDF2 (`Rfc2898DeriveBytes.Pbkdf2`, 100k iterations, SHA-256, 32-byte salt/hash) from the console app's original scheme.
 
 ---
 
 ## Status
 
-Actively developed, substantially beyond the original migration scope. Domain/data layers, JWT auth (access + refresh + password reset), account activation/deactivation/soft-delete, role-based authorization, all five resource controllers (Posts, Comments, Friendships, Messages, Users/Accounts), SignalR (messages + live comments + presence), structured DB logging, background cleanup jobs, and rate limiting are all implemented. See `controllers.md`, `data.md`, `auth.md`, `signalr.md`, and `background-jobs.md` for area-specific detail.
+Actively developed, beyond the original migration scope. Domain/data layers, JWT auth (access + refresh + password reset), account activation/deactivation/soft-delete, role-based authorization, all five resource controllers (Posts, Comments, Friendships, Messages, Users/Accounts), SignalR (messages + live comments + presence), structured DB logging, background cleanup jobs, and rate limiting are all implemented. See `controllers.md`, `data.md`, `auth.md`, `signalr.md`, and `background-jobs.md` for area-specific detail.

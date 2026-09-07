@@ -1,5 +1,5 @@
-﻿using aspnetproject.Common.ProjectConstants;
-using aspnetproject.Common.Responses;
+﻿using aspnetproject.Common.Domain;
+using aspnetproject.Common.ProjectConstants;
 using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Infrastructure.Dtos.Auth;
@@ -96,7 +96,7 @@ public class AuthService : BaseService
         {
             response.Fail(ResponseMessages.LoginErrorMessage);
             await LogResultAsync(response.Succeeded, nameof(LoginAsync), nameof(User), $"Login failed: {response.Message}.", null);
-            // add login count and send warning email after every 3 invalid attempts.
+            // TODO add login count and send warning email after every 3 invalid attempts.
         }
 
         return response;

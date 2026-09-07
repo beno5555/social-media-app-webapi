@@ -1,4 +1,4 @@
-﻿namespace aspnetproject.Common.Responses;
+﻿namespace aspnetproject.Common.Domain;
 
 public class ListResponse<T> : ApplicationResponse
 {

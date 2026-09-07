@@ -44,7 +44,9 @@ public class FriendshipRepository : BaseRepository<Friendship>
     {
         return await GetWhereAsync(friendship => 
             friendship.AddresseeUserId == userId && (!status.HasValue || friendship.FriendshipStatus == status), // only checks for status if the parameter has value
-            pageNumber, pageSize, ignoreQueryFilters: true); 
+            pageNumber,
+            pageSize, 
+            ignoreQueryFilters: true); 
     }
 
     /// <summary>

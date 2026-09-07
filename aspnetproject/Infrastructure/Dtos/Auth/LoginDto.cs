@@ -8,7 +8,7 @@ public class LoginDto
 {
     [MaxLength(Constants.UsernameMaxlength)]
     [Required]
-    [DefaultValue("sandro__beno")]
+    [DefaultValue("steve.runte197970")]
     public string UniqueIdentifier { get; set; } = string.Empty;
 
     [MinLength(Constants.PasswordMinLength), MaxLength(Constants.PasswordMaxLength)]

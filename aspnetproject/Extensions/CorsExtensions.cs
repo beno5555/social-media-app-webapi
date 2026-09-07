@@ -10,7 +10,7 @@ public static class CorsExtensions
                 .GetSection("Cors:AllowedOrigins")
                 .Get<string[]>() ?? [];
 
-            options.AddPolicy("SignalRTestPolicy", policy =>
+            options.AddPolicy("OriginPolicy", policy =>
             {
                 policy.WithOrigins(allowedOrigins)
                     .AllowAnyHeader()

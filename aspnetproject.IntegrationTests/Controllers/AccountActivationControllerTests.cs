@@ -210,7 +210,7 @@ public class AccountActivationControllerTests : IAsyncLifetime
     }
 
     // NOTE: a full happy-path test for RequestActivate -> Activate would need to
-    // intercept the emailed token (EmailSender is real MailKit/MimeKit per core.md).
+    // intercept the emailed token (EmailSender is real MailKit/MimeKit per README.md).
     // Recommend swapping EmailSender for a test double in CustomWebApplicationFactory
     // that captures the token instead of sending mail, so this round trip is testable
     // without a real inbox. Flagging rather than assuming — want me to add that?

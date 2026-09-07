@@ -1,5 +1,5 @@
-﻿using aspnetproject.Common.ProjectConstants;
-using aspnetproject.Common.Responses;
+﻿using aspnetproject.Common.Domain;
+using aspnetproject.Common.ProjectConstants;
 using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Hubs;
@@ -71,7 +71,7 @@ public class CommentService : BaseService
                 if (commentAuthorId != post.UserId)
                 {
                     var commentNotification = CommentMapper.ToNotification(addedComment);
-                    // await _hubContext.Clients.Group(post.UserId.ToString()).SendAsync("ReceiveComment", commentNotification); // temporarily off to not interfere with integration tests
+                    await _hubContext.Clients.Group(post.UserId.ToString()).SendAsync("ReceiveComment", commentNotification); // temporarily off to not interfere with integration tests
                 }
             
                 var commentDto = CommentMapper.ToFullDisplay(addedComment);

@@ -11,8 +11,9 @@ public class AccountSecurityService
     private readonly EmailSender            _emailSender;
     private readonly RefreshTokenRepository _refreshTokenRepository;
 
-    private readonly int _resetTokenMinutes;
-    private readonly int _refreshTokenDays;
+    private readonly int     _resetTokenMinutes;
+    private readonly int     _refreshTokenDays;
+    private readonly string? _frontendUrl;
 
     public AccountSecurityService(
         UserRepository userRepository,
@@ -29,6 +30,7 @@ public class AccountSecurityService
 
         _resetTokenMinutes = configuration.GetValue<int>("PasswordConfiguration:ResetTokenMinutes");
         _refreshTokenDays = configuration.GetValue<int>("Jwt:RefreshTokenDays");
+        _frontendUrl = configuration.GetValue<string>("FrontendUrl");
     }
 
     public async Task<bool> HandlePasswordResetRequest(User user)
@@ -109,10 +111,13 @@ public class AccountSecurityService
     }
     private async Task<bool> NotifyPasswordResetRequest(string userEmail, string resetToken)
     {
-        return await _emailSender.SendAsync(
-            userEmail,
-            "Reset your password",
-            $"<p>Your password reset token: {resetToken}</p><p>Token expires in {_resetTokenMinutes} minutes.</p>");
+        var message = string.IsNullOrEmpty(_frontendUrl)
+            ? $"<p>Your password reset token: {resetToken}</p><p>Token expires in {_resetTokenMinutes} minutes.</p>"
+            : $"<p>Click the link below to reset your password:</p>" +
+              $"<p><a href=\"{_frontendUrl}/presence-test/reset-password.html?token={Uri.EscapeDataString(resetToken)}\">Reset password</a></p>" +
+              $"<p>This link expires in {_resetTokenMinutes} minutes.</p>";
+
+        return await _emailSender.SendAsync(userEmail, "Reset your password", message);
     }
     public async Task NotifyAccountReactivation(string userEmail)
     {

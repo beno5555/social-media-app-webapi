@@ -1,4 +1,4 @@
-﻿using aspnetproject.Common.Responses;
+﻿using aspnetproject.Common.Domain;
 using aspnetproject.Extensions;
 using aspnetproject.Infrastructure.Dtos.Auth;
 using aspnetproject.Infrastructure.Dtos.Auth.Password;
@@ -75,7 +75,7 @@ public class AuthController : ControllerBase
         return Unauthorized(new { Message = "No refresh token provided" });
     }
 
-    [HttpPost]
+    [HttpPut]
     [Route("request-password-reset")]
     [EnableRateLimiting(RateLimitConfig.Policies.RequestPasswordReset)]
     public async Task<ActionResult<ApplicationResponse>> RequestPasswordReset(ForgotPasswordDto forgotPasswordDto)
@@ -90,7 +90,7 @@ public class AuthController : ControllerBase
         return BadRequest(response);
     }
 
-    [HttpPost]
+    [HttpPut]
     [Route("reset-password")]
     [EnableRateLimiting(RateLimitConfig.Policies.ResetPassword)]
     public async Task<ActionResult<ApplicationResponse>> ResetPassword(ResetPasswordDto resetPasswordDto)
@@ -105,7 +105,7 @@ public class AuthController : ControllerBase
         return BadRequest(response);
     }
 
-    [HttpPost]
+    [HttpPatch]
     [Route("logout")]
     public async Task<ActionResult> Logout()
     {

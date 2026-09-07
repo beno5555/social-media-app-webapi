@@ -1,5 +1,6 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
+using aspnetproject.Infrastructure.Dtos.Comments;
 using aspnetproject.IntegrationTests.Fixtures;
 using aspnetproject.IntegrationTests.Helpers;
 
@@ -23,6 +24,21 @@ public class CommentControllerTests : IAsyncLifetime
     public Task DisposeAsync() => Task.CompletedTask;
 
     // ---------- POST /comments/posts/{postId}  (note: plural "posts") ----------
+    // Warning: comment hubcontext calls before proceeding with the tests.
+    
+    [Fact]
+    public async Task Create_OnExistingPost_Succeeds()
+    {
+        var token = await AuthTestHelper.LoginAsync(_client, "diana", TestDataSeeder.SharedPlaintextPassword);
+        AuthTestHelper.AttachToken(_client, token);
+    
+        var response = await _client.PostAsJsonAsync("api/comments/posts/2", new CreateCommentDto
+        {
+            Content = "Diana's new comment"
+        });
+    
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
 
     [Fact]
     public async Task Create_WithoutToken_ReturnsUnauthorized()
@@ -33,20 +49,6 @@ public class CommentControllerTests : IAsyncLifetime
         });
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
-    }
-
-    [Fact]
-    public async Task Create_OnExistingPost_Succeeds()
-    {
-        var token = await AuthTestHelper.LoginAsync(_client, "diana", TestDataSeeder.SharedPlaintextPassword);
-        AuthTestHelper.AttachToken(_client, token);
-
-        var response = await _client.PostAsJsonAsync("api/comments/posts/2", new
-        {
-            Content = "Diana's new comment"
-        });
-
-        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
     }
 
     [Fact]

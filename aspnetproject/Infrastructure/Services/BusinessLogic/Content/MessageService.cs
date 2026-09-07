@@ -1,6 +1,6 @@
-﻿using aspnetproject.Common.ProjectConstants;
+﻿using aspnetproject.Common.Domain;
+using aspnetproject.Common.ProjectConstants;
 using aspnetproject.Common.ProjectConstants.Enums;
-using aspnetproject.Common.Responses;
 using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Hubs;
@@ -103,7 +103,7 @@ public class MessageService : BaseService
         var response = new ListResponse<DisplayFriendDto>();
         
         var friends =
-            await _userRepository.GetFriendsByConversationStatusAsync(userId, shouldHaveConversation: false, pageNumber, pageSize);
+            await _userRepository.GetNonConversationFriendsAsync(userId, pageNumber, pageSize);
         var userDtos = friends.Select(UserMapper.ToFriendDisplay).ToList();
         
         response.Ok(userDtos, ResponseMessages.FriendsWithNoConversationRetrieved);

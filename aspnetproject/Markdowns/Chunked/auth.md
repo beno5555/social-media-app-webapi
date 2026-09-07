@@ -1,6 +1,6 @@
 ﻿# AspNetProject — Authentication & Authorization
 
-> Part of the AspNetProject doc set. See also: `core.md`, `data.md`, `auth.md`, `controllers.md`, `signalr.md`, `background-jobs.md`.
+> Part of the AspNetProject doc set. See also: `README.md`, `data.md`, `auth.md`, `controllers.md`, `signalr.md`, `background-jobs.md`.
 
 ---
 

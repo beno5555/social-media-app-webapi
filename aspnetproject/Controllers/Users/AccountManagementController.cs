@@ -1,5 +1,5 @@
-﻿using aspnetproject.Common.ProjectConstants.Enums;
-using aspnetproject.Common.Responses;
+﻿using aspnetproject.Common.Domain;
+using aspnetproject.Common.ProjectConstants.Enums;
 using aspnetproject.Controllers.Base;
 using aspnetproject.Extensions;
 using aspnetproject.Infrastructure.Dtos.UserRoles;

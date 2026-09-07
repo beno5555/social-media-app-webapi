@@ -101,7 +101,8 @@ public static class ResponseMessages
     public const string PasswordResetSuccessful            = "Password reset successful";
     public const string NewPasswordCannotBeTheSame         = "New Password cannot be the same as old password";
 
-    public const string CouldNotSendEmail = $"{CouldNot} {Send} Email";
+    public const  string CouldNotSendEmail   = $"{CouldNot} {Send} Email";
+    public const string UrlOriginNotAllowed = "Url origin not allowed";
     
     #endregion
     
@@ -195,4 +196,5 @@ public static class ResponseMessages
     public const string InvalidRequest = "Invalid Request";
 
     #endregion
+
 }

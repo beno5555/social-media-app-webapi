@@ -140,18 +140,26 @@ public class AuthService : BaseService
         var user = await _userRepository.GetByUniqueIdentifierAsync(forgotPasswordDto.Email);
         if (user is not null)
         {
-            bool sentEmailToUser = await _accountSecurityService.HandlePasswordResetRequest(user);
-            if (sentEmailToUser)
+            bool urlNotAllowed = forgotPasswordDto.RedirectUrl is not null && !UrlSecurityService.IsAllowedRedirect(forgotPasswordDto.RedirectUrl);
+            if (!urlNotAllowed)
             {
-                response.Ok(ResponseMessages.PasswordResetRequested);
-                await LogResultAsync(response.Succeeded, nameof(RequestPasswordResetAsync), nameof(User), $"{ResponseMessages.PasswordResetRequested}. Reset token sent to the email", null);
+                bool sentEmailToUser = await _accountSecurityService.HandlePasswordResetRequest(user, forgotPasswordDto.RedirectUrl);
+                if (sentEmailToUser)
+                {
+                    response.Ok(ResponseMessages.PasswordResetRequested);
+                    await LogResultAsync(response.Succeeded, nameof(RequestPasswordResetAsync), nameof(User), $"{ResponseMessages.PasswordResetRequested}. Reset token sent to the email", null);
+                }
+                else
+                {
+                    response.Fail(ResponseMessages.CouldNotSendEmail);
+                    await LogResultAsync(response.Succeeded, nameof(RequestPasswordResetAsync), nameof(User), $"{ResponseMessages.CouldNotSendEmail}: Something went wrong", null);
+                }
             }
             else
             {
-                response.Fail(ResponseMessages.CouldNotSendEmail);
-                await LogResultAsync(response.Succeeded, nameof(RequestPasswordResetAsync), nameof(User), $"{ResponseMessages.CouldNotSendEmail}: Something went wrong", null);
+                response.Fail(ResponseMessages.UrlOriginNotAllowed);
+                await LogResultAsync(response.Succeeded, nameof(RequestPasswordResetAsync), nameof(User), ResponseMessages.UrlOriginNotAllowed, null);
             }
-            
         }
         else
         {

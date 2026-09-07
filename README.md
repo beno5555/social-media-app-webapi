@@ -1,4 +1,4 @@
-﻿# Social Media Web Api
+﻿# WebCity
 
 An ASP.NET Core Web API, migrated from an earlier C# console application that simulated a basic social media platform. Core domain logic (entities, EF Core configuration, repositories, mappers, DTOs) carried over from the console app largely unchanged; the console-specific presentation layer was removed and replaced with a proper API layer.
 

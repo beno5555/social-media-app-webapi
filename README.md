@@ -72,80 +72,85 @@ Bogus
 ## Folder Structure
 
 ```
-/Data
-    ApplicationDbContext.cs
-    /Models
-        BaseEntity.cs
-        User.cs
-        Post.cs
-        Comment.cs
-        Friendship.cs
-        FriendshipStatus.cs   (moved under Common/ProjectConstants/Enums)
-        Message.cs
-        Log.cs
-        RefreshToken.cs
-        Role.cs
-        UserRole.cs
-    /Configurations
-        UserConfiguration.cs
-        ...
-    /Repositories
-        /Base
-            BaseRepository.cs
-            BaseEntityRepository.cs
-        /Dtos
-            ConversationFriendProjection.cs
-        UserRepository.cs
-        ...
-/Common
-    /Attributes/DataValidation
-        ValidAgeAttribute.cs
-    /ProjectConstants
-        Constants.cs
-        ResponseMessages.cs
-        /Enums
-            FriendshipStatus.cs
-            RoleName.cs
-    /Responses
-        ApplicationResponse.cs (+ generic ApplicationResponse<T>)
-        ListResponse.cs
-/Infrastructure
-    /Dtos
-        /Users
-        ...
-    /Mappers
-        UserMapper.cs
-        ...
-    /Queries
-        PageQuery.cs, SearchUserQuery.cs
-    /Services
-        /BusinessLogic
+aspnetproject.slnx                      solution (API + integration tests)
+README.md
+/aspnetproject                          the Web API project
+    Program.cs
+    aspnetproject.csproj
+    aspnetproject.http                  sample requests
+    /Properties
+        launchSettings.json             http://localhost:5045, https://localhost:7102
+    /Data
+        ApplicationDbContext.cs
+        /Models
+            BaseEntity.cs, User.cs, Post.cs, Comment.cs, Friendship.cs,
+            Message.cs, Log.cs, RefreshToken.cs, Role.cs, UserRole.cs
+        /Configurations                 one IEntityTypeConfiguration<T> per entity
+        /Repositories
             /Base
-            /Content
-            /Users
-            LogService.cs (registered placeholder; no public behavior yet)
-        /Helpers
-        /Logging
-        /Websockets
-        /BackgroundJobs
-            /Base 
-            /Common
-            /Configuration  
-            OldLogsCleanupService.cs, RefreshTokenCleanupService.cs, SoftDeletedUsersCleanupService.cs
-/Controllers
-    /Base
-    /Content
-    /Users
-/Hubs
-    MessageHub.cs
-/Extensions
-    ApplicationServicesExtensions.cs, AuthenticationExtensions.cs,
-    CorsExtensions.cs, GlobalExceptionHandler.cs, RateLimitConfig.cs, SwaggerExtensions.cs
-/Markdowns
-Program.cs
+                BaseRepository.cs, BaseEntityRepository.cs
+            /Dtos
+                ConversationFriendProjection.cs   (raw-SQL projection)
+            UserRepository.cs, PostRepository.cs, ...
+        /Seed
+            DeterministicFixtureSeed.cs   HasData fixture rows (used by the tests)
+            BulkDataSeed.cs               Bogus volume data (BulkDataSeeder)
+    /Migrations                         EF Core migrations + model snapshot
+    /Common
+        /Attributes/DataValidation
+            ValidAgeAttribute.cs
+        /Domain
+            ApplicationResponse.cs      (+ generic ApplicationResponse<T>)
+            ListResponse.cs
+        /ProjectConstants
+            Constants.cs
+            ResponseMessages.cs
+            /Enums
+                FriendshipStatus.cs
+                RoleName.cs
+    /Infrastructure
+        /Dtos                           Accounts, Auth, Comments, DatabaseLogs, Friendships,
+                                        Messages, Posts, UserRoles, Users, WebsocketsTransfer
+        /Mappers                        static mappers, one per resource
+        /Queries
+            PageQuery.cs, SearchUserQuery.cs
+        /Services
+            /BusinessLogic
+                /Base                   BaseService
+                /Content                PostService, CommentService, MessageService
+                /Users                  AuthService, UserService, FriendshipService,
+                                        AccountManagementService, AccountActivationService
+                LogService.cs           (registered placeholder; no public behavior yet)
+            /Helpers                    AccountSecurityService, EmailSender, PasswordHasher,
+                                        TokenGenerator, UrlSecurityService, UserConnectionTracker
+            /Logging                    DatabaseLogger, SystemLogger
+            /Websockets                 PresenceService
+            /BackgroundJobs
+                /Base                   PeriodicHostedService
+                /Common                 SoftDeleteCleanupResult
+                /Configuration          one options class per job
+                OldLogsCleanupService.cs, RefreshTokenCleanupService.cs, SoftDeletedUsersCleanupService.cs
+    /Controllers
+        /Base                           BaseController
+        /Content                        PostController, CommentController, MessageController
+        /Users                          AuthController, UserController, FriendshipController,
+                                        AccountManagementController, AccountActivationController
+    /Hubs
+        MessageHub.cs
+    /Extensions
+        ApplicationServicesExtensions.cs, AuthenticationExtensions.cs, CorsExtensions.cs,
+        GlobalExceptionHandler.cs, RateLimitConfig.cs, SwaggerExtensions.cs, TestSeedExtensions.cs
+    /Markdowns/Chunked                  area docs: auth, background-jobs, controllers, data, signalr
+/aspnetproject.IntegrationTests         xUnit integration tests (WebApplicationFactory + SQL Server + Respawn)
+    CustomWebApplicationFactory.cs, DatabaseFixture.cs, DatabaseCollection.cs
+    /Controllers                        one test class per controller
+    /Fixtures                           TestDataSeeder
+    /Helpers                            AuthTestHelper
 ```
 
-Note: the on-disk namespace/folder layout has drifted from `ProjectConstants`-only enums — `FriendshipStatus` now lives under `Common/ProjectConstants/Enums/`, not as a top-level model file. `AuthController`, `UserController`, `FriendshipController`, `AccountManagementController`, and `AccountActivationController` all live under `Controllers/Users/`, mirroring the `BusinessLogic/Users` service grouping — despite auth/friendships not being literally about "users" as a resource, they group by domain area rather than by REST noun.
+`appsettings*.json` files are not committed (gitignored).
+
+`AuthController`, `UserController`, `FriendshipController`, `AccountManagementController`, and `AccountActivationController` all live under `Controllers/Users/`, mirroring the `BusinessLogic/Users` service grouping — they group by domain area rather than by REST noun.
 
 ---
 
@@ -230,7 +235,7 @@ app.UseExceptionHandler();
 app.UseHttpsRedirection();
 app.UseRouting();
 
-app.UseCors("SignalRTestPolicy");
+app.UseCors("OriginPolicy");
 app.UseRateLimiter();
 
 app.UseAuthentication();
@@ -287,4 +292,4 @@ New to the API version:
 
 ## Status
 
-Actively developed, beyond the original migration scope. Domain/data layers, JWT auth (access + refresh + password reset), account activation/deactivation/soft-delete, role-based authorization, all five resource controllers (Posts, Comments, Friendships, Messages, Users/Accounts), SignalR (messages + live comments + presence), structured DB logging, background cleanup jobs, and rate limiting are all implemented. See `controllers.md`, `data.md`, `auth.md`, `signalr.md`, and `background-jobs.md` for area-specific detail.
+Actively developed, beyond the original migration scope. Domain/data layers, JWT auth (access + refresh + password reset), account activation/deactivation/soft-delete, role-based authorization, all resource controllers (Posts, Comments, Friendships, Messages, Users/Accounts), SignalR (messages + live comments + presence), structured DB logging, background cleanup jobs, rate limiting and integration tests are implemented. See `aspnetproject/Markdowns/Chunked/` (`controllers.md`, `data.md`, `auth.md`, `signalr.md`, `background-jobs.md`) for area-specific detail.

@@ -20,16 +20,16 @@ Password hashing is PBKDF2 (`Rfc2898DeriveBytes.Pbkdf2`, 100,000 iterations, SHA
 - `TokenGenerator.GenerateRefreshToken()` — 64 random bytes via `RandomNumberGenerator`, URL-safe base64-encoded (`+`/`/` replaced, padding trimmed). `TokenGenerator.HashToken(token)` — SHA-256.
 - `RefreshTokenRepository.GetActiveByHashAsync(hash)`, `RevokeAsync(token)`, `RevokeAllForUserAsync(userId)` (bulk `ExecuteUpdateAsync`, used on password reset, deactivation, and soft-delete).
 - Delivered via `HttpOnly; Secure; SameSite=Strict` cookie, set/read/cleared in `AuthController`. `Expires` mirrors `Jwt:RefreshTokenDays`.
-- Rotated on every refresh: old token revoked, new one issued via the shared `AccountSecurityService.IssueAccessAndRefreshTokensAsync` helper. Revoked (not deleted) on logout; a background job (`RefreshTokenCleanupService`) later purges expired/revoked rows — see `background-jobs.md`.
+- Rotated on every refresh: old token revoked, new one issued via the shared `AccountSecurityService.IssueAccessAndRefreshTokensAsync` helper. Revoked (not deleted) on logout; a background job (`RefreshTokenCleanupService`) later purges rows that are both expired and revoked — see `background-jobs.md`.
 
 ### Auth flow
 
 1. **Register** (`POST api/auth/register`) — creates the user (no roles beyond none assigned at registration; roles are assigned separately by an admin). Fails on duplicate email or username. On duplicate email, triggers `AccountSecurityService.HandleFailedRegisterAttempt` — emails the existing account holder a password-reset token, in case the registration attempt was the real owner locked out of their account.
-2. **Login** (`POST api/auth/login`) — validates credentials, issues access token (body) + refresh token (cookie) via `IssueTokensAndRefreshAsync`-style helper (`AccountSecurityService.IssueAccessAndRefreshTokensAsync`).
+2. **Login** (`POST api/auth/login`) — validates credentials, issues access token (body) + refresh token (cookie) via `AccountSecurityService.IssueAccessAndRefreshTokensAsync`.
 3. **Authenticated requests** — client attaches `Authorization: Bearer {accessToken}`.
 4. **Refresh** (`POST api/auth/refresh`) — no body; refresh token cookie read automatically, hashed, looked up, revoked, new pair issued.
-5. **Logout** (`POST api/auth/logout`) — revokes the current refresh token (if any) and clears the cookie.
-6. **Password reset** — `POST api/auth/request-password-reset` issues a reset token (reusing `User.ResetTokenHash`/`ResetTokenExpiresAt`) and emails it; `POST api/auth/reset-password` consumes it, rejects if the new password equals the current one, revokes all the user's refresh tokens (forces re-login everywhere), and emails a "your password was reset" notice.
+5. **Logout** (`PATCH api/auth/logout`) — revokes the current refresh token (if any) and clears the cookie. Not rate-limited by its own policy (only the global limiter applies).
+6. **Password reset** — `PUT api/auth/request-password-reset` (body: `ForgotPasswordDto` — `Email`, optional `RedirectUrl`) issues a reset token (reusing `User.ResetTokenHash`/`ResetTokenExpiresAt`) and emails it. Without `RedirectUrl` the email contains the raw token; with it, the email contains a link `{RedirectUrl}?token={token}`. `RedirectUrl`'s origin must be in `UrlSecurityService`'s hardcoded allowlist (currently only `http://localhost:5500`), otherwise the request fails with `UrlOriginNotAllowed`. `PUT api/auth/reset-password` consumes the token, rejects if the new password equals the current one, revokes all the user's refresh tokens (forces re-login everywhere), and emails a "your password was reset" notice.
 
 ### Account activation / deactivation (separate from auth, own controller/service)
 
@@ -39,7 +39,7 @@ Password hashing is PBKDF2 (`Rfc2898DeriveBytes.Pbkdf2`, 100,000 iterations, SHA
 
 ### Roles
 
-- Seeded via `RoleConfiguration.HasData`: `User` (Id 1), `Administrator` (Id 2). A user row is also seeded with both roles (`UserRoleConfiguration`, `UserId = 3114`) for local dev/testing.
+- Seeded via `RoleConfiguration.HasData`: `User` (Id 1), `Administrator` (Id 2). An admin user (`UserConfiguration.HasData`, `Id = 1`, username `sandro_beno`) is also seeded with both roles (`UserRoleConfiguration`) for local dev/testing.
 - `AccountManagementController` exposes `Administrator`-only assign/unassign endpoints (`PUT api/accounts/{id}/assign-administrator`, `PUT api/accounts/{id}/remove-administrator`).
 - `BaseController.IsAdministrator()` checks `User.IsInRole(nameof(RoleName.Administrator))`; used by `PostController`/`CommentController` to let an admin delete any post/comment, and by `AccountManagementController`/`AccountActivationController` for admin-vs-self routes.
 - No self-registration path grants roles — a new user has none until an admin assigns one.
@@ -49,12 +49,12 @@ Password hashing is PBKDF2 (`Rfc2898DeriveBytes.Pbkdf2`, 100,000 iterations, SHA
 - Auth failure messages are deliberately generic and uniform: login doesn't distinguish "no such user" from "wrong password."
 - `LogoutAsync` returns `void` — no failure state by design.
 - `RegisterAsync` returns `ApplicationResponse<FullUserDto>` with the created user, matching REST convention of returning the created resource. Registration does not implicitly log the user in.
-- Every `AuthService`/`AccountActivationService`/`AccountManagementService` method logs its outcome via `BaseService.LogResultAsync` (see `core.md`), in addition to returning an `ApplicationResponse`.
+- Every `AuthService`/`AccountActivationService`/`AccountManagementService` method logs its outcome via `BaseService.LogResultAsync` (see `README.md`, Layers → Services), in addition to returning an `ApplicationResponse`.
 
 ### Global exception handling
 
 - `GlobalExceptionHandler : IExceptionHandler` (registered via `AddExceptionHandler<T>()` + `AddProblemDetails()`) logs the exception through `SystemLogger.LogEndpointErrorAsync`, then maps `DbUpdateException` → `409 Conflict` (everything else → `500`), with full exception detail returned only in `Development`.
-- `SystemLogger` writes to a rolling text file (`Logs/ErrorLogs.txt`) under a `SemaphoreSlim`-guarded async write — separate from the structured `DatabaseLogger` (DB-backed, per-action) used everywhere else.
+- `SystemLogger` appends to a single text file (`{ContentRoot}/Logs/ErrorLogs.txt`, not rotated) under a `SemaphoreSlim`-guarded async write — separate from the structured `DatabaseLogger` (DB-backed, per-action) used everywhere else.
 
 ### Rate limiting
 

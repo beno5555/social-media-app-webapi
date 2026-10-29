@@ -67,7 +67,7 @@ Browsers can't set custom headers on a WebSocket/SSE handshake, so the client se
 
 ## CORS
 
-Policy name: `SignalRTestPolicy` (`CorsExtensions.AddCorsPolicies`), applied globally via `app.UseCors("SignalRTestPolicy")` (not scoped only to the hub).
+Policy name: `OriginPolicy` (`CorsExtensions.AddCorsPolicies`), applied globally via `app.UseCors("OriginPolicy")` (not scoped only to the hub).
 
 - Explicit origin allowlist via `WithOrigins(...)` — `AllowAnyOrigin()` cannot be combined with `AllowCredentials()`.
 - Origins stored in `appsettings.{Environment}.json` under `Cors:AllowedOrigins`.

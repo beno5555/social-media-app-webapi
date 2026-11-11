@@ -7,7 +7,8 @@ Issues and specs for this repo live as markdown files in `.scratch/`.
 - One feature per directory: `.scratch/<feature-slug>/`
 - The spec is `.scratch/<feature-slug>/spec.md`
 - Implementation issues are one file per ticket at `.scratch/<feature-slug>/issues/<NN>-<slug>.md`, numbered from `01`, never a single combined tickets file
-- State is recorded as a `Status:` line near the top of each issue file: `open`, `in-progress` or `done`
+- State is recorded as a `Status:` line near the top of each issue file: `ready-for-agent` (new, the value `/to-tickets` writes), then `in-progress`, then `done`
+- Each ticket also carries a `Difficulty:` line (`routine` or `tricky`) that decides which model implements it: Sonnet for routine, Opus for tricky
 - Comments and conversation history append to the bottom of the file under a `## Comments` heading
 
 ## When a skill says "publish to the issue tracker"

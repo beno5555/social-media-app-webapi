@@ -34,7 +34,16 @@ public class GlobalExceptionHandler : IExceptionHandler
 
         if (_env.IsDevelopment())
         {
-            response.Fail(ResponseMessages.ExceptionDetail(exception.GetType().Name, exception.Message));
+            var detail = ResponseMessages.ExceptionDetail(exception.GetType().Name, exception.Message);
+
+            var innerMessage    = exception.InnerException?.Message;
+            bool hasInnerDetail = !string.IsNullOrEmpty(innerMessage);
+            if (hasInnerDetail)
+            {
+                detail = ResponseMessages.WithInnerExceptionDetail(detail, innerMessage!);
+            }
+
+            response.Fail(detail);
         }
         else
         {

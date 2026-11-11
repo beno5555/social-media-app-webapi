@@ -53,7 +53,7 @@ Password hashing is PBKDF2 (`Rfc2898DeriveBytes.Pbkdf2`, 100,000 iterations, SHA
 
 ### Global exception handling
 
-- `GlobalExceptionHandler : IExceptionHandler` (registered via `AddExceptionHandler<T>()` + `AddProblemDetails()`) logs the exception through `SystemLogger.LogEndpointErrorAsync`, then maps `DbUpdateException` → `409 Conflict` (everything else → `500`), writing an `ApplicationResponse` envelope as the body. The message carries `ExceptionType: exception message` only in `Development` and a generic message otherwise (no stack trace is returned).
+- `GlobalExceptionHandler : IExceptionHandler` (registered via `AddExceptionHandler<T>()` + `AddProblemDetails()`) logs the exception through `SystemLogger.LogEndpointErrorAsync`, then maps `DbUpdateException` → `409 Conflict` (everything else → `500`), writing an `ApplicationResponse` envelope as the body. The message carries `ExceptionType: exception message | Inner: inner exception message` (the inner part only when there is one) only in `Development` and a generic message otherwise (no stack trace is returned).
 - `SystemLogger` writes to a rolling text file (`Logs/ErrorLogs.txt`) under a `SemaphoreSlim`-guarded async write — separate from the structured `DatabaseLogger` (DB-backed, per-action) used everywhere else.
 
 ### Rate limiting

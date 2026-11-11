@@ -200,6 +200,9 @@ public static class ResponseMessages
     public static readonly Func<string, string, string> ExceptionDetail =
         (exceptionType, exceptionMessage) => $"{exceptionType}: {exceptionMessage}";
 
+    public static readonly Func<string, string, string> WithInnerExceptionDetail =
+        (detail, innerMessage) => $"{detail} | Inner: {innerMessage}";
+
     #endregion
 
 }

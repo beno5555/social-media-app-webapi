@@ -42,6 +42,7 @@ public static class ApplicationServicesExtensions
         
         services.AddScoped<PasswordHasher>();
         services.AddScoped<TokenGenerator>();
+        services.AddScoped<UrlSecurityService>();
 
         services.AddScoped<SystemLogger>();
         services.AddScoped<DatabaseLogger>();

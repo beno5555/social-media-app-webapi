@@ -114,6 +114,70 @@ public class AuthControllerTests : IAsyncLifetime
         Assert.Equal(ResponseMessages.RefreshTokenNotFound, body.Message);
     }
 
+    // ---------- PUT /auth/request-password-reset ----------
+    // Requests are for seeded alice@example.com. The test host trusts CustomWebApplicationFactory.TrustedFrontendOrigin and sends no real email.
+
+    [Fact]
+    public async Task RequestPasswordReset_WithAllowedRedirectUrl_ReturnsOk()
+    {
+        var response = await RequestPasswordResetAsync($"{CustomWebApplicationFactory.TrustedFrontendOrigin}/reset-password");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<ApplicationResponse>();
+        Assert.True(body!.Succeeded);
+        Assert.Equal(ResponseMessages.PasswordResetRequested, body.Message);
+    }
+
+    [Fact]
+    public async Task RequestPasswordReset_WithCaseVariantOfAllowedRedirectUrl_ReturnsOk()
+    {
+        var response = await RequestPasswordResetAsync($"{CustomWebApplicationFactory.TrustedFrontendOrigin.ToUpperInvariant()}/reset-password");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<ApplicationResponse>();
+        Assert.True(body!.Succeeded);
+        Assert.Equal(ResponseMessages.PasswordResetRequested, body.Message);
+    }
+
+    [Theory]
+    [InlineData("https://attacker.example/reset-password")]       // untrusted host
+    [InlineData("http://frontend.webcity.test:5500/reset-password")]  // trusted host, other port
+    [InlineData("https://frontend.webcity.test:4200/reset-password")] // trusted host and port, other scheme
+    [InlineData("/reset-password")]                                   // not an absolute URL
+    public async Task RequestPasswordReset_WithDisallowedRedirectUrl_ReturnsBadRequest(string redirectUrl)
+    {
+        var response = await RequestPasswordResetAsync(redirectUrl);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<ApplicationResponse>();
+        Assert.False(body!.Succeeded);
+        Assert.Equal(ResponseMessages.UrlOriginNotAllowed, body.Message);
+    }
+
+    [Fact]
+    public async Task RequestPasswordReset_WithoutRedirectUrl_ReturnsOk()
+    {
+        var response = await RequestPasswordResetAsync(null);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<ApplicationResponse>();
+        Assert.True(body!.Succeeded);
+        Assert.Equal(ResponseMessages.PasswordResetRequested, body.Message);
+    }
+
+    private async Task<HttpResponseMessage> RequestPasswordResetAsync(string? redirectUrl)
+    {
+        return await _client.PutAsJsonAsync("api/auth/request-password-reset", new
+        {
+            Email = "alice@example.com",
+            RedirectUrl = redirectUrl
+        });
+    }
+
     private async Task<HttpResponseMessage> PostRefreshAsync(string refreshToken)
     {
         var request = new HttpRequestMessage(HttpMethod.Post, "api/auth/refresh");

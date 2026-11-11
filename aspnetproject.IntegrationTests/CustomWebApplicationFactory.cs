@@ -14,6 +14,9 @@ namespace aspnetproject.IntegrationTests;
 
 public class CustomWebApplicationFactory : WebApplicationFactory<Program>
 {
+    // Replaces the first entry of Cors:AllowedOrigins, so tests that need a trusted origin do not depend on the settings file.
+    public const string TrustedFrontendOrigin = "http://frontend.webcity.test:4200";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -22,10 +25,11 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
         {
             config.AddJsonFile("appsettings.Testing.json", optional: false);
 
-            // Added after the settings file so it wins: the suite never sends real email.
+            // Added after the settings file so it wins: the suite never sends real email, and always trusts TrustedFrontendOrigin.
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
-                ["EmailConfiguration:Enabled"] = "false"
+                ["EmailConfiguration:Enabled"] = "false",
+                ["Cors:AllowedOrigins:0"] = TrustedFrontendOrigin
             });
         });
 

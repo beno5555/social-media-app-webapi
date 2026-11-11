@@ -19,6 +19,7 @@ public class AuthService : BaseService
     private readonly PasswordHasher         _passwordHasher;
     private readonly TokenGenerator         _tokenGenerator;
     private readonly AccountSecurityService _accountSecurityService;
+    private readonly UrlSecurityService     _urlSecurityService;
     
     public AuthService(
         UserRepository userRepository,
@@ -26,6 +27,7 @@ public class AuthService : BaseService
         PasswordHasher passwordHasher,
         TokenGenerator tokenGenerator,
         AccountSecurityService accountSecurityService,
+        UrlSecurityService urlSecurityService,
         DatabaseLogger dbLogger
         ) : base(dbLogger)
     {
@@ -34,6 +36,7 @@ public class AuthService : BaseService
         _passwordHasher = passwordHasher;
         _tokenGenerator = tokenGenerator;
         _accountSecurityService = accountSecurityService;
+        _urlSecurityService = urlSecurityService;
     }
 
     public async Task<ApplicationResponse<FullUserDto>> RegisterAsync(RegisterDto registerDto)
@@ -140,7 +143,7 @@ public class AuthService : BaseService
         var user = await _userRepository.GetByUniqueIdentifierAsync(forgotPasswordDto.Email);
         if (user is not null)
         {
-            bool urlNotAllowed = forgotPasswordDto.RedirectUrl is not null && !UrlSecurityService.IsAllowedRedirect(forgotPasswordDto.RedirectUrl);
+            bool urlNotAllowed = forgotPasswordDto.RedirectUrl is not null && !_urlSecurityService.IsAllowedRedirect(forgotPasswordDto.RedirectUrl);
             if (!urlNotAllowed)
             {
                 bool sentEmailToUser = await _accountSecurityService.HandlePasswordResetRequest(user, forgotPasswordDto.RedirectUrl);

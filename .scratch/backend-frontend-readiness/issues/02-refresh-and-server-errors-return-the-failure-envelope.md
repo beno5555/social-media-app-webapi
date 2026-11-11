@@ -4,16 +4,29 @@
 
 **Blocked by:** 01 (Integration suite sends no email)
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Difficulty:** routine: small edits to one controller and the exception handler, following the envelope pattern every other endpoint already uses, checked by integration tests.
 
-- [ ] A refresh with an invalid, expired or revoked token returns 401 with the envelope
-- [ ] A refresh with no refresh cookie returns 401 with the envelope
-- [ ] An unhandled exception returns the envelope, keeping the current status mapping (409 for a database update conflict, 500 otherwise)
-- [ ] Outside development the exception message is generic and carries no internal detail; in development the exception detail is still returned, in the envelope's message
-- [ ] Every other controller failure path is checked, and any that does not return the service's response is fixed
-- [ ] Messages introduced or touched live with the other response messages, not as inline literals
-- [ ] Integration tests cover both refresh failures by asserting on status and envelope body; tests asserting on the old bodies are updated
-- [ ] The exception handler is covered by an integration test only if an unhandled exception can be provoked through a real endpoint without adding test-only code to the app; otherwise a comment on this ticket records how it was verified by hand
-- [ ] The full integration suite passes
+- [x] A refresh with an invalid, expired or revoked token returns 401 with the envelope
+- [x] A refresh with no refresh cookie returns 401 with the envelope
+- [x] An unhandled exception returns the envelope, keeping the current status mapping (409 for a database update conflict, 500 otherwise)
+- [x] Outside development the exception message is generic and carries no internal detail; in development the exception detail is still returned, in the envelope's message
+- [x] Every other controller failure path is checked, and any that does not return the service's response is fixed
+- [x] Messages introduced or touched live with the other response messages, not as inline literals
+- [x] Integration tests cover both refresh failures by asserting on status and envelope body; tests asserting on the old bodies are updated
+- [x] The exception handler is covered by an integration test only if an unhandled exception can be provoked through a real endpoint without adding test-only code to the app; otherwise a comment on this ticket records how it was verified by hand
+- [x] The full integration suite passes
+
+## Comments
+
+**Controller audit.** Every failure branch in `aspnetproject/Controllers/**` already returned the service's `response` (`BadRequest(response)` / `NotFound(response)`). `AuthController.Refresh` was the only exception and is fixed. `Unread` and `MarkAsRead` call service methods that cannot fail.
+
+**Exception handler: verified by hand, no integration test.** No real endpoint raises an unhandled exception without test-only code in the app. I called `GlobalExceptionHandler.TryHandleAsync` directly from a throwaway xUnit test (deleted afterwards) with a `DefaultHttpContext`. Results:
+- Production, `DbUpdateException` -> 409, `{"succeeded":false,"message":"An unexpected error occurred."}`
+- Production, other exception -> 500, same generic envelope
+- Development, other exception -> 500, `{"succeeded":false,"message":"<exception message>"}`
+
+In Development the stack trace is no longer returned: the envelope has no field for it, and the ticket asks for the exception detail in the message.
+
+**Expired token.** Not tested separately. An expired token goes through the same `GetActiveByHashAsync` lookup as an invalid or revoked one, so the invalid and revoked tests cover that path.

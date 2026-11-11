@@ -94,6 +94,7 @@ public static class ResponseMessages
     public const string LoginErrorMessage         = "Invalid Username or Password";
     public const string InvalidRefreshToken       = "Invalid refresh token";
     public const string RefreshTokenNotFound      = "Refresh token not found";
+    public const string NoRefreshTokenProvided    = "No refresh token provided";
     
     public const string PasswordResetRequested             = "Password reset requested.";
     public const string InvalidPasswordResetToken          = "Invalid reset token";
@@ -193,7 +194,8 @@ public static class ResponseMessages
     
     #region Failure Messages
 
-    public const string InvalidRequest = "Invalid Request";
+    public const string InvalidRequest  = "Invalid Request";
+    public const string UnexpectedError = "An unexpected error occurred.";
 
     #endregion
 

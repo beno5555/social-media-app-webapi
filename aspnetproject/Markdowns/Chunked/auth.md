@@ -27,7 +27,7 @@ Password hashing is PBKDF2 (`Rfc2898DeriveBytes.Pbkdf2`, 100,000 iterations, SHA
 1. **Register** (`POST api/auth/register`) — creates the user (no roles beyond none assigned at registration; roles are assigned separately by an admin). Fails on duplicate email or username. On duplicate email, triggers `AccountSecurityService.HandleFailedRegisterAttempt` — emails the existing account holder a password-reset token, in case the registration attempt was the real owner locked out of their account.
 2. **Login** (`POST api/auth/login`) — validates credentials, issues access token (body) + refresh token (cookie) via `IssueTokensAndRefreshAsync`-style helper (`AccountSecurityService.IssueAccessAndRefreshTokensAsync`).
 3. **Authenticated requests** — client attaches `Authorization: Bearer {accessToken}`.
-4. **Refresh** (`POST api/auth/refresh`) — no body; refresh token cookie read automatically, hashed, looked up, revoked, new pair issued.
+4. **Refresh** (`POST api/auth/refresh`) — no body; refresh token cookie read automatically, hashed, looked up, revoked, new pair issued. A missing, invalid, expired or revoked token returns `401` with the `ApplicationResponse` envelope (`succeeded: false` plus a message).
 5. **Logout** (`POST api/auth/logout`) — revokes the current refresh token (if any) and clears the cookie.
 6. **Password reset** — `POST api/auth/request-password-reset` issues a reset token (reusing `User.ResetTokenHash`/`ResetTokenExpiresAt`) and emails it; `POST api/auth/reset-password` consumes it, rejects if the new password equals the current one, revokes all the user's refresh tokens (forces re-login everywhere), and emails a "your password was reset" notice.
 
@@ -53,7 +53,7 @@ Password hashing is PBKDF2 (`Rfc2898DeriveBytes.Pbkdf2`, 100,000 iterations, SHA
 
 ### Global exception handling
 
-- `GlobalExceptionHandler : IExceptionHandler` (registered via `AddExceptionHandler<T>()` + `AddProblemDetails()`) logs the exception through `SystemLogger.LogEndpointErrorAsync`, then maps `DbUpdateException` → `409 Conflict` (everything else → `500`), with full exception detail returned only in `Development`.
+- `GlobalExceptionHandler : IExceptionHandler` (registered via `AddExceptionHandler<T>()` + `AddProblemDetails()`) logs the exception through `SystemLogger.LogEndpointErrorAsync`, then maps `DbUpdateException` → `409 Conflict` (everything else → `500`), writing an `ApplicationResponse` envelope as the body. The message carries the exception message only in `Development` and a generic message otherwise (no stack trace is returned).
 - `SystemLogger` writes to a rolling text file (`Logs/ErrorLogs.txt`) under a `SemaphoreSlim`-guarded async write — separate from the structured `DatabaseLogger` (DB-backed, per-action) used everywhere else.
 
 ### Rate limiting

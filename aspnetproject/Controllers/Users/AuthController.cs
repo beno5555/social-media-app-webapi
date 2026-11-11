@@ -1,4 +1,5 @@
 ﻿using aspnetproject.Common.Domain;
+using aspnetproject.Common.ProjectConstants;
 using aspnetproject.Extensions;
 using aspnetproject.Infrastructure.Dtos.Auth;
 using aspnetproject.Infrastructure.Dtos.Auth.Password;
@@ -70,10 +71,13 @@ public class AuthController : ControllerBase
                 return Ok(new { accessToken = response.Data!.AccessToken });
             }
 
-            return Unauthorized(new {response.Message});
+            return Unauthorized(response);
         }
 
-        return Unauthorized(new { Message = "No refresh token provided" });
+        var missingTokenResponse = new ApplicationResponse();
+        missingTokenResponse.Fail(ResponseMessages.NoRefreshTokenProvided);
+
+        return Unauthorized(missingTokenResponse);
     }
 
     [HttpPut]

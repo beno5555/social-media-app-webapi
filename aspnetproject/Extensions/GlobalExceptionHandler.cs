@@ -1,4 +1,6 @@
-﻿using aspnetproject.Infrastructure.Services.Logging;
+﻿using aspnetproject.Common.Domain;
+using aspnetproject.Common.ProjectConstants;
+using aspnetproject.Infrastructure.Services.Logging;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.EntityFrameworkCore;
 
@@ -28,22 +30,18 @@ public class GlobalExceptionHandler : IExceptionHandler
             httpContext.Response.StatusCode = StatusCodes.Status500InternalServerError;
         }
 
-        httpContext.Response.ContentType = "application/json";
+        var response = new ApplicationResponse();
 
         if (_env.IsDevelopment())
         {
-            var body = new
-            {
-                error = exception.Message,
-                stackTrace = exception.StackTrace
-            };
-
-            await httpContext.Response.WriteAsJsonAsync(body, cancellationToken);
+            response.Fail(exception.Message);
         }
         else
         {
-            await httpContext.Response.WriteAsync("{\"error\":\"An unexpected error occurred.\"}", cancellationToken);
+            response.Fail(ResponseMessages.UnexpectedError);
         }
+
+        await httpContext.Response.WriteAsJsonAsync(response, cancellationToken);
 
         return true;
     }

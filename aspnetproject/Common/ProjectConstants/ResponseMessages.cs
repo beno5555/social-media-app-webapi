@@ -196,6 +196,7 @@ public static class ResponseMessages
 
     public const string InvalidRequest  = "Invalid Request";
     public const string UnexpectedError = "An unexpected error occurred.";
+    public const string TooManyRequests = "Too many requests. Please slow down and try again later.";
 
     public static readonly Func<string, string, string> ExceptionDetail =
         (exceptionType, exceptionMessage) => $"{exceptionType}: {exceptionMessage}";

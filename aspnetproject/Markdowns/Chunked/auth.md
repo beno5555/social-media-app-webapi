@@ -59,3 +59,5 @@ Password hashing is PBKDF2 (`Rfc2898DeriveBytes.Pbkdf2`, 100,000 iterations, SHA
 ### Rate limiting
 
 Auth endpoints are limited per-IP (the caller isn't authenticated yet): `Login` (10/hour), `Register` (5/hour), `Refresh` (5/10min), `RequestPasswordReset` (3/15min), `ResetPassword` (5/15min). Account-management endpoints (deactivate/reactivate/delete) are limited per-user (or per-IP for the anonymous activation-confirmation endpoints). A global per-user sliding-window limiter (300/min) backstops everything. See `RateLimitConfig.cs` for exact figures per policy.
+
+Every rejection, from any endpoint policy or the global limiter, returns 429 with the `ApplicationResponse` envelope (`succeeded: false`, `message: ResponseMessages.TooManyRequests`), written by the limiter's `OnRejected` callback. Limiter state lives in the host, and every integration test builds its own `CustomWebApplicationFactory`, so a test that exhausts a policy (see `RateLimiting/RateLimitRejectionTests`) can't rate-limit any other test.

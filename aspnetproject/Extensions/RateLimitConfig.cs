@@ -1,5 +1,8 @@
 ﻿using System.Security.Claims;
 using System.Threading.RateLimiting;
+using aspnetproject.Common.Domain;
+using aspnetproject.Common.ProjectConstants;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace aspnetproject.Extensions;
 
@@ -70,6 +73,7 @@ public static class RateLimitConfig
         services.AddRateLimiter(options =>
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+            options.OnRejected = WriteRejectionEnvelopeAsync;
 
             #region Auth (IP-based, pre-authentication)
             options.AddPolicy(Policies.Login, httpContext =>
@@ -199,6 +203,15 @@ public static class RateLimitConfig
                 PerUserSlidingWindow(httpContext, 300, TimeSpan.FromMinutes(1)));
             #endregion
         });
+    }
+
+    // Runs for every endpoint policy and the global limiter, after RejectionStatusCode has been set.
+    private static async ValueTask WriteRejectionEnvelopeAsync(OnRejectedContext context, CancellationToken cancellationToken)
+    {
+        var response = new ApplicationResponse();
+        response.Fail(ResponseMessages.TooManyRequests);
+
+        await context.HttpContext.Response.WriteAsJsonAsync(response, cancellationToken);
     }
 
     private static RateLimitPartition<string> PerIpSlidingWindow(HttpContext httpContext, int permitLimit, TimeSpan window)

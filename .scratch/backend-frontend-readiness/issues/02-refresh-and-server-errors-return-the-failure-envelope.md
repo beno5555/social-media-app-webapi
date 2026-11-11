@@ -30,3 +30,8 @@
 In Development the stack trace is no longer returned: the envelope has no field for it, and the ticket asks for the exception detail in the message.
 
 **Expired token.** Not tested separately. An expired token goes through the same `GetActiveByHashAsync` lookup as an invalid or revoked one, so the invalid and revoked tests cover that path.
+
+**Follow-up (supersedes the Development result above).** After the ticket was marked done, the Development message was enriched, still inside the envelope's `message` field: `ExceptionType: exception message`, plus ` | Inner: inner exception message` when the exception has an inner exception. Only the immediate inner exception is included. The stack trace is still not returned; the full `ToString()` is in `Logs/ErrorLogs.txt`. Outside Development the message is unchanged (generic). Verified by hand the same way as before (direct handler call from a throwaway test, deleted afterwards):
+- Development, `DbUpdateException` with an inner exception -> 409, `DbUpdateException: saving failed | Inner: constraint FK_x violated`
+- Development, exception with no inner exception -> 500, `InvalidOperationException: plain`
+- Production, `DbUpdateException` -> 409, generic message

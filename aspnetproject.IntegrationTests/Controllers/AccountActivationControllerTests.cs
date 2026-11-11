@@ -68,21 +68,17 @@ public class AccountActivationControllerTests : IAsyncLifetime
     }
 
     // ---------- PATCH /accounts/{id}/deactivate ----------
-    // Documented as reachable by ANY authenticated caller — no [Authorize(Roles)]
-    // despite the "admin" framing. These tests specifically verify that gap exists
-    // as documented, so if it's since been locked down, these should start failing
-    // and flag the fix.
+    // Administrator role only.
 
     [Fact]
-    public async Task DeactivateOther_ByNonAdminCaller_CurrentlySucceeds()
+    public async Task DeactivateOther_ByNonAdminCaller_ReturnsForbidden()
     {
         var token = await AuthTestHelper.LoginAsync(_client, "alice", TestDataSeeder.SharedPlaintextPassword);
         AuthTestHelper.AttachToken(_client, token);
 
         var response = await _client.PatchAsync("api/accounts/3/deactivate", null); // bob, by alice (non-admin)
 
-        // Per controllers.md: no role restriction on this route today.
-        Assert.True(response.StatusCode is HttpStatusCode.OK or HttpStatusCode.NoContent);
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
 
     [Fact]

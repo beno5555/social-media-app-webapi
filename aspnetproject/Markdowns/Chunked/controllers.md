@@ -193,11 +193,11 @@ Route: `api/accounts` (shares the prefix with `AccountManagementController` — 
 | Method | Route                           | Auth            | Notes                                                                                                                         |
 |--------|---------------------------------|-----------------|-------------------------------------------------------------------------------------------------------------------------------|
 | PATCH  | `api/accounts/mine/deactivate`  | Required        | Self-deactivate                                                                                                               |
-| PATCH  | `api/accounts/{id}/deactivate`  | Required        | Deactivate another account — no `[Authorize(Roles = ...)]`, reachable by any authenticated caller despite the "admin" framing |
+| PATCH  | `api/accounts/{id}/deactivate`  | Required        | Deactivate another account — `Administrator` role only                                                                        |
 | PATCH  | `api/accounts/{id}/activate`    | `Administrator` | Admin-reactivate, immediate                                                                                                   |
 | PATCH  | `api/accounts/activate`         | Anonymous       | Self-reactivate via emailed token (body: `ActivateAccountDto`)                                                                |
 | PATCH  | `api/accounts/request-activate` | Anonymous       | Request a reactivation token by email (body: `ActivationRequestDto`)                                                          |
 
 See `auth.md` for the full activation/deactivation flow and email notifications.
 
-**Rate-limit policy names look swapped.** `mine/deactivate` (self-service) is annotated `[EnableRateLimiting(RateLimitConfig.Policies.AdminDeactivateAccount)]` (30/hour — generous), while `{id}/deactivate` (deactivating *another* account, unrestricted by role as noted above) is annotated `Policies.DeactivateOwnAccount` (5/hour — restrictive). The policy names read backwards relative to which route they're on; worth confirming which limit was actually intended for which route before treating either as load-bearing for abuse prevention.
+**Rate-limit policies.** `mine/deactivate` uses `Policies.DeactivateOwnAccount` (5/hour); the admin route `{id}/deactivate` uses `Policies.AdminDeactivateAccount` (30/hour).

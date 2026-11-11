@@ -1,4 +1,5 @@
-﻿using aspnetproject.Infrastructure.Dtos.DatabaseLogs;
+﻿using aspnetproject.Common.ProjectConstants;
+using aspnetproject.Infrastructure.Dtos.DatabaseLogs;
 using aspnetproject.Infrastructure.Services.Logging;
 
 namespace aspnetproject.Infrastructure.Services.BackgroundJobs.Base;
@@ -61,9 +62,23 @@ public abstract class PeriodicHostedService : BackgroundService
             EntityName = entityName,
             EntityId = null,
             
-            Details = details,
+            Details = FitToLogColumn(details),
         };
-        
+
         await dbLogger.LogSystemActionAsync(log);
+    }
+
+    // Exception messages (a SQL error, say) can exceed the column; an oversized value would make the log insert fail.
+    private static string? FitToLogColumn(string? details)
+    {
+        string? fitted = details;
+
+        bool tooLong = details is not null && details.Length > Constants.LogDetailsMaxLength;
+        if (tooLong)
+        {
+            fitted = details![..Constants.LogDetailsMaxLength];
+        }
+
+        return fitted;
     }
 }

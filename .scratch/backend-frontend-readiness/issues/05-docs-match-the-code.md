@@ -54,3 +54,5 @@ Things noticed but not changed (not docs):
 - The README mentioned `SignalRTestPolicy` once, not twice as the ticket table says.
 - Framework-level `401`/`403`/unmatched-route `404` responses have no body, so they are a third thing a client sees. The docs say so.
 - Docs-only change: the integration suite was not run.
+
+**Follow-up (resolved):** the failed-cycle logging gap above is fixed outside this ticket. `Log.EntityName` is now nullable (migration `LogEntityNameNullable`), and `PeriodicHostedService` truncates `details` to `Constants.LogDetailsMaxLength`. The docs no longer call it a gap.

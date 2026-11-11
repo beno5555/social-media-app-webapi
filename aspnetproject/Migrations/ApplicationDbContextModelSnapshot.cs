@@ -206,7 +206,6 @@ namespace aspnetproject.Migrations
                         .HasColumnType("int");
 
                     b.Property<string>("EntityName")
-                        .IsRequired()
                         .HasMaxLength(50)
                         .HasColumnType("nvarchar(50)");
 

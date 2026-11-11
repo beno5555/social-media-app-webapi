@@ -1,4 +1,5 @@
-﻿using aspnetproject.Data.Models;
+﻿using aspnetproject.Common.ProjectConstants;
+using aspnetproject.Data.Models;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -25,10 +26,10 @@ public class LogConfiguration : IEntityTypeConfiguration<Log>
 
         builder.Property(log => log.Details)
             .IsRequired(false)
-            .HasMaxLength(1000);
+            .HasMaxLength(Constants.LogDetailsMaxLength);
 
         builder.Property(log => log.EntityName)
-            .IsRequired()
+            .IsRequired(false)
             .HasMaxLength(50);
 
         builder.HasOne(log => log.User)

@@ -12,7 +12,7 @@ Outcome of the backend assessment grill on 2026-11-11. Goal: remove everything i
 - **Redirect allowlist.** `UrlSecurityService` reads `Cors:AllowedOrigins` instead of a hardcoded list. The unused `FrontendUrl` setting is removed.
 - **API client.** Hand-written Angular services and DTO interfaces, with generic `ApplicationResponse<T>` and `ListResponse<T>` mirroring the C# classes. No OpenAPI generation.
 - **Docs.** Docs follow the code where they disagree on HTTP verbs. Docs are retitled to WebCity. The chunked docs move to `docs/backend/` during the monorepo move, not before.
-- **Layout.** `backend/` + `frontend/` + `docs/` at the repo root.
+- **Layout.** `backend/` + `frontend/` + `docs/` at the repo root. The move reorganizes files inside the current root folder; the root itself is never renamed or relocated, because Claude Code's project memory is keyed to its path.
 - **Hosting.** Not required for the deadline; deferred. If time is left: one DigitalOcean Droplet, Docker Compose, nginx, DuckDNS subdomain.
 - **Database.** SQL Server through the deadline (SQL Server Express in a container if deployed).
 

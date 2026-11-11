@@ -2,7 +2,7 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**WebCity** is an ASP.NET Core Web API (`net10.0`) for a small social platform: posts, comments, friendships, direct messages, presence. It uses EF Core with SQL Server, JWT auth with rotating refresh tokens, SignalR, MailKit email and background cleanup jobs. A frontend is planned. This repo is about to become a monorepo (`backend/` + `frontend/`), so paths below will move.
+**WebCity** is an ASP.NET Core Web API (`net10.0`) for a small social platform: posts, comments, friendships, direct messages, presence. It uses EF Core with SQL Server, JWT auth with rotating refresh tokens, SignalR, MailKit email and background cleanup jobs. A frontend is planned. This repo is about to become a monorepo (`backend/` + `frontend/`), so paths below will move. The restructure happens **inside** the current root folder: never rename or relocate the root itself, because Claude Code's project memory is keyed to its path.
 
 ## Commands
 

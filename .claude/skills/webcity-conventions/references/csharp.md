@@ -174,3 +174,7 @@ public async Task<ActionResult<ApplicationResponse<FullPostDisplayDto>>> UpdateP
     return NotFound(response);
 }
 ```
+
+## 12. Static members follow the class
+
+In an injected (non-static) class, private helpers are instance methods too, even when they use no instance state. Do not mark them `static` because an analyzer such as CA1822 suggests it. Use `static` only in static classes (mappers, constants, extensions) and for genuinely shared state such as the file lock in section 9.

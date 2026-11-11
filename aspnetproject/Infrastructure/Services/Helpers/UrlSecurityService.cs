@@ -37,7 +37,7 @@ public class UrlSecurityService
     }
 
     // Scheme and authority (host plus any non-default port), so a trusted host on another port or scheme does not match.
-    private static string ToOrigin(Uri uri)
+    private string ToOrigin(Uri uri)
     {
         return $"{uri.Scheme}://{uri.Authority}";
     }

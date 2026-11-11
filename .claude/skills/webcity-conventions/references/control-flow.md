@@ -47,12 +47,14 @@ if (belongsToCaller || isAdmin) { ... }
 ## 3. Accumulate one result, even for plain return types
 
 ```csharp
-public static bool IsAllowedRedirect(string redirectUrl)
+public bool IsAllowedRedirect(string redirectUrl)
 {
     bool isAllowed = false;
-    if (Uri.TryCreate(redirectUrl, UriKind.Absolute, out var uri))
+
+    bool isAbsoluteUrl = Uri.TryCreate(redirectUrl, UriKind.Absolute, out var redirectUri);
+    if (isAbsoluteUrl)
     {
-        isAllowed = AllowedRedirectOrigins.Contains($"{uri.Scheme}://{uri.Authority}");
+        isAllowed = _allowedRedirectOrigins.Contains(ToOrigin(redirectUri!));
     }
 
     return isAllowed;

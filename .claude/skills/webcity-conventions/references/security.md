@@ -71,8 +71,30 @@ await _refreshTokenRepository.RevokeAllForUserAsync(user.Id);
 
 ## 6. Allowlist redirect targets
 
+Any URL a client supplies that ends up in an email or a redirect must match an allowlist. The allowlist comes from configuration, never a hardcoded set: WebCity reuses `Cors:AllowedOrigins`, so the trusted callers and the trusted link targets cannot disagree. Compare scheme and authority, ignoring case, and normalize the configured entries the same way as the incoming URL. An empty list rejects everything.
+
 ```csharp
-private static readonly HashSet<string> AllowedRedirectOrigins = new(StringComparer.OrdinalIgnoreCase) { "https://app.example.com" };
+public UrlSecurityService(IConfiguration configuration)
+{
+    var configuredOrigins = configuration
+        .GetSection("Cors:AllowedOrigins")
+        .Get<string[]>() ?? [];
+
+    _allowedRedirectOrigins = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+    foreach (var configuredOrigin in configuredOrigins)
+    {
+        bool isAbsoluteUrl = Uri.TryCreate(configuredOrigin, UriKind.Absolute, out var originUri);
+        if (isAbsoluteUrl)
+        {
+            _allowedRedirectOrigins.Add(ToOrigin(originUri!));
+        }
+    }
+}
+
+private string ToOrigin(Uri uri)
+{
+    return $"{uri.Scheme}://{uri.Authority}";
+}
 ```
 
 ## 7. Rate-limit every mutating endpoint and most reads

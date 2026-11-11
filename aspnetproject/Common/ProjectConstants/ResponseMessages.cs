@@ -197,6 +197,9 @@ public static class ResponseMessages
     public const string InvalidRequest  = "Invalid Request";
     public const string UnexpectedError = "An unexpected error occurred.";
 
+    public static readonly Func<string, string, string> ExceptionDetail =
+        (exceptionType, exceptionMessage) => $"{exceptionType}: {exceptionMessage}";
+
     #endregion
 
 }

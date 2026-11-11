@@ -34,7 +34,7 @@ public class GlobalExceptionHandler : IExceptionHandler
 
         if (_env.IsDevelopment())
         {
-            response.Fail(exception.Message);
+            response.Fail(ResponseMessages.ExceptionDetail(exception.GetType().Name, exception.Message));
         }
         else
         {

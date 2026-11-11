@@ -13,7 +13,6 @@ public class AccountSecurityService
 
     private readonly int     _resetTokenMinutes;
     private readonly int     _refreshTokenDays;
-    private readonly string? _frontendUrl;
 
     public AccountSecurityService(
         UserRepository userRepository,
@@ -30,7 +29,6 @@ public class AccountSecurityService
 
         _resetTokenMinutes = configuration.GetValue<int>("PasswordConfiguration:ResetTokenMinutes");
         _refreshTokenDays = configuration.GetValue<int>("Jwt:RefreshTokenDays");
-        _frontendUrl = configuration.GetValue<string>("FrontendUrl");
     }
 
     public async Task<bool> HandlePasswordResetRequest(User user, string? redirectUrl)

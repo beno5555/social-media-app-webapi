@@ -24,7 +24,7 @@ public class AccountActivationController : BaseController
     
     [HttpPatch]
     [Route("mine/deactivate")]
-    [EnableRateLimiting(RateLimitConfig.Policies.AdminDeactivateAccount)]
+    [EnableRateLimiting(RateLimitConfig.Policies.DeactivateOwnAccount)]
     public async Task<ActionResult<ApplicationResponse>> DeactivateOwnAccount()
     {
         int userId   = GetUserId();
@@ -40,7 +40,8 @@ public class AccountActivationController : BaseController
 
     [HttpPatch]
     [Route("{id:int}/deactivate")]
-    [EnableRateLimiting(RateLimitConfig.Policies.DeactivateOwnAccount)]
+    [Authorize(Roles = nameof(RoleName.Administrator))]
+    [EnableRateLimiting(RateLimitConfig.Policies.AdminDeactivateAccount)]
     public async Task<ActionResult<ApplicationResponse>> DeactivateAccount(int id)
     {
         var response = await _accountActivationService.DeactivateAccountAsync(id);

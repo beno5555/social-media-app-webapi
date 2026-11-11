@@ -56,7 +56,7 @@ public class AuthController : ControllerBase
     [HttpPost]
     [Route("refresh")]
     [EnableRateLimiting(RateLimitConfig.Policies.Refresh)]
-    public async Task<IActionResult> Refresh()
+    public async Task<ActionResult<string>> Refresh()
     {
         var rawRefreshToken = Request.Cookies["refreshToken"];
 
@@ -70,7 +70,7 @@ public class AuthController : ControllerBase
                 return Ok(new { accessToken = response.Data!.AccessToken });
             }
 
-            return Unauthorized(response.Message);
+            return Unauthorized(new {response.Message});
         }
 
         return Unauthorized(new { Message = "No refresh token provided" });

@@ -33,7 +33,7 @@ public class PostController : BaseController
             return CreatedAtAction(nameof(GetPostById), new { response.Data!.Id }, response);
         }
 
-        return BadRequest(createPostDto);
+        return BadRequest(response);
     }
     
     [HttpGet]

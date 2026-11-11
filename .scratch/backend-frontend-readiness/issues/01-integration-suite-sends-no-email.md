@@ -4,13 +4,13 @@
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Difficulty:** routine: one config setting and one guard in the email sender, following the existing options pattern, with the whole suite as the check.
 
-- [ ] The email configuration has an on/off setting that defaults to on, so existing deployments keep sending without a config change
-- [ ] With the setting off, the email sender opens no SMTP connection and reports success to its caller
-- [ ] The integration test host forces the setting off, independent of any settings file
-- [ ] The full integration suite passes, and the endpoints that send email still return their normal success responses
-- [ ] The new setting is named in the config prerequisites list in the project instructions, without any value
-- [ ] No interface or fake email sender is introduced
+- [x] The email configuration has an on/off setting that defaults to on, so existing deployments keep sending without a config change
+- [x] With the setting off, the email sender opens no SMTP connection and reports success to its caller
+- [x] The integration test host forces the setting off, independent of any settings file
+- [x] The full integration suite passes, and the endpoints that send email still return their normal success responses
+- [x] The new setting is named in the config prerequisites list in the project instructions, without any value
+- [x] No interface or fake email sender is introduced

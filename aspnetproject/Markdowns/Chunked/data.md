@@ -1,6 +1,6 @@
-﻿# AspNetProject — Data Layer
+﻿# WebCity — Data Layer
 
-> Part of the AspNetProject doc set. See also: `README.md`, `data.md`, `auth.md`, `controllers.md`, `signalr.md`, `background-jobs.md`.
+> Part of the WebCity doc set. See also: `README.md`, `data.md`, `auth.md`, `controllers.md`, `signalr.md`, `background-jobs.md`.
 
 ---
 
@@ -26,7 +26,7 @@ Extends `BaseRepository<T>`. Adds:
 - `GetByIdAsync(int id)` — uses `_dbSet.FindAsync(id)`.
 - `DeleteWithoutChangeTrackingAsync(int id)` — `DeleteWhereAsync(e => e.Id == id)`.
 - `ExistsByIdAsync(int id)`.
-- `ClearTracker()` — detaches all tracked entities; lives here (not on `BaseRepository<T>`) since it's only meaningful for entities with an `Id`-based identity, used before soft-delete's related-data cleanup sequence.
+- `ClearTracker()` — detaches all tracked entities; lives here (not on `BaseRepository<T>`) since it's only meaningful for entities with an `Id`-based identity. Its one caller is `AccountManagementService.SoftDeleteAccountAsync`, at the start of the soft-delete transaction. Soft-delete itself removes no related data; the background purge job does that later.
 
 ### Pagination
 
@@ -47,7 +47,7 @@ Extends `BaseRepository<T>`. Adds:
 | Comment      | CommenterUserId (nullable), PostId, CommentContent                                                                                                                                                                                                                                              |
 | Friendship   | RequesterUserId, AddresseeUserId, FriendshipStatus (enum: Pending/Accepted/Declined, stored as string), SentAt — now inherits `BaseEntity` (has its own `Id`; `(RequesterUserId, AddresseeUserId)` is a unique index, not the PK)                                                               |
 | Message      | SenderUserId, ReceiverUserId, MessageContent, Seen, SeenAt (nullable), computed `IsEdited => LastUpdatedAt is not null`                                                                                                                                                                         |
-| Log          | AuthorizedRequest, UserId (nullable), Succeeded, Action, Details (nullable), EntityName, EntityId (nullable)                                                                                                                                                                                    |
+| Log          | AuthorizedRequest, UserId (nullable), Succeeded, Action, Details (nullable, max 1000), EntityName (required, max 50), EntityId (nullable)                                                                                                                                                       |
 | RefreshToken | UserId (FK, cascade delete), TokenHash (MaxLength 44, unique-indexed), ExpiresAt, RevokedAt (nullable)                                                                                                                                                                                          |
 | Role         | Name — seeded rows: `User` (Id 1), `Administrator` (Id 2)                                                                                                                                                                                                                                       |
 | UserRole     | UserId, RoleId — composite PK, no `BaseEntity`                                                                                                                                                                                                                                                  |

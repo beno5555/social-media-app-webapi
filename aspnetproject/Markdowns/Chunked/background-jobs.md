@@ -1,6 +1,6 @@
-# AspNetProject — Background Jobs
+# WebCity — Background Jobs
 
-> Part of the AspNetProject doc set. See also: `README.md`, `data.md`, `auth.md`, `controllers.md`, `signalr.md`, `background-jobs.md`.
+> Part of the WebCity doc set. See also: `README.md`, `data.md`, `auth.md`, `controllers.md`, `signalr.md`, `background-jobs.md`.
 
 ---
 
@@ -35,7 +35,7 @@ protected abstract Task RunCycleAsync(IServiceProvider serviceProvider, Cancella
 
 `RunCycleAsync` receives the scope's `IServiceProvider` (not the raw scope, not pre-resolved services) so derived classes resolve whatever scoped services they need from the same unit of work. `LogResultAsync(dbLogger, succeeded, entityName, details)` builds a `CreateLogDto` tagged `{ServiceName}.RunCycleAsync` and writes via `DatabaseLogger.LogSystemActionAsync` (the system-action variant, not the user-action one — no `HttpContext` exists here).
 
-Derived services take only their own `IOptions<TConfig>` plus `IServiceScopeFactory` in their constructor, forwarding both to `base(...)`. Config (interval, retention days, batch size) is bound from `appsettings` per job (`CleanupConfiguration:OldLogs`, `CleanupConfiguration:RefreshTokens`, `CleanupConfiguration:SoftDeletedUsers`), not hardcoded, so values can change without a rebuild.
+The base constructor takes `(IServiceScopeFactory, TimeSpan interval)`. Derived services take their own `IOptions<TConfig>` plus `IServiceScopeFactory`, forward the scope factory and `config.Value.Interval` to `base(...)`, and keep `config.Value` in a field for the rest of the settings. Config (interval, retention days, batch size) is bound from `appsettings` per job (`CleanupConfiguration:OldLogs`, `CleanupConfiguration:RefreshTokens`, `CleanupConfiguration:SoftDeletedUsers`), not hardcoded, so values can change without a rebuild.
 
 All three are registered as hosted services in `ApplicationServicesExtensions.AddApplicationServices`.
 
@@ -78,3 +78,5 @@ Result accumulation: `SoftDeleteCleanupResult` (Users/Posts/Messages/Friendships
 ## Logging from background jobs
 
 Background jobs log through `DatabaseLogger.LogSystemActionAsync`, not `LogUserActionAsync` — no `HttpContext`/caller identity exists in a timer-triggered cycle, so `AuthorizedRequest` is always `false` and `UserId` is always `null` for these rows, distinguishing them from request-triggered log rows at a glance.
+
+**Known gap: a failed cycle does not reach the `Log` table.** The base class's catch block calls `LogResultAsync(dbLogger, false, null, ex.Message)`, passing a `null` `entityName`, but `Log.EntityName` is required (`LogConfiguration`, non-null column). That insert throws, `DatabaseLogger` catches it and falls back to `SystemLogger`, so the failure shows up in `Logs/ErrorLogs.txt` (as a failure to write the log entry) rather than as a `Succeeded = false` row. Successful cycles pass an entity name and are logged normally.

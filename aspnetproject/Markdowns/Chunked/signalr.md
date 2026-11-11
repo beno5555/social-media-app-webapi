@@ -1,6 +1,6 @@
-﻿# AspNetProject — SignalR
+﻿# WebCity — SignalR
 
-> Part of the AspNetProject doc set. See also: `README.md`, `data.md`, `auth.md`, `controllers.md`, `signalr.md`, `background-jobs.md`.
+> Part of the WebCity doc set. See also: `README.md`, `data.md`, `auth.md`, `controllers.md`, `signalr.md`, `background-jobs.md`.
 
 ---
 
@@ -67,10 +67,10 @@ Browsers can't set custom headers on a WebSocket/SSE handshake, so the client se
 
 ## CORS
 
-Policy name: `SignalRTestPolicy` (`CorsExtensions.AddCorsPolicies`), applied globally via `app.UseCors("SignalRTestPolicy")` (not scoped only to the hub).
+Policy name: `OriginPolicy` (`CorsExtensions.AddCorsPolicies`), applied globally via `app.UseCors("OriginPolicy")` (not scoped only to the hub).
 
 - Explicit origin allowlist via `WithOrigins(...)` — `AllowAnyOrigin()` cannot be combined with `AllowCredentials()`.
-- Origins stored in `appsettings.{Environment}.json` under `Cors:AllowedOrigins`.
+- Origins stored in `appsettings.{Environment}.json` under `Cors:AllowedOrigins`. The same list decides which password-reset return addresses are accepted (see `auth.md`).
 - `UseCors(...)` is registered before `UseRateLimiter`/`UseAuthentication`/`UseAuthorization`/`MapHub` in the middleware pipeline.
 
 ## DTOs

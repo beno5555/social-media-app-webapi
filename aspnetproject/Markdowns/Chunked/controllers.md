@@ -1,12 +1,12 @@
-﻿# AspNetProject — Controllers
+﻿# WebCity — Controllers
 
-> Part of the AspNetProject doc set. See also: `README.md`, `data.md`, `auth.md`, `controllers.md`, `signalr.md`, `background-jobs.md`.
+> Part of the WebCity doc set. See also: `README.md`, `data.md`, `auth.md`, `controllers.md`, `signalr.md`, `background-jobs.md`.
 
 ---
 
 ## Controllers Layer
 
-All routes are prefixed `api/` (e.g. `api/posts`, not `/posts`). Nearly every action carries `[EnableRateLimiting(RateLimitConfig.Policies.X)]` — omitted from the tables below for brevity; see `auth.md`/`RateLimitConfig.cs` for the concrete limits.
+All routes are prefixed `api/` (e.g. `api/posts`, not `/posts`). Nearly every action carries `[EnableRateLimiting(RateLimitConfig.Policies.X)]` — omitted from the tables below for brevity; see `auth.md`/`RateLimitConfig.cs` for the concrete limits (every limit currently counts by IP; see the rate-limiting section of `auth.md`).
 
 ### `BaseController`
 
@@ -144,7 +144,7 @@ No `GetMessage(id)` action — a single message isn't fetched by id from the cli
 
 ### `AuthController`
 
-Route: `api/auth`. `[ApiController]` directly (not `BaseController` — no authenticated user context needed for any action here). See `auth.md` for the full flow (register/login/refresh/logout/password-reset).
+Route: `api/auth`. `[ApiController]` directly (not `BaseController` — no authenticated user context needed for any action here). See `auth.md` for the full flow (register/login/refresh/logout/password-reset) and for the two failure shapes any controller can return.
 
 ### `UserController`
 
@@ -193,7 +193,7 @@ Route: `api/accounts` (shares the prefix with `AccountManagementController` — 
 | Method | Route                           | Auth            | Notes                                                                                                                         |
 |--------|---------------------------------|-----------------|-------------------------------------------------------------------------------------------------------------------------------|
 | PATCH  | `api/accounts/mine/deactivate`  | Required        | Self-deactivate                                                                                                               |
-| PATCH  | `api/accounts/{id}/deactivate`  | Required        | Deactivate another account — `Administrator` role only                                                                        |
+| PATCH  | `api/accounts/{id}/deactivate`  | `Administrator` | Deactivate another account — `Administrator` role only (`[Authorize(Roles = nameof(RoleName.Administrator))]`)                |
 | PATCH  | `api/accounts/{id}/activate`    | `Administrator` | Admin-reactivate, immediate                                                                                                   |
 | PATCH  | `api/accounts/activate`         | Anonymous       | Self-reactivate via emailed token (body: `ActivateAccountDto`)                                                                |
 | PATCH  | `api/accounts/request-activate` | Anonymous       | Request a reactivation token by email (body: `ActivationRequestDto`)                                                          |
@@ -201,3 +201,5 @@ Route: `api/accounts` (shares the prefix with `AccountManagementController` — 
 See `auth.md` for the full activation/deactivation flow and email notifications.
 
 **Rate-limit policies.** `mine/deactivate` uses `Policies.DeactivateOwnAccount` (5/hour); the admin route `{id}/deactivate` uses `Policies.AdminDeactivateAccount` (30/hour).
+
+**Who may deactivate whom.** Self-deactivation needs only a signed-in caller. Deactivating another user's account is `Administrator`-only; any other signed-in caller gets `403`.

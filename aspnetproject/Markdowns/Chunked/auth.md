@@ -1,6 +1,6 @@
-﻿# AspNetProject — Authentication & Authorization
+﻿# WebCity — Authentication & Authorization
 
-> Part of the AspNetProject doc set. See also: `README.md`, `data.md`, `auth.md`, `controllers.md`, `signalr.md`, `background-jobs.md`.
+> Part of the WebCity doc set. See also: `README.md`, `data.md`, `auth.md`, `controllers.md`, `signalr.md`, `background-jobs.md`.
 
 ---
 
@@ -20,7 +20,7 @@ Password hashing is PBKDF2 (`Rfc2898DeriveBytes.Pbkdf2`, 100,000 iterations, SHA
 - `TokenGenerator.GenerateRefreshToken()` — 64 random bytes via `RandomNumberGenerator`, URL-safe base64-encoded (`+`/`/` replaced, padding trimmed). `TokenGenerator.HashToken(token)` — SHA-256.
 - `RefreshTokenRepository.GetActiveByHashAsync(hash)`, `RevokeAsync(token)`, `RevokeAllForUserAsync(userId)` (bulk `ExecuteUpdateAsync`, used on password reset, deactivation, and soft-delete).
 - Delivered via `HttpOnly; Secure; SameSite=Strict` cookie, set/read/cleared in `AuthController`. `Expires` mirrors `Jwt:RefreshTokenDays`.
-- Rotated on every refresh: old token revoked, new one issued via the shared `AccountSecurityService.IssueAccessAndRefreshTokensAsync` helper. Revoked (not deleted) on logout; a background job (`RefreshTokenCleanupService`) later purges expired/revoked rows — see `background-jobs.md`.
+- Rotated on every refresh: old token revoked, new one issued via the shared `AccountSecurityService.IssueAccessAndRefreshTokensAsync` helper. Revoked (not deleted) on logout; a background job (`RefreshTokenCleanupService`) later purges rows that are both expired and revoked — see `background-jobs.md`.
 
 ### Auth flow
 
@@ -28,8 +28,17 @@ Password hashing is PBKDF2 (`Rfc2898DeriveBytes.Pbkdf2`, 100,000 iterations, SHA
 2. **Login** (`POST api/auth/login`) — validates credentials, issues access token (body) + refresh token (cookie) via `IssueTokensAndRefreshAsync`-style helper (`AccountSecurityService.IssueAccessAndRefreshTokensAsync`).
 3. **Authenticated requests** — client attaches `Authorization: Bearer {accessToken}`.
 4. **Refresh** (`POST api/auth/refresh`) — no body; refresh token cookie read automatically, hashed, looked up, revoked, new pair issued. A missing, invalid, expired or revoked token returns `401` with the `ApplicationResponse` envelope (`succeeded: false` plus a message).
-5. **Logout** (`POST api/auth/logout`) — revokes the current refresh token (if any) and clears the cookie.
-6. **Password reset** — `POST api/auth/request-password-reset` issues a reset token (reusing `User.ResetTokenHash`/`ResetTokenExpiresAt`) and emails it; `POST api/auth/reset-password` consumes it, rejects if the new password equals the current one, revokes all the user's refresh tokens (forces re-login everywhere), and emails a "your password was reset" notice.
+5. **Logout** (`PATCH api/auth/logout`) — revokes the current refresh token (if any) and clears the cookie.
+6. **Password reset** — `PUT api/auth/request-password-reset` issues a reset token (reusing `User.ResetTokenHash`/`ResetTokenExpiresAt`) and emails it; `PUT api/auth/reset-password` consumes it, rejects if the new password equals the current one, revokes all the user's refresh tokens (forces re-login everywhere), and emails a "your password was reset" notice.
+
+#### Reset return address (`RedirectUrl`)
+
+The body of `request-password-reset` (`ForgotPasswordDto`) is `Email` plus an optional `RedirectUrl`, the page of the app that hosts the reset form.
+
+- **Omitted (`null`):** the email carries the raw reset token and no link. The flow works without a link.
+- **Provided:** the email carries a link `{RedirectUrl}?token={token}`, but only if `UrlSecurityService.IsAllowedRedirect` accepts it. Any provided value, including an empty string, goes through the check. A rejected value fails the request with `400` and the `Url origin not allowed` message, and no token is issued or emailed. The check runs only once the email matches an account; an unknown email fails with `400` and the user-not-found message whatever the `RedirectUrl`.
+- **The check** reads `Cors:AllowedOrigins`, the same list that drives the `OriginPolicy` CORS policy, so the two cannot disagree. `RedirectUrl` must be an absolute URL whose scheme and authority (host plus any non-default port) equal an allowed origin, compared case-insensitively. Same host on another port or scheme is rejected. Only the origin is compared; the path and query of `RedirectUrl` are not checked. With no origins configured, every `RedirectUrl` is rejected (omitting it still works).
+- `UrlSecurityService` is a registered concrete class, injected into `AuthService`. The integration test host replaces the first allowed origin with `CustomWebApplicationFactory.TrustedFrontendOrigin`.
 
 ### Account activation / deactivation (separate from auth, own controller/service)
 
@@ -39,25 +48,38 @@ Password hashing is PBKDF2 (`Rfc2898DeriveBytes.Pbkdf2`, 100,000 iterations, SHA
 
 ### Roles
 
-- Seeded via `RoleConfiguration.HasData`: `User` (Id 1), `Administrator` (Id 2). A user row is also seeded with both roles (`UserRoleConfiguration`, `UserId = 3114`) for local dev/testing.
+- Seeded via `RoleConfiguration.HasData`: `User` (Id 1), `Administrator` (Id 2). A user row (`UserConfiguration`, Id 1, `sandro_beno`) is also seeded with both roles (`UserRoleConfiguration`, `UserId = 1`). `DeterministicFixtureSeed` additionally seeds fixture users (Id 2 onward), friendships, posts, comments, messages and refresh tokens through `HasData`, so they are part of the migrations; the integration tests depend on them.
 - `AccountManagementController` exposes `Administrator`-only assign/unassign endpoints (`PUT api/accounts/{id}/assign-administrator`, `PUT api/accounts/{id}/remove-administrator`).
 - `BaseController.IsAdministrator()` checks `User.IsInRole(nameof(RoleName.Administrator))`; used by `PostController`/`CommentController` to let an admin delete any post/comment, and by `AccountManagementController`/`AccountActivationController` for admin-vs-self routes.
 - No self-registration path grants roles — a new user has none until an admin assigns one.
 
 ### Error handling / response conventions
 
+#### Failure shapes a client can receive
+
+Two, and a client error handler needs only these:
+
+1. **The envelope** — `ApplicationResponse` as JSON, `{ "succeeded": false, "message": "..." }`. Every failure that is not a validation failure uses it: service failures (login, register, password reset, ...), a failed or cookie-less refresh (`401`), an unhandled exception (`500`, or `409` for a database update conflict) and a rate-limit rejection (`429`). The human-readable text is always in `message`.
+2. **Validation errors** — the framework's automatic `400` from `[ApiController]` model validation, a standard `ValidationProblemDetails` (`application/problem+json`) body with an `errors` map of field name to messages. Deliberately left in its standard shape so forms can show errors next to fields.
+
+Framework-level rejections are not produced by the application and carry no body: a missing or invalid JWT (`401`), an authenticated caller with the wrong role (`403`), and a request to an unmatched route (`404`). Clients branch on the status code alone for these.
+
+#### Other conventions
+
 - Auth failure messages are deliberately generic and uniform: login doesn't distinguish "no such user" from "wrong password."
 - `LogoutAsync` returns `void` — no failure state by design.
 - `RegisterAsync` returns `ApplicationResponse<FullUserDto>` with the created user, matching REST convention of returning the created resource. Registration does not implicitly log the user in.
-- Every `AuthService`/`AccountActivationService`/`AccountManagementService` method logs its outcome via `BaseService.LogResultAsync` (see `core.md`), in addition to returning an `ApplicationResponse`.
+- Every `AuthService`/`AccountActivationService`/`AccountManagementService` method logs its outcome via `BaseService.LogResultAsync`, in addition to returning an `ApplicationResponse`.
 
 ### Global exception handling
 
 - `GlobalExceptionHandler : IExceptionHandler` (registered via `AddExceptionHandler<T>()` + `AddProblemDetails()`) logs the exception through `SystemLogger.LogEndpointErrorAsync`, then maps `DbUpdateException` → `409 Conflict` (everything else → `500`), writing an `ApplicationResponse` envelope as the body. The message carries `ExceptionType: exception message | Inner: inner exception message` (the inner part only when there is one) only in `Development` and a generic message otherwise (no stack trace is returned).
-- `SystemLogger` writes to a rolling text file (`Logs/ErrorLogs.txt`) under a `SemaphoreSlim`-guarded async write — separate from the structured `DatabaseLogger` (DB-backed, per-action) used everywhere else.
+- `SystemLogger` appends to a single text file (`Logs/ErrorLogs.txt` under the content root, not rotated) under a `SemaphoreSlim`-guarded async write — separate from the structured `DatabaseLogger` (DB-backed, per-action) used everywhere else.
 
 ### Rate limiting
 
-Auth endpoints are limited per-IP (the caller isn't authenticated yet): `Login` (10/hour), `Register` (5/hour), `Refresh` (5/10min), `RequestPasswordReset` (3/15min), `ResetPassword` (5/15min). Account-management endpoints (deactivate/reactivate/delete) are limited per-user (or per-IP for the anonymous activation-confirmation endpoints). A global per-user sliding-window limiter (300/min) backstops everything. See `RateLimitConfig.cs` for exact figures per policy.
+**Current behaviour: every limit counts by IP.** `UseRateLimiter` runs before `UseAuthentication` in the pipeline (`Program.cs`), so `HttpContext.User` is still empty when a partition key is computed. The "per-user" policies (`PerUserSlidingWindow`) and the global limiter therefore fall back to the remote IP, and everyone behind one IP shares each budget. Ticket 06 (`.scratch/backend-frontend-readiness/issues/06-per-user-rate-limits-count-each-signed-in-user-separately.md`) fixes this; until it lands, treat the per-user wording below as the intent, not the behaviour. Ticket 07 covers a related gap: no forwarded-headers handling is configured, so behind a reverse proxy the "IP" is the proxy's address.
+
+The intended design, per policy: auth endpoints are per-IP (the caller isn't authenticated yet): `Login` (10/hour), `Register` (5/hour), `Refresh` (5/10min), `RequestPasswordReset` (3/15min), `ResetPassword` (5/15min). Account-management endpoints (deactivate/reactivate/delete) are meant to be per-user (the anonymous activation endpoints are per-IP). A global sliding-window limiter (300/min) backstops everything and is meant to be per-user. See `RateLimitConfig.cs` for exact figures per policy.
 
 Every rejection, from any endpoint policy or the global limiter, returns 429 with the `ApplicationResponse` envelope (`succeeded: false`, `message: ResponseMessages.TooManyRequests`), written by the limiter's `OnRejected` callback. Limiter state lives in the host, and every integration test builds its own `CustomWebApplicationFactory`, so a test that exhausts a policy (see `RateLimiting/RateLimitRejectionTests`) can't rate-limit any other test.

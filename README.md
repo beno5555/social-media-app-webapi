@@ -35,9 +35,9 @@ Moving to a Web API meant replacing the presentation layer, not the domain. The 
 - Account activation flow (self-service reactivation via emailed token) — separate controller/service from deactivation.
 - Password reset flow (`AuthController`: request + reset), backed by the same `ResetTokenHash`/`ResetTokenExpiresAt` fields used for account activation tokens.
 - Real email delivery (`EmailSender`, MailKit/MimeKit) for security notifications (deactivation, reactivation, password reset, failed-register-attempt warning) — previously not present.
-- Structured DB logging (`Log` entity + `DatabaseLogger`, `BaseService.LogResultAsync`) — implemented request-facing service methods log their outcomes; distinct from the file-based `SystemLogger` used for unhandled exceptions and background-job failures.
+- Structured DB logging (`Log` entity + `DatabaseLogger`, `BaseService.LogResultAsync`) — implemented request-facing service methods log their outcomes; distinct from the file-based `SystemLogger` used for unhandled exceptions (and for failures to write a log row).
 - Background hosted services (`PeriodicHostedService` base) for refresh-token cleanup, soft-deleted-user purging, and old-log pruning. See `background-jobs.md`.
-- Rate limiting (`Microsoft.AspNetCore.RateLimiting`) — per-endpoint sliding-window policies, IP-based pre-auth (login/register/refresh/password-reset) and user-based post-auth, plus a global per-user fallback limiter.
+- Rate limiting (`Microsoft.AspNetCore.RateLimiting`) — per-endpoint sliding-window policies, designed as IP-based pre-auth (login/register/refresh/password-reset) and user-based post-auth, plus a global per-user fallback limiter. Currently every limit, including the global one, counts by IP, because the limiter runs before authentication; ticket 06 fixes this (see `auth.md`).
 - Presence tracking (`UserConnectionTracker`, `PresenceService`) — online/offline broadcast over SignalR, `User.LastOnlineAt` (`null` = online).
 - Live comment notifications — `CommentService` pushes a `ReceiveComment` event over the same `MessageHub` used for messages.
 
@@ -230,7 +230,7 @@ app.UseExceptionHandler();
 app.UseHttpsRedirection();
 app.UseRouting();
 
-app.UseCors("SignalRTestPolicy");
+app.UseCors("OriginPolicy");
 app.UseRateLimiter();
 
 app.UseAuthentication();
@@ -242,7 +242,7 @@ app.MapHub<MessageHub>("hubs/messages");
 app.Run();
 ```
 
-`AddApplicationServices` (in `Extensions/ApplicationServicesExtensions.cs`) registers: `AddSignalR()`, the singleton `UserConnectionTracker`, every repository (`AddScoped`), every business-logic service (`AddScoped`), `PasswordHasher`/`TokenGenerator` (`AddScoped`), `SystemLogger`/`DatabaseLogger` (`AddScoped`), `EmailConfiguration` options + `EmailSender` (`AddTransient`), the three background-job `IOptions<T>` configurations, and the three `AddHostedService<...>()` registrations.
+`AddApplicationServices` (in `Extensions/ApplicationServicesExtensions.cs`) registers: `AddSignalR()`, the singleton `UserConnectionTracker`, every repository (`AddScoped`), every business-logic service (`AddScoped`), `PasswordHasher`/`TokenGenerator`/`UrlSecurityService` (`AddScoped`), `SystemLogger`/`DatabaseLogger` (`AddScoped`), `EmailConfiguration` options + `EmailSender` (`AddTransient`), the three background-job `IOptions<T>` configurations, and the three `AddHostedService<...>()` registrations.
 
 `ValidateIssuer`/`ValidateAudience` remain `false` — single-client setup. JWT validation and the SignalR query-string token handoff both live in `AuthenticationExtensions.AddJwtAuthentication`.
 
@@ -271,7 +271,7 @@ Carried over from the console app:
 
 - No interfaces — concrete repository, service, and mapper classes only.
 - `ExecuteInTransactionAsync` — callable from any injected repository in a service; safe because all repositories share the same scoped `DbContext`.
-- `ClearTracker()` (now on `BaseEntityRepository<T>`, not `BaseRepository<T>`) — called before soft-delete's related-data cleanup to avoid change-tracker conflicts.
+- `ClearTracker()` (now on `BaseEntityRepository<T>`, not `BaseRepository<T>`) — called at the start of the soft-delete transaction; the related-data cleanup itself is left to the background purge job.
 - No early returns outside controllers.
 
 New to the API version:
@@ -280,7 +280,7 @@ New to the API version:
 - `BaseController` (`[ApiController]`, inherited by all derived controllers) centralizes `GetUserId()`, `GetUsername()`, and `IsAdministrator()` (role check via `User.IsInRole`).
 - `PageQuery` (`PageNumber` defaults to `1`, `PageSize` defaults to `Constants.DefaultPageSize` with a `[Range(1, MaxPageSize)]` validation) standardizes list-endpoint pagination binding — no longer nullable/unvalidated. `SearchUserQuery : PageQuery` adds a validated `Username` filter.
 - Controller-level `[Authorize]` with `[AllowAnonymous]` overrides, rather than tagging every action, used where most of a controller's actions require auth.
-- `[EnableRateLimiting(RateLimitConfig.Policies.X)]` on nearly every action — see `controllers.md` per-controller, and `RateLimitConfig.cs` for the concrete limits (mostly per-user sliding windows; auth endpoints are per-IP since the caller isn't authenticated yet).
+- `[EnableRateLimiting(RateLimitConfig.Policies.X)]` on nearly every action — see `controllers.md` per-controller, and `RateLimitConfig.cs` for the concrete limits (designed as per-user sliding windows, with auth endpoints per-IP since the caller isn't authenticated yet; currently every limit counts by IP, see ticket 06 and `auth.md`).
 - Global query filter on `User` (`AccountDeactivatedAt == null && AccountDeletedAt == null` — see `data.md`) means most repository reads transparently exclude deactivated/deleted accounts without each call site needing to remember to filter.
 
 ---

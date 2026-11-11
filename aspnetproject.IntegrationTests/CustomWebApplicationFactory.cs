@@ -21,6 +21,12 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
         builder.ConfigureAppConfiguration((context, config) =>
         {
             config.AddJsonFile("appsettings.Testing.json", optional: false);
+
+            // Added after the settings file so it wins: the suite never sends real email.
+            config.AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["EmailConfiguration:Enabled"] = "false"
+            });
         });
 
         builder.ConfigureServices(services =>

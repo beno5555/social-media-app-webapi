@@ -24,13 +24,13 @@ No linter or formatter is configured.
 
 ### Config prerequisites
 
-`appsettings.json`, `appsettings.Development.json` and `appsettings.Testing.json` are all **gitignored**, and the repo has no example template. A fresh clone will not run until they exist. The settings they need: `ConnectionStrings:DefaultConnection`, `Jwt:{Key,AccessTokenMinutes,RefreshTokenDays}`, `EmailConfiguration:*`, `PasswordConfiguration:ResetTokenMinutes`, `CleanupConfiguration:{RefreshTokens,SoftDeletedUsers,OldLogs}`, `Cors:AllowedOrigins`. Never print or commit their values.
+`appsettings.json`, `appsettings.Development.json` and `appsettings.Testing.json` are all **gitignored**, and the repo has no example template. A fresh clone will not run until they exist. The settings they need: `ConnectionStrings:DefaultConnection`, `Jwt:{Key,AccessTokenMinutes,RefreshTokenDays}`, `EmailConfiguration:*` (including `Enabled`, which defaults to true), `PasswordConfiguration:ResetTokenMinutes`, `CleanupConfiguration:{RefreshTokens,SoftDeletedUsers,OldLogs}`, `Cors:AllowedOrigins`. Never print or commit their values.
 
 ### Integration tests
 
 - They run against a **real local SQL Server** database. `DatabaseFixture` hardcodes `Server=localhost;Database=TestSocialMediaWebApiDb;Trusted_Connection=True`. The app under test reads `appsettings.Testing.json`'s `DefaultConnection`, which must point at the same database.
 - The fixture runs `MigrateAsync()` once. Each test class then calls `ResetAndSeedAsync` (Respawn wipes everything except `__EFMigrationsHistory`, then `Fixtures/TestDataSeeder` reseeds deterministic users and ids). Tests rely on those seeded ids, and comments in each test file describe the seed state.
-- `CustomWebApplicationFactory` removes all `IHostedService`s. It does **not** replace `EmailSender`, so flows that send mail (deactivation, password reset, failed-register warning) send real SMTP email during tests.
+- `CustomWebApplicationFactory` removes all `IHostedService`s. It does not replace `EmailSender`; instead it forces `EmailConfiguration:Enabled` to false, so flows that send mail (deactivation, password reset, failed-register warning) run normally but open no SMTP connection.
 - Test names follow `Method_Condition_ExpectedResult` and are grouped by endpoint.
 
 ## Architecture

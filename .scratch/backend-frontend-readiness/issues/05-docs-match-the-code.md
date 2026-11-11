@@ -14,6 +14,7 @@ Known disagreements (the doc is wrong in each):
 | Project instructions and auth doc | The exception handler's output | Final shape set by ticket 02 |
 | Auth doc | Points to a `core.md` | No such doc |
 | All five per-area docs | Titled "AspNetProject" | The product is WebCity (see the glossary) |
+| Auth doc, README (twice) and project instructions | Limits are per-IP before login and per-user after, and the global limiter is per-user | Every policy, including the global limiter, counts by IP, because rate limiting runs before authentication; ticket 06 fixes this |
 
 **Blocked by:** 02 (Refresh and server errors return the failure envelope), 03 (Rate-limit rejections return the failure envelope), 04 (Reset links accept configured origins)
 
@@ -27,4 +28,5 @@ Known disagreements (the doc is wrong in each):
 - [ ] All docs name the product WebCity; the code project and namespace names are unchanged
 - [ ] The "known drift" note in the project instructions is removed once nothing it lists remains
 - [ ] The project instructions' description of the hardcoded redirect allowlist is replaced with the configured behaviour
+- [ ] Wherever the docs describe rate-limit partitioning, they say every limit currently counts by IP and point to ticket 06 as the fix
 - [ ] No doc file is moved or renamed

@@ -97,6 +97,18 @@ Git moves only the files it tracks. After pulling, the old `aspnetproject/` and 
 - `.github/workflows/tests.yml` now also runs on pushes to `master`. Its first run, on commit `b95d08a`, passed, so the CI box is ticked even though no pull request was opened.
 - The owner applied the pending migration `LogEntityNameNullable` (from backend-frontend-readiness ticket 05) to the dev database.
 - `dotnet run --project aspnetproject` from `backend/` started in Development and listened on the launch profile's ports, and Swagger UI and `/swagger/v1/swagger.json` answered 200. The app was stopped right after. `/openapi/v1.json` answers 500. The bug is older than this ticket and unrelated to the move: `[DefaultValue("2000-08-16T10:10:23.546Z")]` on the `DateTime DateOfBirth` properties of `RegisterDto`, `CreateAccountDto` and `EditUserDto` throws an `InvalidCastException` when `Microsoft.AspNetCore.OpenApi` writes the default value. It dates from 2026-08-29.
-- `dotnet ef migrations add` was not run, because it creates a migration. `dotnet ef migrations list --project aspnetproject` already showed that its `--project` path resolves. Every command line has now either run or been shown to resolve, so the commands box is ticked.
+- No session ran the two `dotnet ef` lines that change something exactly as written. `migrations add` would create a migration, and the exact command the owner used for the migration was not recorded. For both lines, the evidence is that `dotnet ef migrations list --project aspnetproject` resolved the project and the database from `backend/`. That proves their paths resolve, not that the lines work. The commands box is ticked on that weaker basis.
 - On `master` after the merge, from `backend/` on the laptop: `dotnet test aspnetproject.IntegrationTests` passed 121 of 121, and the `PostControllerTests` filter line passed 25 of 25.
 - `PROJECT_DESCRIPTION.md` was removed from the root at the owner's request. They keep the description as a PDF.
+
+2026-11-12, after the spec review:
+
+- `spec-review` ran against `5044061`, the last commit before the moves. The spec axis found nothing wrong in the move itself.
+- The work departs from four Decisions. The owner approved each departure:
+  - No pull request was opened. The branch was merged locally with `--no-ff` as `3cfa8fa`.
+  - `.github/workflows/tests.yml` was edited after the merge (`b95d08a`), so that CI runs on pushes to `master`.
+  - `CLAUDE.md` was slimmed down by the owner's cherry-picked commit `022be5a`, which also added `docs/agents/skills.md`. The detail it removed is in `docs/backend/auth.md`.
+  - `.claude/skills/handoff/` was vendored (`e0d70ce`). It has nothing to do with the move.
+- The review found two wrong statements in `CLAUDE.md`, both older than the move: `ApplicationResponse` lives in `Common/Domain`, not `Common/Responses`, and only Matt Pocock's skills are junctioned. Both are fixed in `ade9cb5`.
+- The `/openapi/v1.json` failure is now its own ticket: `.scratch/openapi-document/issues/01-the-openapi-document-generates-without-error.md`.
+- Checklist step 4 missed one ignored leftover at the root, `aspnetproject.sln.DotSettings.user` (Rider settings for the old `.sln`). It has been deleted on the laptop.

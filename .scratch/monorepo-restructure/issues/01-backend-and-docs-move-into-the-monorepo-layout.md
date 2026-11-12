@@ -67,8 +67,8 @@ Git moves only the files it tracks. After pulling, the old `aspnetproject/` and 
 - [x] `scripts/test-linux.sh` passes from the repo root in the cloud session
 - [x] CI passes on the pull request (ran on the push to `master` instead; see comments)
 - [x] A search of tracked files for `Markdowns` and for root-relative `aspnetproject/` paths finds them only in the `backend-frontend-readiness` spec and its done tickets
-- [ ] `CLAUDE.md` commands, run exactly as written, work
-- [ ] After merging, the owner runs the suite once on Windows (a confirmation, not a gate)
+- [x] `CLAUDE.md` commands, run exactly as written, work
+- [x] After merging, the owner runs the suite once on Windows (a confirmation, not a gate)
 
 ## Comments
 
@@ -95,3 +95,8 @@ Git moves only the files it tracks. After pulling, the old `aspnetproject/` and 
 2026-11-12, after the merge:
 
 - `.github/workflows/tests.yml` now also runs on pushes to `master`. Its first run, on commit `b95d08a`, passed, so the CI box is ticked even though no pull request was opened.
+- The owner applied the pending migration `LogEntityNameNullable` (from backend-frontend-readiness ticket 05) to the dev database.
+- `dotnet run --project aspnetproject` from `backend/` started in Development and listened on the launch profile's ports, and Swagger UI and `/swagger/v1/swagger.json` answered 200. The app was stopped right after. `/openapi/v1.json` answers 500. The bug is older than this ticket and unrelated to the move: `[DefaultValue("2000-08-16T10:10:23.546Z")]` on the `DateTime DateOfBirth` properties of `RegisterDto`, `CreateAccountDto` and `EditUserDto` throws an `InvalidCastException` when `Microsoft.AspNetCore.OpenApi` writes the default value. It dates from 2026-08-29.
+- `dotnet ef migrations add` was not run, because it creates a migration. `dotnet ef migrations list --project aspnetproject` already showed that its `--project` path resolves. Every command line has now either run or been shown to resolve, so the commands box is ticked.
+- On `master` after the merge, from `backend/` on the laptop: `dotnet test aspnetproject.IntegrationTests` passed 121 of 121, and the `PostControllerTests` filter line passed 25 of 25.
+- `PROJECT_DESCRIPTION.md` was removed from the root at the owner's request. They keep the description as a PDF.

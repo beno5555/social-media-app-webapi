@@ -1,94 +1,109 @@
 ﻿# WebCity
 
-An ASP.NET Core Web API, migrated from an earlier C# console application that simulated a basic social media platform. Core domain logic (entities, EF Core configuration, repositories, mappers, DTOs) carried over from the console app largely unchanged; the console-specific presentation layer was removed and replaced with a proper API layer.
+WebCity is a small social platform: posts, comments, friendships, direct messages and presence. This repository holds its backend, an ASP.NET Core Web API (`net10.0`) in `backend/`, built on EF Core with SQL Server, JWT authentication with rotating refresh tokens, SignalR, MailKit email and background cleanup jobs.
+
+For the earlier, API-only state of this repository and the history behind it, see the git tag `api-only`.
 
 ---
 
-## Migration Context
+## Features
 
-This project began as a console application using EF Core code-first, layered architecture, and manual DI. The console app's job was to build the domain and data layers correctly, with a hand-rolled console menu system standing in for a UI.
-
-Moving to a Web API meant replacing the presentation layer, not the domain. The menu system was doing the same job controllers do — routing user actions to services and rendering results — but shaped around a single-user, stateful console session. That shape doesn't fit a stateless, multi-client API.
-
-### Carried over as-is
-
-- Entities and `BaseEntity`
-- `ApplicationDbContext` and entity configurations
-- Repositories (`BaseRepository<T>`, `BaseEntityRepository<T>`, and specific repositories) — concrete classes, no interfaces
-- Mappers
-- DTOs (base structure retained, expanded per endpoint as needed)
-- `Constants.cs`
-
-### Dropped
-
-- `Printer`, `Prompter`, `DtoPrompter` — console I/O, no equivalent in an API
-- All menus (`BaseMenu`, `MainMenu`, `UnauthenticatedMenu`, `AuthenticatedMenu`, `PostMenu`, `FriendMenu`, `MessageMenu`) — replaced by controllers
-- `PaginatedInput`, `ConversationInput` — console input shapes; pagination now comes from query parameters
-- `NavigateToRootException`, `AccountDeletedException` — solved stack-unwinding in a console menu loop; no equivalent in a stateless request/response cycle
-- `SessionUser` in its original form — reworked around reading claims from `HttpContext.User` per request
-
-### New since the initial migration
-
-- `LastUpdatedAt` on `BaseEntity` is now `DateTime?` (nullable, defaults to `null`), stamped explicitly per-service on update rather than DB-defaulted — used as a signal in places (e.g. `Message.IsEdited => LastUpdatedAt is not null`), not just an audit column.
-- Role-based authorization (`Role`, `UserRole`, `RoleName` enum: `User`/`Administrator`) — seeded via `HasData`, assignable/unassignable through `AccountManagementController`.
-- Soft-delete + deactivation as two distinct account states, both hidden from normal queries via a global query filter on `User`, plus background jobs that purge deactivated-turned-deleted accounts past a retention window.
-- Account activation flow (self-service reactivation via emailed token) — separate controller/service from deactivation.
-- Password reset flow (`AuthController`: request + reset), backed by the same `ResetTokenHash`/`ResetTokenExpiresAt` fields used for account activation tokens.
-- Real email delivery (`EmailSender`, MailKit/MimeKit) for security notifications (deactivation, reactivation, password reset, failed-register-attempt warning) — previously not present.
-- Structured DB logging (`Log` entity + `DatabaseLogger`, `BaseService.LogResultAsync`) — implemented request-facing service methods log their outcomes; distinct from the file-based `SystemLogger` used for unhandled exceptions (and for failures to write a log row).
-- Background hosted services (`PeriodicHostedService` base) for refresh-token cleanup, soft-deleted-user purging, and old-log pruning. See `background-jobs.md`.
-- Rate limiting (`Microsoft.AspNetCore.RateLimiting`) — per-endpoint sliding-window policies, designed as IP-based pre-auth (login/register/refresh/password-reset) and user-based post-auth, plus a global per-user fallback limiter. Currently every limit, including the global one, counts by IP, because the limiter runs before authentication; ticket 06 fixes this (see `auth.md`).
-- Presence tracking (`UserConnectionTracker`, `PresenceService`) — online/offline broadcast over SignalR, `User.LastOnlineAt` (`null` = online).
-- Live comment notifications — `CommentService` pushes a `ReceiveComment` event over the same `MessageHub` used for messages.
+- Register and log in; JWT access tokens plus rotating refresh tokens; password reset via an emailed token
+- Create, view, update and delete posts; a friends-only feed
+- Comment on posts and edit own comments; delete a comment as its author, as the post's author, or as an administrator; live `ReceiveComment` push to the post's author
+- Send, accept, decline and remove friend requests; view friends, pending and sent requests; search users by username
+- Send, edit and delete messages between friends; live push (`ReceiveMessage`, `MessageEdited`, `MessageSeen`) over SignalR; paginated conversations and read receipts. **Possible bug:** editing is meant to be limited to a 20-minute window, but the check looks inverted in the code (see `docs/backend/controllers.md`)
+- Presence: `UserOnline` / `UserOffline` broadcast to friends when a user's first connection opens or last connection closes
+- View a user's profile; edit own profile
+- Roles (`User`, `Administrator`): an administrator can create, update, deactivate, reactivate and soft-delete other users' accounts, delete any post or comment, and assign or remove the `Administrator` role
+- Deactivate own account; reactivate it through an emailed activation token
+- Soft-delete own account; a background job later purges soft-deleted accounts and their messages, friendships and posts once a retention window has passed
+- Outcome logging of service calls to the `Logs` table, plus a file log for unhandled exceptions
+- Rate limiting: a named policy on every endpoint except logout, and a global limiter over everything
 
 ---
 
 ## Tech Stack
 
 - ASP.NET Core Web API (C#), target framework `net10.0`
-- Entity Framework Core (SQL Server, code-first)
+- Entity Framework Core (SQL Server, code-first migrations)
+- JWT bearer authentication
 - SignalR (real-time push: messages, comments, presence)
-- ASP.NET Core Rate Limiting middleware
-- MailKit / MimeKit (SMTP email delivery)
-- Bogus - Test data generation
+- ASP.NET Core rate limiting middleware
+- MailKit (SMTP email delivery)
+- Swashbuckle and `Microsoft.AspNetCore.OpenApi` (Swagger UI and OpenAPI, Development only)
+- Bogus (bulk test-data generation, `Data/Seed/BulkDataSeed.cs`)
+- Integration tests: xUnit, `Microsoft.AspNetCore.Mvc.Testing`, Respawn, against a real SQL Server database
 
-## NuGet Packages
+### NuGet packages (`backend/aspnetproject/aspnetproject.csproj`)
 
 ```
-Microsoft.EntityFrameworkCore
-Microsoft.EntityFrameworkCore.SqlServer
-Microsoft.EntityFrameworkCore.Tools
-Microsoft.EntityFrameworkCore.Design
+Bogus
+MailKit
 Microsoft.AspNetCore.Authentication.JwtBearer
 Microsoft.AspNetCore.OpenApi
-Swashbuckle.AspNetCore.Filters
+Microsoft.EntityFrameworkCore
+Microsoft.EntityFrameworkCore.Design
+Microsoft.EntityFrameworkCore.SqlServer
+Microsoft.EntityFrameworkCore.Tools
 Swashbuckle.AspNetCore
-MailKit
-Bogus
+Swashbuckle.AspNetCore.Filters
+System.Security.Cryptography.Pkcs
 ```
 
 ---
 
-## Folder Structure
+## Repository Layout
 
 ```
+/backend
+    aspnetproject.slnx
+    /aspnetproject                    the API project
+    /aspnetproject.IntegrationTests   integration tests
+/docs
+    /backend                          per-area docs: auth, controllers, data, signalr, background-jobs
+    /adr                              architecture decision records
+    /agents                           notes for coding agents
+/scripts
+    test-linux.sh                     runs the tests against a throwaway SQL Server in Docker
+/.github/workflows
+    tests.yml                         CI
+GLOSSARY.md
+CLAUDE.md
+```
+
+### The API project (`backend/aspnetproject/`)
+
+```
+/Common
+    /Attributes/DataValidation
+        ValidAgeAttribute.cs
+    /Domain
+        ApplicationResponse.cs
+        ListResponse.cs
+    /ProjectConstants
+        Constants.cs
+        ResponseMessages.cs
+        /Enums
+            FriendshipStatus.cs
+            RoleName.cs
+/Controllers
+    /Base
+        BaseController.cs
+    /Content
+        CommentController.cs, MessageController.cs, PostController.cs
+    /Users
+        AccountActivationController.cs, AccountManagementController.cs,
+        AuthController.cs, FriendshipController.cs, UserController.cs
 /Data
     ApplicationDbContext.cs
-    /Models
-        BaseEntity.cs
-        User.cs
-        Post.cs
-        Comment.cs
-        Friendship.cs
-        FriendshipStatus.cs   (moved under Common/ProjectConstants/Enums)
-        Message.cs
-        Log.cs
-        RefreshToken.cs
-        Role.cs
-        UserRole.cs
     /Configurations
         UserConfiguration.cs
         ...
+    /Models
+        BaseEntity.cs
+        Comment.cs, Friendship.cs, Log.cs, Message.cs, Post.cs,
+        RefreshToken.cs, Role.cs, User.cs, UserRole.cs
     /Repositories
         /Base
             BaseRepository.cs
@@ -97,106 +112,89 @@ Bogus
             ConversationFriendProjection.cs
         UserRepository.cs
         ...
-/Common
-    /Attributes/DataValidation
-        ValidAgeAttribute.cs
-    /ProjectConstants
-        Constants.cs
-        ResponseMessages.cs
-        /Enums
-            FriendshipStatus.cs
-            RoleName.cs
-    /Responses
-        ApplicationResponse.cs (+ generic ApplicationResponse<T>)
-        ListResponse.cs
+    /Seed
+        BulkDataSeed.cs
+        DeterministicFixtureSeed.cs
+/Extensions
+    ApplicationServicesExtensions.cs, AuthenticationExtensions.cs, CorsExtensions.cs,
+    GlobalExceptionHandler.cs, RateLimitConfig.cs, SwaggerExtensions.cs, TestSeedExtensions.cs
+/Hubs
+    MessageHub.cs
 /Infrastructure
     /Dtos
-        /Users
-        ...
+        /Accounts, /Auth, /Comments, /DatabaseLogs, /Friendships,
+        /Messages, /Posts, /UserRoles, /Users, /WebsocketsTransfer
     /Mappers
         UserMapper.cs
         ...
     /Queries
         PageQuery.cs, SearchUserQuery.cs
     /Services
+        /BackgroundJobs
+            /Base
+            /Common
+            /Configuration
+            OldLogsCleanupService.cs, RefreshTokenCleanupService.cs, SoftDeletedUsersCleanupService.cs
         /BusinessLogic
             /Base
             /Content
             /Users
-            LogService.cs (registered placeholder; no public behavior yet)
+            LogService.cs
         /Helpers
         /Logging
         /Websockets
-        /BackgroundJobs
-            /Base 
-            /Common
-            /Configuration  
-            OldLogsCleanupService.cs, RefreshTokenCleanupService.cs, SoftDeletedUsersCleanupService.cs
-/Controllers
-    /Base
-    /Content
-    /Users
-/Hubs
-    MessageHub.cs
-/Extensions
-    ApplicationServicesExtensions.cs, AuthenticationExtensions.cs,
-    CorsExtensions.cs, GlobalExceptionHandler.cs, RateLimitConfig.cs, SwaggerExtensions.cs
+/Migrations
 Program.cs
 ```
 
-Note: the on-disk namespace/folder layout has drifted from `ProjectConstants`-only enums — `FriendshipStatus` now lives under `Common/ProjectConstants/Enums/`, not as a top-level model file. `AuthController`, `UserController`, `FriendshipController`, `AccountManagementController`, and `AccountActivationController` all live under `Controllers/Users/`, mirroring the `BusinessLogic/Users` service grouping — despite auth/friendships not being literally about "users" as a resource, they group by domain area rather than by REST noun.
+Folders are grouped by domain area, not by REST noun, and the grouping repeats across layers: `AuthController`, `UserController`, `FriendshipController`, `AccountManagementController` and `AccountActivationController` all live under `Controllers/Users/`, mirroring `Services/BusinessLogic/Users/`.
+
+---
+
+## Running It
+
+Run the `dotnet` commands from `backend/`:
+
+```bash
+dotnet build aspnetproject.slnx
+dotnet run --project aspnetproject
+dotnet test aspnetproject.IntegrationTests
+```
+
+`appsettings.json`, `appsettings.Development.json` and `appsettings.Testing.json` are gitignored and there is no example template, so a fresh clone does not run until they exist in `backend/aspnetproject/`. The application reads `ConnectionStrings:DefaultConnection`, `Jwt`, `EmailConfiguration`, `PasswordConfiguration:ResetTokenMinutes`, `CleanupConfiguration:{OldLogs,RefreshTokens,SoftDeletedUsers}` and `Cors:AllowedOrigins`.
+
+The integration tests need a real SQL Server database. On Linux, `scripts/test-linux.sh` (run from the repository root) starts one in Docker and runs the same tests; CI uses that script.
 
 ---
 
 ## Architecture
 
-```
-Data (Models + Configurations + Repositories)
-Common (Constants, Enums, Attributes, Responses)
-Infrastructure (Dtos, Mappers, Queries, Services: BusinessLogic / Helpers / Logging / Websockets / BackgroundJobs)
-Controllers
-Hubs
-Program.cs
-```
+Dependencies point one way: **Controllers / Hubs → Services → Repositories → `ApplicationDbContext`**. `Common/` (constants, response messages, enums, `ApplicationResponse`) is shared by every layer.
 
-### Layers
+**Models** (`Data/Models`): plain entity classes. Enums live in `Common/ProjectConstants/Enums`.
 
-**Models** — plain entity classes and enums, largely unchanged from the console app; extended with `Role`/`UserRole` and account-lifecycle fields on `User`.
+**Repositories**: concrete classes. `BaseRepository<T>` and `BaseEntityRepository<T>` provide the shared query, pagination and transaction logic; specific repositories add domain queries.
 
-**Repositories** — concrete classes, no interfaces. `BaseRepository<T>` and `BaseEntityRepository<T>` provide shared query, pagination, and transaction logic. Specific repositories extend these with domain queries.
+**Services**: business logic. The services under `BusinessLogic/Content` and `BusinessLogic/Users` inherit `BaseService` and consume repositories and mappers directly. `LogService` is registered but has no behavior yet.
 
-**Services** — business logic. Implemented request-facing services inherit `BaseService`, which injects `DatabaseLogger` and provides `LogResultAsync` for writing structured outcome logs. Consume repositories and mappers directly (no one-class-per-operation split). Return `ApplicationResponse<T>` / `ApplicationResponse` when failure states are possible; raw values or `void` otherwise. `LogService` is registered but currently only holds `ApplicationDbContext`; it has no exposed behavior yet.
+**Controllers**: thin. They delegate to services and map `ApplicationResponse` outcomes to HTTP status codes. All routes are under `api/` (for example `api/posts`, `api/auth`).
 
-**Controllers** — thin; delegate to services and map `ApplicationResponse` outcomes to HTTP status codes. All routes are under `api/` (e.g. `api/posts`, `api/auth`).
+**Hubs**: the SignalR transport, a tier of its own beside the controllers. One hub, `MessageHub` at `hubs/messages`, carries messages, comment notifications and presence. It is push-only and does no validation.
 
-**Hubs** — SignalR transport layer, its own tier alongside Controllers, not a controller and not a service.
+**Background jobs**: three hosted services built on `PeriodicHostedService` clean up refresh tokens, soft-deleted users and old log rows.
 
----
+### Startup
 
-## Coding Style
-
-- **Controllers** — early returns used freely for validation/failure branching, in line with typical ASP.NET Core controller conventions.
-- **Everywhere else** (services, repositories, mappers) — no early returns, single `return` at the end of a method, branching via `if`/`else`.
-
-Other retained conventions:
-
-- No interfaces — concrete repository, service, and mapper classes only.
-- `BaseRepository<T>` / `BaseEntityRepository<T>` split — non-`BaseEntity` types (`UserRole`, composite/no-single-PK style entities) use `BaseRepository<T>` directly; entities with an `Id` use `BaseEntityRepository<T>`.
-- `Query()` is now a `protected virtual IQueryable<T> Query(bool track = true)` — takes an explicit tracking flag instead of relying on a separate no-tracking path; specific repositories override it for default `Include` chains.
-- `DeleteWhereAsync` uses `ExecuteDeleteAsync`, bypassing the change tracker, for bulk cleanup.
-- `ApplicationResponse` wrapper omitted where no failure state is possible (`LogoutAsync`, `MarkAsReadAsync`, `GetUnreadConversationsCount`).
-
----
-
-## DI Setup
-
-`Program.cs` composes everything through extension methods rather than one large block:
+`Program.cs` composes startup through `Add*` extension methods from `Extensions/`. Condensed:
 
 ```csharp
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddDbContext<ApplicationDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+{
+    string? connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
+    options.UseSqlServer(connectionString);
+});
 
 builder.Services.AddControllers();
 builder.Services.AddHttpContextAccessor();
@@ -214,7 +212,7 @@ builder.Services.AddCorsPolicies(builder.Configuration);
 builder.Services.AddExceptionHandler<GlobalExceptionHandler>();
 builder.Services.AddProblemDetails();
 
-builder.Services.AddApplicationServices(builder.Configuration); // repositories, services, SignalR, background jobs, email config
+builder.Services.AddApplicationServices(builder.Configuration);
 
 var app = builder.Build();
 
@@ -241,49 +239,35 @@ app.MapHub<MessageHub>("hubs/messages");
 app.Run();
 ```
 
-`AddApplicationServices` (in `Extensions/ApplicationServicesExtensions.cs`) registers: `AddSignalR()`, the singleton `UserConnectionTracker`, every repository (`AddScoped`), every business-logic service (`AddScoped`), `PasswordHasher`/`TokenGenerator`/`UrlSecurityService` (`AddScoped`), `SystemLogger`/`DatabaseLogger` (`AddScoped`), `EmailConfiguration` options + `EmailSender` (`AddTransient`), the three background-job `IOptions<T>` configurations, and the three `AddHostedService<...>()` registrations.
-
-`ValidateIssuer`/`ValidateAudience` remain `false` — single-client setup. JWT validation and the SignalR query-string token handoff both live in `AuthenticationExtensions.AddJwtAuthentication`.
+`AddApplicationServices` (`Extensions/ApplicationServicesExtensions.cs`) registers SignalR, the singleton `UserConnectionTracker`, every repository and service (scoped), the two loggers (scoped), `EmailSender` (transient), the options classes for email and the three cleanup jobs, and the three hosted services.
 
 ---
 
-## Features
+## Design Decisions
 
-- Register and log in; JWT access + rotating refresh tokens; password reset via emailed token
-- Create, view, update, and delete posts
-- Comment on posts; delete own comment, or (as post author or admin) someone else's; live `ReceiveComment` push to the post author
-- Send, accept, decline, and remove friend requests; view friends/pending/sent; browse/search users
-- Send, edit (time-windowed), and delete messages between friends; live push (`ReceiveMessage`, `MessageEdited`, `MessageSeen`) over SignalR; paginated conversation retrieval
-- Presence: online/offline broadcast to friends via SignalR when a user's first/last connection opens/closes
-- View a user's profile; role-aware access (`Administrator` role can update/delete/deactivate/reactivate other users' accounts)
-- Deactivate/reactivate own or (as admin) another account; self-service reactivation via emailed activation token
-- Soft-delete own or (as admin) another account; background job purges soft-deleted accounts (and their messages/friendships/posts) past a retention window
-- Structured DB action logging for implemented request-facing service calls (`Log` table) plus file-based system/error logging
-- Rate limiting on every mutating and most read endpoints
-- Admin role assignment/removal
-
----
-
-## Key Design Decisions
-
-Carried over from the console app:
-
-- No interfaces — concrete repository, service, and mapper classes only.
-- `ExecuteInTransactionAsync` — callable from any injected repository in a service; safe because all repositories share the same scoped `DbContext`.
-- `ClearTracker()` (now on `BaseEntityRepository<T>`, not `BaseRepository<T>`) — called at the start of the soft-delete transaction; the related-data cleanup itself is left to the background purge job.
-- No early returns outside controllers.
-
-New to the API version:
-
-- `BaseService` centralizes `DatabaseLogger` injection and `LogResultAsync` — implemented request-facing business-logic services log success and/or failure paths per operation, tagged `{ServiceName}.{MethodName}`. The currently empty `LogService` is the exception.
-- `BaseController` (`[ApiController]`, inherited by all derived controllers) centralizes `GetUserId()`, `GetUsername()`, and `IsAdministrator()` (role check via `User.IsInRole`).
-- `PageQuery` (`PageNumber` defaults to `1`, `PageSize` defaults to `Constants.DefaultPageSize` with a `[Range(1, MaxPageSize)]` validation) standardizes list-endpoint pagination binding — no longer nullable/unvalidated. `SearchUserQuery : PageQuery` adds a validated `Username` filter.
-- Controller-level `[Authorize]` with `[AllowAnonymous]` overrides, rather than tagging every action, used where most of a controller's actions require auth.
-- `[EnableRateLimiting(RateLimitConfig.Policies.X)]` on nearly every action — see `controllers.md` per-controller, and `RateLimitConfig.cs` for the concrete limits (designed as per-user sliding windows, with auth endpoints per-IP since the caller isn't authenticated yet; currently every limit counts by IP, see ticket 06 and `auth.md`).
-- Global query filter on `User` (`AccountDeactivatedAt == null && AccountDeletedAt == null` — see `data.md`) means most repository reads transparently exclude deactivated/deleted accounts without each call site needing to remember to filter.
+- **No interfaces.** Repositories, services and mappers are concrete classes, registered directly. Mappers are static.
+- **Result wrapper.** A service method that can fail returns `ApplicationResponse` or `ApplicationResponse<T>`; the controller maps `Succeeded` to a status code. Where no failure state is possible the wrapper is left out (`AuthService.LogoutAsync`, `MessageService.MarkAsReadAsync`, `MessageService.GetUnreadConversationsCount`). Unhandled exceptions go to `GlobalExceptionHandler`, which writes the same envelope.
+- **Control flow.** The house rule outside controllers and hubs is no early returns: a method has a single `return` at the end and branches with `if`/`else`. Controllers return early freely.
+- **Two repository bases.** `BaseEntityRepository<T>` is for `BaseEntity` types and adds id-based operations. `UserRoleRepository` (composite key, no `Id`) and `FriendshipRepository` extend `BaseRepository<T>` directly. Subclasses override `protected virtual IQueryable<T> Query(bool track = true)` to set default `Include`s.
+- **Transactions.** `ExecuteInTransactionAsync` can be called from any repository a service holds, because all repositories share the scoped `DbContext`.
+- **Two loggers.** `BaseService` holds the `DatabaseLogger` and provides `LogResultAsync`, which writes an outcome row tagged `{ServiceName}.{MethodName}` to the `Logs` table. `SystemLogger` appends to `Logs/ErrorLogs.txt` for unhandled exceptions and for failures to write a log row. Background jobs log through `DatabaseLogger` too. Controllers do not log.
+- **Account states.** Deactivation and soft-delete are two distinct states. A global query filter on `User` hides both from normal reads, so call sites do not have to remember to filter.
+- **`LastUpdatedAt` carries meaning.** It is nullable and stamped by services on update, not defaulted by the database: `Message.IsEdited` is `LastUpdatedAt is not null`.
+- **Mutate and notify together.** Services push SignalR events through `IHubContext` in the same method that changes the data.
+- **Authorization.** `[Authorize]` is set per controller, with `[AllowAnonymous]` on public actions. `BaseController` provides `GetUserId()`, `GetUsername()` and `IsAdministrator()`. `AuthController` is the exception: every action is public, so it has no `[Authorize]` and does not inherit `BaseController`. Ownership checks are made in services.
+- **Pagination.** List endpoints bind `PageQuery` from the query string: `PageNumber` defaults to 1, and `PageSize` defaults to 10 and is validated to 1–100.
+- **Rate limiting.** Sliding-window policies, designed as per-IP before login and per-user after, with a global limiter as a backstop. Today every limit counts by IP, because the limiter runs before authentication (see `docs/backend/auth.md`).
 
 ---
 
-## Status
+## Docs
 
-Actively developed, beyond the original migration scope. Domain/data layers, JWT auth (access + refresh + password reset), account activation/deactivation/soft-delete, role-based authorization, all five resource controllers (Posts, Comments, Friendships, Messages, Users/Accounts), SignalR (messages + live comments + presence), structured DB logging, background cleanup jobs, and rate limiting are all implemented. See `controllers.md`, `data.md`, `auth.md`, `signalr.md`, and `background-jobs.md` for area-specific detail.
+Per-area detail lives in `docs/backend/`:
+
+- `auth.md`: authentication, tokens, account activation, roles, error shapes, rate limiting
+- `controllers.md`: every endpoint, per controller
+- `data.md`: repositories, entities, cascade behavior
+- `signalr.md`: the hub, presence, events, CORS
+- `background-jobs.md`: the cleanup jobs
+
+Architecture decision records are in `docs/adr/`, and domain terms in `GLOSSARY.md`.

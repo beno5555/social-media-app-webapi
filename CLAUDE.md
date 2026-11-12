@@ -67,7 +67,7 @@ Follow the project skill `.claude/skills/webcity-conventions` (it overrides the 
 
 ## Docs
 
-`README.md` covers history and design decisions. `docs/backend/*.md` (`auth`, `controllers`, `data`, `signalr`, `background-jobs`) holds per-area detail. Update the relevant doc when you change behavior it describes.
+`README.md` describes the backend as it is now: features, stack, layout, architecture and design decisions. `docs/backend/*.md` (`auth`, `controllers`, `data`, `signalr`, `background-jobs`) holds per-area detail. Update the relevant doc when you change behavior it describes.
 
 ## Agent workflow
 

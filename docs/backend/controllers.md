@@ -83,7 +83,7 @@ Route: `api/comments`. Inherits `BaseController`. Same `[Authorize]`-at-controll
 
 Note the create/read route naming is inconsistent: creating posts a comment under `api/comments/posts/{postId}` (plural `posts`), while listing a post's comments reads from `api/comments/post/{postId}` (singular `post`) — not a typo to "fix" without checking client code depends on it.
 
-**Delete permission is three-way**: `belongsToCaller || isPostAuthor || isAdmin` — a post author can remove any comment on their own post, not just the comment's author. Wider than the plain ownership check the console-migration doc originally described.
+**Delete permission is three-way**: `belongsToCaller || isPostAuthor || isAdmin` — a post author can remove any comment on their own post, not just the comment's author.
 
 **Live notification**: creating a comment pushes a `ReceiveComment` SignalR event (payload: `NotifyCommentDto` — Id, AuthorUsername, Content) to the post author's group, unless the commenter is the post author themselves. See `signalr.md`.
 

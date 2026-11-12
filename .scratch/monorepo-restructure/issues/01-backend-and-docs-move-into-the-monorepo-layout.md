@@ -62,7 +62,7 @@ Git moves only the files it tracks. After pulling, the old `aspnetproject/` and 
 
 - [x] Tag `api-only` exists on the remote at the commit named above, created before the moves
 - [x] The layout matches the target layout
-- [ ] The first commit contains moves only; the second contains the path edits
+- [x] The first commit contains moves only; the second contains the path edits
 - [x] `dotnet build aspnetproject.slnx` succeeds from `backend/`
 - [x] `scripts/test-linux.sh` passes from the repo root in the cloud session
 - [ ] CI passes on the pull request
@@ -82,3 +82,11 @@ Git moves only the files it tracks. After pulling, the old `aspnetproject/` and 
 - Not ticked: "CI passes on the pull request", because no pull request is open yet.
 - Not ticked: "`CLAUDE.md` commands, run exactly as written, work". The build, the script lines and the path resolution of every `dotnet` line were checked from the stated folders, but the plain `dotnet test`, `dotnet run` and `dotnet ef` lines need the Windows SQL Server setup and settings, so the owner's Windows run is what confirms them.
 - Not ticked: "The owner runs the suite once on Windows", which comes after merging.
+
+2026-11-12, Windows session on the owner's laptop:
+
+- With the owner's approval, the `fixup!` commit was folded into "Point the build, test script and docs at the monorepo layout" and the branch was force-pushed with a lease. The tree is unchanged, and the moves commit `92f1b93` is 162 pure renames, so the moves-then-path-edits box is ticked.
+- The owner's local commit "Trim CLAUDE.md and state what belongs in it" was cherry-picked onto the branch. Its intro conflicted with the monorepo sentence; the resolution keeps the monorepo sentence and drops the "Temporary: about to become a monorepo" note. No line in `CLAUDE.md` or `docs/agents/skills.md` names a root-level `aspnetproject/` path or `Markdowns/`.
+- The checklist ran on the laptop: the three `appsettings*.json` files, `Logs/ErrorLogs.txt` and `aspnetproject.csproj.user` moved into `backend/aspnetproject/`, and only then were the old root folders deleted.
+- From `backend/`: `dotnet build aspnetproject.slnx` succeeded, `dotnet test aspnetproject.IntegrationTests` passed 121 of 121, the single-test `--filter` line passed 1 of 1, and `dotnet ef migrations list --project aspnetproject` resolved the project and the database.
+- Still not ticked: "`CLAUDE.md` commands, run exactly as written, work". `dotnet run` was not started, because its background cleanup jobs act on the dev database, and the two `dotnet ef` lines that change files or the database were not run.

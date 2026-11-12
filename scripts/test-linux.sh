@@ -10,7 +10,7 @@ set -euo pipefail
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 STATE_DIR="${HOME}/.webcity-test"
 PASSWORD_FILE="${STATE_DIR}/sa-password"
-SETTINGS_FILE="${REPO_ROOT}/aspnetproject/appsettings.Testing.json"
+SETTINGS_FILE="${REPO_ROOT}/backend/aspnetproject/appsettings.Testing.json"
 
 CONTAINER="webcity-test-sql"
 IMAGE="mcr.microsoft.com/mssql/server:2022-latest"
@@ -83,4 +83,4 @@ export ConnectionStrings__DefaultConnection="Server=localhost;Database=${DATABAS
 export Jwt__Key="$(openssl rand -hex 48)"
 
 cd "${REPO_ROOT}"
-exec dotnet test aspnetproject.IntegrationTests "$@"
+exec dotnet test backend/aspnetproject.IntegrationTests "$@"

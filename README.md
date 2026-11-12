@@ -141,7 +141,6 @@ Bogus
 /Extensions
     ApplicationServicesExtensions.cs, AuthenticationExtensions.cs,
     CorsExtensions.cs, GlobalExceptionHandler.cs, RateLimitConfig.cs, SwaggerExtensions.cs
-/Markdowns
 Program.cs
 ```
 

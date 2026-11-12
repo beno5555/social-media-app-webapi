@@ -65,7 +65,7 @@ Git moves only the files it tracks. After pulling, the old `aspnetproject/` and 
 - [x] The first commit contains moves only; the second contains the path edits
 - [x] `dotnet build aspnetproject.slnx` succeeds from `backend/`
 - [x] `scripts/test-linux.sh` passes from the repo root in the cloud session
-- [ ] CI passes on the pull request
+- [x] CI passes on the pull request (ran on the push to `master` instead; see comments)
 - [x] A search of tracked files for `Markdowns` and for root-relative `aspnetproject/` paths finds them only in the `backend-frontend-readiness` spec and its done tickets
 - [ ] `CLAUDE.md` commands, run exactly as written, work
 - [ ] After merging, the owner runs the suite once on Windows (a confirmation, not a gate)
@@ -91,3 +91,7 @@ Git moves only the files it tracks. After pulling, the old `aspnetproject/` and 
 - From `backend/`: `dotnet build aspnetproject.slnx` succeeded, `dotnet test aspnetproject.IntegrationTests` passed 121 of 121, the single-test `--filter` line passed 1 of 1, and `dotnet ef migrations list --project aspnetproject` resolved the project and the database.
 - Still not ticked: "`CLAUDE.md` commands, run exactly as written, work". `dotnet run` was not started, because its background cleanup jobs act on the dev database, and the two `dotnet ef` lines that change files or the database were not run.
 - The owner works solo and dropped the pull request. The branch was merged into `master` locally with `--no-ff`, which keeps the merge commit the decision asked for, and pushed. "CI passes on the pull request" stays unticked: `.github/workflows/tests.yml` runs only on pull requests, so CI never ran on this change. The Windows run above and the cloud session's `scripts/test-linux.sh` run stand in for it.
+
+2026-11-12, after the merge:
+
+- `.github/workflows/tests.yml` now also runs on pushes to `master`. Its first run, on commit `b95d08a`, passed, so the CI box is ticked even though no pull request was opened.

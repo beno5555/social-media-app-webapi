@@ -44,7 +44,7 @@ When rules conflict, follow the first applicable item:
 
 ## Agent workflow
 
-- **Read before writing.** Before you touch a layer, open at least one sibling file in it, plus any project docs (README, `docs/`, `Markdowns/`).
+- **Read before writing.** Before you touch a layer, open at least one sibling file in it, plus any project docs (README, `docs/`).
 - **Make minimal diffs.** Do not reformat, rename or reorganize anything the task does not require.
 - **Report suspicious code instead of silently fixing it.** Code that looks inconsistent may be intentional. Report anything outside the task with its location and your reasoning:
   > `CommentController`: create uses `api/comments/posts/{postId}` but list uses `api/comments/post/{postId}`. Left unchanged; clients may depend on it.

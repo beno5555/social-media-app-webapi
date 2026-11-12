@@ -2,11 +2,11 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-**WebCity** is an ASP.NET Core Web API (`net10.0`) for a small social platform: posts, comments, friendships, direct messages, presence. It uses EF Core with SQL Server, JWT auth with rotating refresh tokens, SignalR, MailKit email and background cleanup jobs. A frontend is planned. This repo is about to become a monorepo (`backend/` + `frontend/`), so paths below will move. The restructure happens **inside** the current root folder: never rename or relocate the root itself, because Claude Code's project memory is keyed to its path.
+**WebCity** is an ASP.NET Core Web API (`net10.0`) for a small social platform: posts, comments, friendships, direct messages, presence. It uses EF Core with SQL Server, JWT auth with rotating refresh tokens, SignalR, MailKit email and background cleanup jobs. This repo is a monorepo: the backend lives in `backend/`, and the Angular frontend will live in `frontend/` once it is scaffolded. The restructure happened **inside** the current root folder: never rename or relocate the root itself, because Claude Code's project memory is keyed to its path.
 
 ## Commands
 
-Run from the repo root (the folder that holds `aspnetproject.slnx`):
+Run the `dotnet` commands from `backend/` (the folder that holds `aspnetproject.slnx`), and `scripts/test-linux.sh` from the repo root:
 
 ```bash
 dotnet build aspnetproject.slnx
@@ -40,7 +40,7 @@ No linter or formatter is configured.
 
 ## Architecture
 
-All application code lives in the `aspnetproject/` project. Dependencies point one way: **Controllers / Hubs → Services → Repositories → `ApplicationDbContext`**. `Common/` (constants, `ResponseMessages`, enums, `ApplicationResponse`) is shared by every layer. Folders are grouped by domain area (`Users`, `Content`), and the same grouping repeats in each layer.
+All application code lives in the `backend/aspnetproject/` project. Dependencies point one way: **Controllers / Hubs → Services → Repositories → `ApplicationDbContext`**. `Common/` (constants, `ResponseMessages`, enums, `ApplicationResponse`) is shared by every layer. Folders are grouped by domain area (`Users`, `Content`), and the same grouping repeats in each layer.
 
 The important patterns, each of which spans several files:
 
@@ -63,7 +63,7 @@ Follow the project skill `.claude/skills/webcity-conventions` (it overrides the 
 
 ## Docs
 
-`README.md` covers history and design decisions. `aspnetproject/Markdowns/Chunked/*.md` (`auth`, `controllers`, `data`, `signalr`, `background-jobs`) holds per-area detail. Update the relevant doc when you change behavior it describes.
+`README.md` covers history and design decisions. `docs/backend/*.md` (`auth`, `controllers`, `data`, `signalr`, `background-jobs`) holds per-area detail. Update the relevant doc when you change behavior it describes.
 
 ## Agent skills
 

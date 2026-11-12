@@ -39,7 +39,7 @@ When rules conflict, follow the first applicable item:
 | `references/testing.md` | Integration tests, isolated DB, test naming | Adding or changing behavior |
 | `references/comments-and-docs.md` | Comment style, doc comments, keeping docs in sync | Writing comments or changing documented behavior |
 | `references/csharp.md` | C#/.NET formatting and idioms, full reference examples | Writing C# |
-| `references/typescript.md` | TypeScript translation of every rule | Writing TS/JS |
+| `references/typescript.md` | TypeScript translation of every rule, and the Angular frontend rules (§10) | Writing TS/JS or any frontend code |
 | `references/other-languages.md` | Python, Java/Kotlin, Go, SQL | Writing anything else |
 
 ## Agent workflow

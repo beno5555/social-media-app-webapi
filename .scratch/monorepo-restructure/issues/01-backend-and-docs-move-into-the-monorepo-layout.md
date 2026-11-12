@@ -6,7 +6,7 @@ Every decision below was settled with the owner in a grilling session on 2026-11
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** in-progress
 
 **Difficulty:** routine: every decision is made and listed here, and the integration suite proves the result.
 

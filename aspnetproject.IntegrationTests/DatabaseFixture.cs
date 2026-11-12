@@ -9,7 +9,13 @@ namespace aspnetproject.IntegrationTests;
 
 public class DatabaseFixture : IAsyncLifetime
 {
-    private const string ConnectionString = "Server=localhost;Database=TestSocialMediaWebApiDb;Trusted_Connection=True;TrustServerCertificate=True";
+    // The same variable the app under test reads, so both sides agree. Set where Windows authentication is unavailable
+    // (scripts/test-linux.sh sets it); unset, the suite uses the local default below.
+    private const string ConnectionStringVariable = "ConnectionStrings__DefaultConnection";
+    private const string LocalConnectionString    = "Server=localhost;Database=TestSocialMediaWebApiDb;Trusted_Connection=True;TrustServerCertificate=True";
+
+    private static readonly string ConnectionString =
+        Environment.GetEnvironmentVariable(ConnectionStringVariable) ?? LocalConnectionString;
 
     private Respawner _respawner = null!;
     private DbConnection _connection = null!;

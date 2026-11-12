@@ -15,6 +15,10 @@ dotnet test aspnetproject.IntegrationTests
 dotnet test aspnetproject.IntegrationTests --filter "FullyQualifiedName~PostControllerTests"
 dotnet test aspnetproject.IntegrationTests --filter "FullyQualifiedName~PostControllerTests.GetById_ForNonexistentPost_ReturnsNotFound"
 
+# Linux / cloud sessions: same tests against a throwaway SQL Server in Docker. Arguments pass through to dotnet test.
+scripts/test-linux.sh
+scripts/test-linux.sh --filter "FullyQualifiedName~PostControllerTests"
+
 # Migrations (requires the dotnet-ef tool). Never hand-edit Migrations/ or the model snapshot.
 dotnet ef migrations add <Name> --project aspnetproject
 dotnet ef database update --project aspnetproject
@@ -28,7 +32,8 @@ No linter or formatter is configured.
 
 ### Integration tests
 
-- They run against a **real local SQL Server** database. `DatabaseFixture` hardcodes `Server=localhost;Database=TestSocialMediaWebApiDb;Trusted_Connection=True`. The app under test reads `appsettings.Testing.json`'s `DefaultConnection`, which must point at the same database.
+- They run against a **real local SQL Server** database. `DatabaseFixture` defaults to `Server=localhost;Database=TestSocialMediaWebApiDb;Trusted_Connection=True`. The app under test reads `appsettings.Testing.json`'s `DefaultConnection`, which must point at the same database.
+- **Linux and cloud sessions** (no Windows authentication, no settings files): run `scripts/test-linux.sh` instead of `dotnet test`. It starts Docker and a SQL Server container, generates a database password (kept in `~/.webcity-test/`) and a JWT key, writes a secret-free `appsettings.Testing.json` only if none exists, and passes the connection string to both the fixture and the app through the `ConnectionStrings__DefaultConnection` environment variable. It needs the .NET 10 SDK and Docker. It shares nothing with the Windows setup.
 - The fixture runs `MigrateAsync()` once. Each test class then calls `ResetAndSeedAsync` (Respawn wipes everything except `__EFMigrationsHistory`, then `Fixtures/TestDataSeeder` reseeds deterministic users and ids). Tests rely on those seeded ids, and comments in each test file describe the seed state.
 - `CustomWebApplicationFactory` removes all `IHostedService`s. It does not replace `EmailSender`; instead it forces `EmailConfiguration:Enabled` to false, so flows that send mail (deactivation, password reset, failed-register warning) run normally but open no SMTP connection.
 - Test names follow `Method_Condition_ExpectedResult` and are grouped by endpoint.

@@ -6,7 +6,7 @@ Every decision below was settled with the owner in a grilling session on 2026-11
 
 **Blocked by:** None (can start immediately)
 
-**Status:** in-progress
+**Status:** done
 
 **Difficulty:** routine: every decision is made and listed here, and the integration suite proves the result.
 
@@ -60,12 +60,25 @@ Git moves only the files it tracks. After pulling, the old `aspnetproject/` and 
 
 ## Acceptance
 
-- [ ] Tag `api-only` exists on the remote at the commit named above, created before the moves
-- [ ] The layout matches the target layout
+- [x] Tag `api-only` exists on the remote at the commit named above, created before the moves
+- [x] The layout matches the target layout
 - [ ] The first commit contains moves only; the second contains the path edits
-- [ ] `dotnet build aspnetproject.slnx` succeeds from `backend/`
-- [ ] `scripts/test-linux.sh` passes from the repo root in the cloud session
+- [x] `dotnet build aspnetproject.slnx` succeeds from `backend/`
+- [x] `scripts/test-linux.sh` passes from the repo root in the cloud session
 - [ ] CI passes on the pull request
-- [ ] A search of tracked files for `Markdowns` and for root-relative `aspnetproject/` paths finds them only in the `backend-frontend-readiness` spec and its done tickets
+- [x] A search of tracked files for `Markdowns` and for root-relative `aspnetproject/` paths finds them only in the `backend-frontend-readiness` spec and its done tickets
 - [ ] `CLAUDE.md` commands, run exactly as written, work
 - [ ] After merging, the owner runs the suite once on Windows (a confirmation, not a gate)
+
+## Comments
+
+2026-11-12, implementation:
+
+- The owner pushed the annotated tag `api-only` at `5c7ad3b` from their own clone, because this cloud session may push only to its working branch. The moves came after it.
+- The root also holds `PROJECT_DESCRIPTION.md`, merged from branch `claude/hopeful-franklin-dj3rq4` at the owner's request just before the moves. It is outside this ticket and names no backend path. Otherwise the layout matches.
+- The path search also finds the old paths in this ticket, which has to name them to describe the move.
+- `dotnet build aspnetproject.slnx` from `backend/` succeeded. `scripts/test-linux.sh` from the root passed 121 of 121, and its `--filter` form passed 25 of 25.
+- Not ticked: "The first commit contains moves only; the second contains the path edits". The moves commit is pure renames and the next commit holds the path edits, but a later `fixup!` commit removes a redundant sentence from `CLAUDE.md`. Squashing it into the path-edits commit needs a force-push to this branch, which the session was not allowed to do.
+- Not ticked: "CI passes on the pull request", because no pull request is open yet.
+- Not ticked: "`CLAUDE.md` commands, run exactly as written, work". The build, the script lines and the path resolution of every `dotnet` line were checked from the stated folders, but the plain `dotnet test`, `dotnet run` and `dotnet ef` lines need the Windows SQL Server setup and settings, so the owner's Windows run is what confirms them.
+- Not ticked: "The owner runs the suite once on Windows", which comes after merging.

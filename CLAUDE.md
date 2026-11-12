@@ -49,7 +49,7 @@ All application code lives in the `backend/aspnetproject/` project. Dependencies
 The important patterns, each of which spans several files:
 
 - **No interfaces.** Repositories, services and mappers are concrete classes, registered directly in `Extensions/ApplicationServicesExtensions.cs`. `Program.cs` composes startup only through `Add*` extension methods in `Extensions/`.
-- **Result wrapper.** Services that can fail return `ApplicationResponse` or `ApplicationResponse<T>` (`Common/Responses`). Controllers map `Succeeded` to HTTP status codes at each call site. Unexpected exceptions go to `GlobalExceptionHandler`, which writes the same envelope. Clients see two failure shapes: the envelope and the framework's validation `ProblemDetails`. Status codes and edge cases: `auth.md`.
+- **Result wrapper.** Services that can fail return `ApplicationResponse` or `ApplicationResponse<T>` (`Common/Domain`). Controllers map `Succeeded` to HTTP status codes at each call site. Unexpected exceptions go to `GlobalExceptionHandler`, which writes the same envelope. Clients see two failure shapes: the envelope and the framework's validation `ProblemDetails`. Status codes and edge cases: `auth.md`.
 - **Two loggers.** Services inherit `BaseService` and call `LogResultAsync`, which writes `{Service}.{Method}` outcome rows to the `Log` table through `DatabaseLogger`. `SystemLogger` (files under `Logs/`) is for unhandled exceptions and for failures to write a `Log` row. Background jobs log through `DatabaseLogger`. Controllers never log.
 - **Repositories.** `BaseRepository<T>` is for keyless or composite-key types like `UserRole`. `BaseEntityRepository<T>` is for `BaseEntity` types with an `Id`. Subclasses override `protected virtual Query(bool track = true)` to set default `Include`s. `ExecuteInTransactionAsync` can be called from any repository, because all repositories share the scoped `DbContext`. Bulk cleanup uses `ExecuteDeleteAsync`.
 - **Account states.** A global query filter on `User` hides deactivated (`AccountDeactivatedAt`) and soft-deleted (`AccountDeletedAt`) users from normal reads. A background job hard-purges soft-deleted users past their retention window. `LastUpdatedAt` is nullable and stamped by services; it carries meaning (`Message.IsEdited`).
@@ -71,6 +71,6 @@ Follow the project skill `.claude/skills/webcity-conventions` (it overrides the 
 
 ## Agent workflow
 
-- **Skills:** `.claude/skills/` is linked from `~/.claude/skills/` by Windows junctions. Never remove one with `rm -rf` (it can delete the repo copy); read `docs/agents/skills.md` before touching either folder.
+- **Skills:** Matt Pocock's skills in `.claude/skills/` are linked from `~/.claude/skills/` by Windows junctions (`webcity-conventions` is not). Never remove one with `rm -rf` (it can delete the repo copy); read `docs/agents/skills.md` before touching either folder.
 - **Issue tracker:** issues and specs live as local markdown files under `.scratch/<feature>/`. See `docs/agents/issue-tracker.md`.
 - **Domain docs:** single-context, one `GLOSSARY.md` and `docs/adr/` at the repo root, created lazily. See `docs/agents/domain.md`.

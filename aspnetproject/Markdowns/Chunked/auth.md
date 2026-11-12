@@ -25,7 +25,7 @@ Password hashing is PBKDF2 (`Rfc2898DeriveBytes.Pbkdf2`, 100,000 iterations, SHA
 ### Auth flow
 
 1. **Register** (`POST api/auth/register`) — creates the user (no roles beyond none assigned at registration; roles are assigned separately by an admin). Fails on duplicate email or username. On duplicate email, triggers `AccountSecurityService.HandleFailedRegisterAttempt` — emails the existing account holder a password-reset token, in case the registration attempt was the real owner locked out of their account.
-2. **Login** (`POST api/auth/login`) — validates credentials, issues access token (body) + refresh token (cookie) via `IssueTokensAndRefreshAsync`-style helper (`AccountSecurityService.IssueAccessAndRefreshTokensAsync`).
+2. **Login** (`POST api/auth/login`) — validates credentials, issues access token (body) + refresh token (cookie) via `AccountSecurityService.IssueAccessAndRefreshTokensAsync`.
 3. **Authenticated requests** — client attaches `Authorization: Bearer {accessToken}`.
 4. **Refresh** (`POST api/auth/refresh`) — no body; refresh token cookie read automatically, hashed, looked up, revoked, new pair issued. A missing, invalid, expired or revoked token returns `401` with the `ApplicationResponse` envelope (`succeeded: false` plus a message).
 5. **Logout** (`PATCH api/auth/logout`) — revokes the current refresh token (if any) and clears the cookie.

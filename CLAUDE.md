@@ -4,6 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 **WebCity** is an ASP.NET Core Web API (`net10.0`) for a small social platform: posts, comments, friendships, direct messages, presence. It uses EF Core with SQL Server, JWT auth with rotating refresh tokens, SignalR, MailKit email and background cleanup jobs. This repo is a monorepo: the backend lives in `backend/`, and the Angular frontend will live in `frontend/` once it is scaffolded. The restructure happened **inside** the current root folder: never rename or relocate the root itself, because Claude Code's project memory is keyed to its path.
 
+## About this file
+
+CLAUDE.md is loaded into every session, so it holds only what an agent needs on most tasks and cannot cheaply learn from the code: commands, setup traps, cross-cutting patterns, house rules. Per-area detail goes in the docs listed under **Docs**, with a one-line pointer here at most. A temporary note (a known bug, an in-progress migration) belongs here only if it changes how an agent should work right now. Mark it **Temporary** and delete it in the same change that resolves it.
+
 ## Commands
 
 Run the `dotnet` commands from `backend/` (the folder that holds `aspnetproject.slnx`), and `scripts/test-linux.sh` from the repo root:
@@ -35,7 +39,7 @@ No linter or formatter is configured.
 - They run against a **real local SQL Server** database. `DatabaseFixture` defaults to `Server=localhost;Database=TestSocialMediaWebApiDb;Trusted_Connection=True`. The app under test reads `appsettings.Testing.json`'s `DefaultConnection`, which must point at the same database.
 - **Linux and cloud sessions** (no Windows authentication, no settings files): run `scripts/test-linux.sh` instead of `dotnet test`. It starts Docker and a SQL Server container, generates a database password (kept in `~/.webcity-test/`) and a JWT key, writes a secret-free `appsettings.Testing.json` only if none exists, and passes the connection string to both the fixture and the app through the `ConnectionStrings__DefaultConnection` environment variable. It needs Docker and the .NET 10 SDK; a cloud session without a prepared environment installs the SDK first with `apt-get update && apt-get install -y dotnet-sdk-10.0`. It shares nothing with the Windows setup. `.github/workflows/tests.yml` runs the same script on every pull request.
 - The fixture runs `MigrateAsync()` once. Each test class then calls `ResetAndSeedAsync` (Respawn wipes everything except `__EFMigrationsHistory`, then `Fixtures/TestDataSeeder` reseeds deterministic users and ids). Tests rely on those seeded ids, and comments in each test file describe the seed state.
-- `CustomWebApplicationFactory` removes all `IHostedService`s. It does not replace `EmailSender`; instead it forces `EmailConfiguration:Enabled` to false, so flows that send mail (deactivation, password reset, failed-register warning) run normally but open no SMTP connection.
+- `CustomWebApplicationFactory` removes all `IHostedService`s and forces `EmailConfiguration:Enabled` to false, so mail-sending flows run normally but open no SMTP connection.
 - Test names follow `Method_Condition_ExpectedResult` and are grouped by endpoint.
 
 ## Architecture
@@ -45,13 +49,13 @@ All application code lives in the `backend/aspnetproject/` project. Dependencies
 The important patterns, each of which spans several files:
 
 - **No interfaces.** Repositories, services and mappers are concrete classes, registered directly in `Extensions/ApplicationServicesExtensions.cs`. `Program.cs` composes startup only through `Add*` extension methods in `Extensions/`.
-- **Result wrapper.** Services that can fail return `ApplicationResponse` or `ApplicationResponse<T>` (`Common/Responses`). Controllers map `Succeeded` to HTTP status codes at each call site. Unexpected exceptions go to `GlobalExceptionHandler`, which logs to the file-based `SystemLogger` and writes the same envelope (`409` for a database update conflict, `500` otherwise; exception detail in the message only in Development). Rate-limit rejections (`429`) and refresh failures (`401`) use the envelope too. Clients therefore see two failure shapes from the application: the envelope, and the framework's validation `ProblemDetails`. Framework-level rejections (`401`/`403` from the auth middleware, an unmatched route's `404`) are bare status codes with no body. See `auth.md`.
+- **Result wrapper.** Services that can fail return `ApplicationResponse` or `ApplicationResponse<T>` (`Common/Responses`). Controllers map `Succeeded` to HTTP status codes at each call site. Unexpected exceptions go to `GlobalExceptionHandler`, which writes the same envelope. Clients see two failure shapes: the envelope and the framework's validation `ProblemDetails`. Status codes and edge cases: `auth.md`.
 - **Two loggers.** Services inherit `BaseService` and call `LogResultAsync`, which writes `{Service}.{Method}` outcome rows to the `Log` table through `DatabaseLogger`. `SystemLogger` (files under `Logs/`) is for unhandled exceptions and for failures to write a `Log` row. Background jobs log through `DatabaseLogger`. Controllers never log.
 - **Repositories.** `BaseRepository<T>` is for keyless or composite-key types like `UserRole`. `BaseEntityRepository<T>` is for `BaseEntity` types with an `Id`. Subclasses override `protected virtual Query(bool track = true)` to set default `Include`s. `ExecuteInTransactionAsync` can be called from any repository, because all repositories share the scoped `DbContext`. Bulk cleanup uses `ExecuteDeleteAsync`.
 - **Account states.** A global query filter on `User` hides deactivated (`AccountDeactivatedAt`) and soft-deleted (`AccountDeletedAt`) users from normal reads. A background job hard-purges soft-deleted users past their retention window. `LastUpdatedAt` is nullable and stamped by services; it carries meaning (`Message.IsEdited`).
 - **Real-time.** One hub (`MessageHub` at `hubs/messages`) carries messages, comment notifications and presence. Services push through `IHubContext` in the same method that mutates data, and hubs do no validation. `UserConnectionTracker` is a thread-safe singleton. The JWT is read from the query string for hub connections (`AuthenticationExtensions`).
-- **Auth.** `BaseController` provides `GetUserId()`, `GetUsername()` and `IsAdministrator()`. `[Authorize]` is set per controller, with `[AllowAnonymous]` overrides. Nearly every action has `[EnableRateLimiting(RateLimitConfig.Policies.X)]`: the design is per-IP before login and per-user after, but **currently every limit, including the global limiter, counts by IP** because `UseRateLimiter` runs before `UseAuthentication` (ticket 06 in `.scratch/backend-frontend-readiness/issues/` fixes this).
-- **Frontend integration points.** CORS policy `OriginPolicy` takes its origins from `Cors:AllowedOrigins` (with credentials). Password-reset redirect URLs are checked by the injected `UrlSecurityService` (`Infrastructure/Services/Helpers`) against the same `Cors:AllowedOrigins` list, comparing scheme and authority case-insensitively; with no origins configured, every redirect URL is rejected. The integration test host replaces the first entry of that list with `CustomWebApplicationFactory.TrustedFrontendOrigin`.
+- **Auth.** `BaseController` provides `GetUserId()`, `GetUsername()` and `IsAdministrator()`. `[Authorize]` is set per controller, with `[AllowAnonymous]` overrides. Nearly every action has `[EnableRateLimiting(RateLimitConfig.Policies.X)]`: per-IP before login, per-user after. **Temporary:** every limit, including the global limiter, currently counts by IP because `UseRateLimiter` runs before `UseAuthentication` (fixed by ticket 06 in `.scratch/backend-frontend-readiness/issues/`).
+- **Frontend integration points.** `Cors:AllowedOrigins` drives both the `OriginPolicy` CORS policy (with credentials) and `UrlSecurityService`'s check of password-reset redirect URLs; with no origins configured, every redirect URL is rejected. Details: `auth.md`.
 - **DTO tiers.** Output DTOs come in Minimal, Standard and Full tiers by audience, built by static mappers in `Infrastructure/Mappers`. Entities are never returned.
 
 ## Code style
@@ -65,14 +69,8 @@ Follow the project skill `.claude/skills/webcity-conventions` (it overrides the 
 
 `README.md` covers history and design decisions. `docs/backend/*.md` (`auth`, `controllers`, `data`, `signalr`, `background-jobs`) holds per-area detail. Update the relevant doc when you change behavior it describes.
 
-## Agent skills
+## Agent workflow
 
-Matt Pocock's engineering skills are committed under `.claude/skills/` so cloud sessions get them. The copies in `~/.claude/skills/` with the same names are **Windows directory junctions into this repo**, so there is one copy on disk and editing through either path changes both. Never replace a junction with a real folder, and remove one with `cmd /c rmdir <path>`, not `rm -rf`, which can delete the repo copy through the link. The global SessionStart hook (`~/.claude/hooks/sync-remote.sh`) warns if a junction becomes a separate copy.
-
-### Issue tracker
-
-Issues and specs live as local markdown files under `.scratch/<feature>/`. See `docs/agents/issue-tracker.md`.
-
-### Domain docs
-
-Single-context: one `GLOSSARY.md` and `docs/adr/` at the repo root, created lazily. See `docs/agents/domain.md`.
+- **Skills:** `.claude/skills/` is linked from `~/.claude/skills/` by Windows junctions. Never remove one with `rm -rf` (it can delete the repo copy); read `docs/agents/skills.md` before touching either folder.
+- **Issue tracker:** issues and specs live as local markdown files under `.scratch/<feature>/`. See `docs/agents/issue-tracker.md`.
+- **Domain docs:** single-context, one `GLOSSARY.md` and `docs/adr/` at the repo root, created lazily. See `docs/agents/domain.md`.

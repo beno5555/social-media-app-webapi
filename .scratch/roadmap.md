@@ -35,7 +35,7 @@ Dates are the day a step should finish.
    - Then scaffold `frontend/` with the dev proxy for `/api` and `/hubs`.
 2. [ ] **Write the tickets, one group at a time.** For each group the owner runs `/to-spec` and then `/to-tickets` in a session that already holds the context, because `/to-spec` only writes down what the conversation has settled.
    - Done 2026-11-14: the backend gaps A to F, as 13 tickets in `.scratch/documented-backend-features/issues/`. Tickets 01, 02 and 03 can start at once; the longest chain is 02 → 05 → 08 → 09 → 11 → 12.
-   - Sat 14: the frontend pages of steps 4 to 8 (after open decision 3 and a short talk about the pages and routes).
+   - Sat 14: the frontend pages of steps 4 to 8. The session first asks the owner the questions under **Questions for the frontend spec session** below, then the owner runs `/to-spec` and `/to-tickets`.
    - By Fri 20: n8n, gaps G and H with the six workflows.
 3. [ ] **Any time, in parallel: the open backend tickets.** Readiness 06, 08 and 09, message-editing 01 (after ticket 01 of the documented backend features, whose test helper it uses) and openapi-document 01. Ticket 08 bites as soon as sign-in exists, 09 as soon as a date is shown, and the document promises per-user limits (06), the 20-minute edit window and Swagger.
 4. [ ] **Mon 16: shell and auth.** Lazy-loaded feature areas, the HTTP interceptor with automatic refresh, session restore, route guards for signed-in users and administrators, and the pages: register, sign in, password reset, account reactivation.
@@ -43,7 +43,7 @@ Dates are the day a step should finish.
 5. [ ] **Tue 17: feed, posts and comments.** Feed with pagination, create a post with photos, edit and delete, like, comment, edit and delete a comment, report a post or comment.
    - Backend alongside: **feed ranking** (gap C).
 6. [ ] **Wed 18: profile, friends and search.** Profile page (bio, posts, friends), edit profile, user search, friend requests (send, accept, decline, remove; the three lists), account settings (deactivate, delete, digest opt-out), the guest view.
-   - Backend alongside: **typing and notifications on the hub** (gap D).
+   - Backend alongside: **typing on the hub** (gap D).
 7. [ ] **Fri 20: chat and live notifications.** The SignalR service and the central state (signals) for the session, conversations, online friends and unread count. Conversation list with last message, conversation with photos, edit and delete, seen, typing, presence and last active. Toasts for a new message, comment, like and a friend coming online.
    - Backend alongside: **admin logs and statistics**, **reports and moderation** (gaps E and F).
 8. [ ] **Sat 21: admin panel.** Users (create, edit, deactivate, restore, delete, grant and remove the administrator role), delete any post or comment, logs, statistics, the reports list, the moderation queue.
@@ -54,6 +54,18 @@ Dates are the day a step should finish.
    - Needs from the owner before Sun 22: Docker Desktop installed (it is not on this machine as of 2026-11-14), the OpenAI key, the Telegram bot token and chat id, and SMTP credentials entered in n8n.
 10. [ ] **Tue 24: buffer and finish.** Responsive pass on a phone width. Walk the document top to bottom against the running app and fix what fails. Update `README.md` (monorepo ticket 04) and `docs/backend/*.md` for everything added.
 11. [ ] **Wed 25: hand in.**
+
+### Questions for the frontend spec session
+
+A session that is asked to prepare the frontend spec asks the owner these, one at a time and with a recommendation each, before `/to-spec`. The document's "user interface" section and ADRs 0001 and 0003 to 0006 are the starting point; the owner is strong in C# and rusty in Angular.
+
+1. **The page list and the routes.** Which pages exist and at which addresses, including the four auth pages, the feed, a single post, a profile, profile settings, search, friend requests, chat and the admin pages.
+2. **What a guest sees** (open decision 3), and where a guest lands on the home address.
+3. **The app shell.** What the navigation holds on a desktop and on a phone, and where the unread count, the live notifications and the search box sit.
+4. **Chat on a phone.** One screen with the list and the conversation side by side, or two screens.
+5. **The admin panel.** One page with tabs or a page per area (users, logs, statistics, reports, moderation queue).
+6. **Languages on the 25th.** Which dictionary files ship (ADR 0006).
+7. **Where the demo runs** (open decision 4), because a hosted demo changes how the frontend is built and served.
 
 ### Days the owner is away
 
@@ -74,7 +86,7 @@ Checked against the code on 2026-11-14. Everything not listed here already exist
 - **E. Admin reads.** `GET /api/admin/logs` (`LogService` exists but is empty and nothing calls it), `GET /api/admin/statistics`, and a list of accounts in any state, which the document does not list but restoring a deactivated account needs.
 - **F. Reports and moderation.** The `Report` entity and its three endpoints; `moderationStatus` on `Post` and `Comment`, with hidden content filtered from every read that other users make; `GET /api/admin/moderation-queue` and the two `PUT /api/admin/{posts|comments}/{id}/moderation` endpoints.
 - **G. n8n plumbing.** Outbound webhooks signed with a shared secret for registration, post and comment creation, a new report and an exception (from requests and from background jobs). An API-key identity that can reach only the internal and moderation endpoints. `GET /api/internal/digest`, `GET /api/internal/birthdays`, `POST /api/internal/notifications` with the `ReceiveNotification` push it sends. `digestEmailEnabled` on `User`, editable in the profile settings.
-- **H. Email through n8n.** The welcome, password-reset, account-reactivation and security emails leave the backend as events instead of being sent by MailKit (open decision 2).
+- **H. Email through n8n.** The welcome, password-reset, account-reactivation and security emails leave the backend as events instead of being sent by MailKit (open decision 1).
 
 ## After the deadline
 

@@ -6,6 +6,16 @@ The order of work toward the full-stack deadline, 2026-11-25. Tick a step when i
 
 The schedule below has one buffer day and no other slack. If a day slips, the items under **Last in line** move, not the pages.
 
+## Awaiting the owner's review
+
+Work merged to `master` while the owner was away. It passed the full integration suite and a spec review, but the owner has not looked at it yet. Review each item, then delete its line.
+
+- **Documented-backend-features ticket 02: a post can be created with photos** (gap A, first part), merged 2026-11-14. Look at:
+  - the new `ImageStorage` (`backend/aspnetproject/Infrastructure/Services/Storage/`), the only code that touches files;
+  - the contract change: `POST /api/posts` is now `multipart/form-data`, and every post read returns `Images`;
+  - the `AddPostImages` migration (one new table), which still has to be applied to the dev database;
+  - the open points at the bottom of the ticket, under Comments.
+
 ## Open decisions
 
 Settle these before the spec session that needs them. Each has a going-in recommendation.
@@ -39,7 +49,7 @@ Dates are the day a step should finish.
    - By Fri 20: n8n, gaps G and H with the six workflows.
 3. [ ] **Any time, in parallel: the open backend tickets.** Readiness 06, 08 and 09, and openapi-document 01. Ticket 08 bites as soon as sign-in exists, 09 as soon as a date is shown, and the document promises per-user limits (06) and Swagger. Message-editing 01 (the 20-minute edit window) was done on 2026-11-14.
 4. [ ] **Mon 16: shell and auth.** Lazy-loaded feature areas, the HTTP interceptor with automatic refresh, session restore, route guards for signed-in users and administrators, and the pages: register, sign in, password reset, account reactivation.
-   - Backend alongside: **images** and **likes** (gaps A and B). They change the post and message contracts, so they land before the pages that use them.
+   - Backend alongside: **images** and **likes** (gaps A and B). Images ticket 02 (photos on a new post) is done and awaiting review. They change the post and message contracts, so they land before the pages that use them.
 5. [ ] **Tue 17: feed, posts and comments.** Feed with pagination, create a post with photos, edit and delete, like, comment, edit and delete a comment, report a post or comment.
    - Backend alongside: **feed ranking** (gap C).
 6. [ ] **Wed 18: profile, friends and search.** Profile page (bio, posts, friends), edit profile, user search, friend requests (send, accept, decline, remove; the three lists), account settings (deactivate, delete, digest opt-out), the guest view.

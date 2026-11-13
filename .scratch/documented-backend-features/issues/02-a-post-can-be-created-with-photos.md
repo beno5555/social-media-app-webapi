@@ -35,3 +35,15 @@ Out of scope: removing a photo and cleaning up files when a post is deleted (tic
 - [x] The integration test host points the upload folder at a temporary directory that does not outlive the run; tests may lower the size limit through configuration instead of uploading megabytes
 - [x] Existing post tests pass against the multipart contract
 - [x] `docs/backend/controllers.md`, `docs/backend/data.md` and `README.md` describe photos on posts
+
+## Comments
+
+**2026-11-14, implementing agent: awaiting the owner's review.** Merged to `master` with the full suite passing; listed under "Awaiting the owner's review" in `.scratch/roadmap.md`. Points to decide on during the review:
+
+- Eleven photos near 5 MB each exceed the raised request limit (`MaxFileSizeBytes × MaxImagesPerPost` + 1 MB), so the server refuses the request before the "at most 10 images" check and the client gets a framework error, not that message. Small files get the message, as tested.
+- No test sends more than the server's default 30 MB, so the raised limit is not proven under Kestrel.
+- Image fetches at `/api/images` run before the rate limiter, so they are not limited. A feed page can need up to 100 image requests.
+- Served images carry `X-Content-Type-Options: nosniff`, which the spec did not ask for.
+- `CreatePost` now declares the standard post shape, which is what it always returned (it used to declare the full shape).
+- Each test host deletes its own upload folder; the empty parent `webcity-test-uploads` in the system temp folder stays.
+- A post with photos and no text still cannot have its text edited to empty: that rule is ticket 04's.

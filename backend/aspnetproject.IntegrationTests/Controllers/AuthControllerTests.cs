@@ -22,7 +22,12 @@ public class AuthControllerTests : IAsyncLifetime
     }
 
     public Task InitializeAsync() => _dbFixture.ResetAndSeedAsync(_dbFixture.GetOptions());
-    public Task DisposeAsync() => Task.CompletedTask;
+    // Disposing the host releases its settings-file watchers; each one holds an inotify instance, and Linux caps them per user.
+    public async Task DisposeAsync()
+    {
+        _client.Dispose();
+        await _factory.DisposeAsync();
+    }
 
     [Fact]
     public async Task Login_WithValidCredentials_ReturnsAccessTokenAndSetsRefreshCookie()

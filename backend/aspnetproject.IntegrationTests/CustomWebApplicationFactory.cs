@@ -13,9 +13,16 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     // Replaces the first entry of Cors:AllowedOrigins, so tests that need a trusted origin do not depend on the settings file.
     public const string TrustedFrontendOrigin = "http://frontend.webcity.test:4200";
 
+    // The host's own switch for reloadOnChange on the default appsettings*.json sources. Those sources are built before
+    // ConfigureAppConfiguration runs, so flipping ReloadOnChange on them there has no effect. Each file watcher holds an inotify
+    // instance, and Linux caps them per user (128 in the cloud container).
+    private const string ReloadConfigOnChangeSetting = "hostBuilder:reloadConfigOnChange";
+    private const string DisabledSettingValue        = "false";
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
+        builder.UseSetting(ReloadConfigOnChangeSetting, DisabledSettingValue);
 
         builder.ConfigureAppConfiguration((context, config) =>
         {

@@ -2,7 +2,7 @@
 
 The order of work toward the full-stack deadline, 2026-11-25. Tick a step when it is done, and add new steps here. Decisions live in `docs/adr/`, rules in the conventions skill, and work items in the tickets; this file holds the order and the list of what is still missing.
 
-**Scope is fixed.** The documentation sent to the principal (`webcity-documentation.md` at the repo root, untracked) is the commitment: everything in it is due on the 25th. The old step "decide what ships" is therefore closed. The frontend comes first, because none of it exists; backend gaps are built in parallel, just before the page that needs them.
+**Scope is fixed.** The documentation sent to the principal (`webcity-documentation.md` at the repo root) is the commitment: everything in it is due on the 25th. The old step "decide what ships" is therefore closed. The frontend comes first, because none of it exists; backend gaps are built in parallel, just before the page that needs them.
 
 The schedule below has one buffer day and no other slack. If a day slips, the items under **Last in line** move, not the pages.
 
@@ -10,14 +10,17 @@ The schedule below has one buffer day and no other slack. If a day slips, the it
 
 Settle these before the spec session that needs them. Each has a going-in recommendation.
 
-1. **Shape of an unexpected server error.** The document says `ProblemDetails`; the code returns the failure envelope (decided in readiness ticket 02, and ADR 0003 builds on it). Recommendation: keep the envelope and accept the difference.
-2. **Who sends email.** The document says n8n sends every transactional email; today MailKit does. Recommendation: move it in step 9, and leave MailKit working until then.
-3. **AI moderation service.** Recommendation: OpenAI's moderation endpoint (text and images in one call). It needs an API key from the owner.
-4. **Admin and developer channels.** Telegram for both, which needs one bot token and a chat id from the owner.
-5. **What a guest sees.** Today a signed-out visitor can read a profile, a user's posts, one post and its comments. Recommendation: the frontend shows exactly that, read-only, and sends every other route to sign-in.
-6. **Hiding a reported user.** The document says a report ends in "hide the content" or "reject". Recommendation: for a `USER` report, hiding means the admin deactivates the account.
-7. **Image rules.** Recommendation: JPEG, PNG and WebP; 5 MB each; up to 10 per post and 5 per message; files under `backend/aspnetproject/wwwroot/uploads/`, gitignored.
-8. **Where the demo runs.** On the owner's machine (dev proxy, n8n in Docker) or on a host behind nginx (ADR 0001). A host costs most of a day and must come out of step 10.
+1. **Who sends email.** The document says n8n sends every transactional email; today MailKit does. Recommendation: move it in step 9, and leave MailKit working until then.
+2. **Admin and developer channels.** Telegram for both, which needs one bot token and a chat id from the owner.
+3. **What a guest sees.** Today a signed-out visitor can read a profile, a user's posts, one post and its comments. Recommendation: the frontend shows exactly that, read-only, and sends every other route to sign-in.
+4. **Hiding a reported user.** The document says a report ends in "hide the content" or "reject". Recommendation: for a `USER` report, hiding means the admin deactivates the account.
+5. **Image rules.** Recommendation: JPEG, PNG and WebP; 5 MB each; up to 10 per post and 5 per message; files under `backend/aspnetproject/wwwroot/uploads/`, gitignored.
+6. **Where the demo runs.** On the owner's machine (dev proxy, n8n in Docker) or on a host behind nginx (ADR 0001). A host costs most of a day and must come out of step 10.
+
+Settled on 2026-11-14:
+
+- **An unexpected server error keeps the failure envelope.** The document says `ProblemDetails`; the owner accepts the difference (readiness ticket 02 and ADR 0003 stand).
+- **AI moderation uses OpenAI's moderation endpoint.** The owner provides the API key before step 9.
 
 ## Now
 
@@ -29,7 +32,9 @@ Dates are the day a step should finish.
    - Consider installing one general frontend design skill first (candidate: Anthropic's `frontend-design`). Read `docs/agents/skills.md` before installing.
    - Output: the token values, a short style brief, the Styling rules in §10 of the conventions skill's TypeScript reference (replacing its temporary line), and an ADR for the toolset.
    - Then scaffold `frontend/` with the dev proxy for `/api` and `/hubs`.
-2. [ ] **Sat 14: write the tickets.** The owner runs `/to-spec` and then `/to-tickets` three times, once per group: the frontend pages (steps 4 to 8), the backend gaps (the list below), and n8n (step 9). The frontend group comes first.
+2. [ ] **Write the tickets, one group at a time.** For each group the owner runs `/to-spec` and then `/to-tickets` in a session that already holds the context, because `/to-spec` only writes down what the conversation has settled.
+   - Sat 14: the backend gaps A to F (the list below is the context) and the frontend pages of steps 4 to 8 (after open decision 3 and a short talk about the pages and routes).
+   - By Fri 20: n8n, gaps G and H with the six workflows.
 3. [ ] **Any time, in parallel: the open backend tickets.** Readiness 06, 08 and 09, message-editing 01 and openapi-document 01. Ticket 08 bites as soon as sign-in exists, 09 as soon as a date is shown, and the document promises per-user limits (06), the 20-minute edit window and Swagger.
 4. [ ] **Mon 16: shell and auth.** Lazy-loaded feature areas, the HTTP interceptor with automatic refresh, session restore, route guards for signed-in users and administrators, and the pages: register, sign in, password reset, account reactivation.
    - Backend alongside: **images** and **likes** (gaps A and B). They change the post and message contracts, so they land before the pages that use them.
@@ -44,6 +49,7 @@ Dates are the day a step should finish.
    - Sun 22: gap G, then the transactional-email and exception-alert workflows.
    - Mon 23: AI moderation, report handling, weekly digest, birthday notifications.
    - The workflows are exported as JSON into the repo, with a compose file that starts n8n.
+   - Needs from the owner before Sun 22: Docker Desktop installed (it is not on this machine as of 2026-11-14), the OpenAI key, the Telegram bot token and chat id, and SMTP credentials entered in n8n.
 10. [ ] **Tue 24: buffer and finish.** Responsive pass on a phone width. Walk the document top to bottom against the running app and fix what fails. Update `README.md` (monorepo ticket 04) and `docs/backend/*.md` for everything added.
 11. [ ] **Wed 25: hand in.**
 

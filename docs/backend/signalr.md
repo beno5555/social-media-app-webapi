@@ -108,7 +108,17 @@ No client-invokable hub methods (server ← client) exist. Typing indicators rem
 
 ## Testing
 
-Note: the earlier local-HTML-page + `@microsoft/signalr` + Live Server manual two-tab test approach (and the echo-test script) predates presence/comment-push and hasn't been re-verified against them — treat as historical context for the messaging-only hub, not a current test plan.
+Integration tests connect a real SignalR client to the test host and assert on what each connected user receives. The hub context is the real one; nothing is mocked. Example: `Hubs/MessageHubTests` in the test project.
+
+`Helpers/HubTestClient` (test project) is the shared helper:
+
+- `HubTestClient.ConnectAsync(factory, username)` signs a seeded user in through `api/auth/login` and connects over WebSockets to `hubs/messages` the way a browser client does: the token goes in an `Authorization` header on negotiate, and as `?access_token=...` on the WebSocket. Before it returns, it calls the hub once and waits for the reply. The server confirms a connection before `OnConnectedAsync` has added it to the user's group, but reads the client's calls only after that, so the reply proves the client is in its group.
+- From the moment it connects, it records every event listed in `Helpers/HubEvents.All`. A test acts first (usually through HTTP as another user) and reads afterwards, so no push is lost. Add each new server event to `HubEvents`.
+- `WaitForEventAsync<T>(eventName)` returns the oldest unread payload of that event. It fails with a message naming the user and the event if nothing arrives within 5 seconds.
+- `AssertNoEventAsync(eventName)` fails if that event has arrived. It uses a marker, not a fixed wait. The helper pushes a marker event to this one connection through the real `IHubContext<MessageHub>`, then waits for it. Earlier events are ahead of the marker on the wire, and the client runs event handlers one at a time in arrival order, so once the marker arrives they have been recorded. A call's reply is not a substitute: the .NET client handles replies on a different loop from events.
+- `InvokeAsync(methodName, args...)` calls a hub method as the user and waits up to 5 seconds for the server to finish it.
+
+Dispose each client with `await using`, and the factory in the test class's `DisposeAsync`, so no connection or host outlives its test.
 
 ## Not implemented / explicitly deferred
 

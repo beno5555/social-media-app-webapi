@@ -1,14 +1,10 @@
 ﻿using aspnetproject.Data;
-using aspnetproject.Hubs;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.AspNetCore.SignalR;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
-using Moq;
 
 namespace aspnetproject.IntegrationTests;
 
@@ -43,9 +39,6 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             {
                 services.Remove(serviceDescriptor);
             }
-
-            // services.RemoveAll<IHubContext<MessageHub>>();
-            // services.AddSingleton(Mock.Of<IHubContext<MessageHub>>());
         });
     }
 }

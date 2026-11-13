@@ -10,15 +10,15 @@ The helper must also serve a test that calls a hub method from the client, which
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Difficulty:** tricky: a new test pattern (a SignalR client against the in-memory test host, signed in with a JWT) that later tickets reuse, with timing to get right.
 
-- [ ] A shared test helper connects a SignalR client to the test host as any seeded user, signed in the way a browser client is
-- [ ] A test can wait for a named event and read its payload, and fails with a clear message if the event does not arrive in time
-- [ ] A test can assert that a connected user received no event, without a long fixed wait
-- [ ] A test can call a hub method from the client
-- [ ] Sending a text message through HTTP delivers `ReceiveMessage` to the receiver's client with the message's content and sender
-- [ ] A third connected user receives nothing for that message
-- [ ] The commented-out hub-context replacement is gone from the test host
-- [ ] The Testing section of `docs/backend/signalr.md` describes this seam in place of the historical note
+- [x] A shared test helper connects a SignalR client to the test host as any seeded user, signed in the way a browser client is
+- [x] A test can wait for a named event and read its payload, and fails with a clear message if the event does not arrive in time
+- [x] A test can assert that a connected user received no event, without a long fixed wait
+- [x] A test can call a hub method from the client
+- [x] Sending a text message through HTTP delivers `ReceiveMessage` to the receiver's client with the message's content and sender
+- [x] A third connected user receives nothing for that message
+- [x] The commented-out hub-context replacement is gone from the test host
+- [x] The Testing section of `docs/backend/signalr.md` describes this seam in place of the historical note

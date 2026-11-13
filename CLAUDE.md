@@ -41,6 +41,7 @@ No linter or formatter is configured.
 - The fixture runs `MigrateAsync()` once. Each test class then calls `ResetAndSeedAsync` (Respawn wipes everything except `__EFMigrationsHistory`, then `Fixtures/TestDataSeeder` reseeds deterministic users and ids). Tests rely on those seeded ids, and comments in each test file describe the seed state.
 - `CustomWebApplicationFactory` removes all `IHostedService`s and forces `EmailConfiguration:Enabled` to false, so mail-sending flows run normally but open no SMTP connection.
 - Test names follow `Method_Condition_ExpectedResult` and are grouped by endpoint.
+- Real-time behavior is tested with `Helpers/HubTestClient`, a real SignalR client connected to the test host as a seeded user. Never mock the hub context. Details: Testing in `docs/backend/signalr.md`.
 
 ## Architecture
 

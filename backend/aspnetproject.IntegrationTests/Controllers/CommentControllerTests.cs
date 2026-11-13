@@ -24,7 +24,6 @@ public class CommentControllerTests : IAsyncLifetime
     public Task DisposeAsync() => Task.CompletedTask;
 
     // ---------- POST /comments/posts/{postId}  (note: plural "posts") ----------
-    // Warning: comment hubcontext calls before proceeding with the tests.
     
     [Fact]
     public async Task Create_OnExistingPost_Succeeds()

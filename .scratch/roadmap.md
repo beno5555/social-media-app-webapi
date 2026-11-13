@@ -37,7 +37,7 @@ Dates are the day a step should finish.
    - Done 2026-11-14: the backend gaps A to F, as 13 tickets in `.scratch/documented-backend-features/issues/`. Tickets 01, 02 and 03 can start at once; the longest chain is 02 → 05 → 08 → 09 → 11 → 12.
    - Sat 14: the frontend pages of steps 4 to 8. The session first asks the owner the questions under **Questions for the frontend spec session** below, then the owner runs `/to-spec` and `/to-tickets`.
    - By Fri 20: n8n, gaps G and H with the six workflows.
-3. [ ] **Any time, in parallel: the open backend tickets.** Readiness 06, 08 and 09, message-editing 01 (after ticket 01 of the documented backend features, whose test helper it uses) and openapi-document 01. Ticket 08 bites as soon as sign-in exists, 09 as soon as a date is shown, and the document promises per-user limits (06), the 20-minute edit window and Swagger.
+3. [ ] **Any time, in parallel: the open backend tickets.** Readiness 06, 08 and 09, and openapi-document 01. Ticket 08 bites as soon as sign-in exists, 09 as soon as a date is shown, and the document promises per-user limits (06) and Swagger. Message-editing 01 (the 20-minute edit window) was done on 2026-11-14.
 4. [ ] **Mon 16: shell and auth.** Lazy-loaded feature areas, the HTTP interceptor with automatic refresh, session restore, route guards for signed-in users and administrators, and the pages: register, sign in, password reset, account reactivation.
    - Backend alongside: **images** and **likes** (gaps A and B). They change the post and message contracts, so they land before the pages that use them.
 5. [ ] **Tue 17: feed, posts and comments.** Feed with pagination, create a post with photos, edit and delete, like, comment, edit and delete a comment, report a post or comment.
@@ -93,3 +93,4 @@ Checked against the code on 2026-11-14. Everything not listed here already exist
 - A few end-to-end test flows (sign in, post, message). They come before component tests.
 - Russian and Spanish dictionary files (ADR 0006).
 - Translated server text, which needs a stable code on every backend failure (ADR 0006).
+- **Share one test host per test class**, once the integration suite reaches about 400 tests or a run takes more than a minute (on 2026-11-14: 159 tests, 18 s). xUnit builds a new class instance per test, so each test boots its own `CustomWebApplicationFactory`. Moving the factory into an `IClassFixture` would roughly halve the run time; the database reset per test stays.

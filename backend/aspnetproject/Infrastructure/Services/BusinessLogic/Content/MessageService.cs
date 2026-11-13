@@ -163,7 +163,7 @@ public class MessageService : BaseService
             bool belongsToCaller = message.SenderUserId == userId;
             if (belongsToCaller)
             {
-                bool canEdit = DateTime.UtcNow - message.CreatedAt > Constants.EditMessageWindow;
+                bool canEdit = DateTime.UtcNow - message.CreatedAt < Constants.EditMessageWindow;
 
                 if (canEdit)
                 {
@@ -172,7 +172,7 @@ public class MessageService : BaseService
                     await _messageRepository.SaveChangesAsync();
 
                     var messageEditedDto = MessageMapper.ToMessageEdited(message);
-                    await _hubContext.Clients.Group(userId.ToString()).SendAsync("MessageEdited", messageEditedDto);
+                    await _hubContext.Clients.Group(message.ReceiverUserId.ToString()).SendAsync("MessageEdited", messageEditedDto);
                     
                     var messageDto = MessageMapper.ToStandardDisplay(message);
                     response.Ok(messageDto, ResponseMessages.MessageEdited);

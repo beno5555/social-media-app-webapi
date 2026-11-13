@@ -133,14 +133,12 @@ No `GetMessage(id)` action — a single message isn't fetched by id from the cli
 | GET    | `api/messages/friends/no-conversation`                 | Caller's friends with no conversation yet; `ListResponse<DisplayFriendDto>`                                                                              |
 | GET    | `api/messages/conversations/unread`                    | `{ UnreadCount: int }` — distinct-sender count of unread messages, via `GetUnreadConversationsCount`                                                     |
 | PUT    | `api/messages/conversation/{otherUserId}/mark-as-read` | Mark the conversation as read. No content                                                                                                                |
-| PUT    | `api/messages/{id}`                                    | Edit own message, sender-scoped, time-limited to `Constants.EditMessageWindow` (20 minutes). Pushes `MessageEdited`                                      |
+| PUT    | `api/messages/{id}`                                    | Edit own message, sender-scoped, allowed while the message is younger than `Constants.EditMessageWindow` (20 minutes). Pushes `MessageEdited` to the receiver |
 | DELETE | `api/messages/{id}`                                    | Delete own message, sender-scoped. Not time-limited                                                                                                      |
 
 **`ValidFriendship` check** (`MessageService`) gates `SendMessage`: rejects self-messaging, nonexistent receiver, and non-friends, collapsing to one `ApplicationResponse.Fail` → `BadRequest`, same oracle-avoidance reasoning as elsewhere.
 
 **Repository note:** `GetConversationFriendsAsync` uses raw SQL (`SqlQueryRaw<T>`) — grouped latest-message-per-partner via `CROSS APPLY`, plus explicit `IsDeleted`/`IsDeactivated` bit-cast columns since raw SQL bypasses the `User` query filter entirely. Projection type (`ConversationFriendProjection`) is flat; reshaped into `ConversationFriendDto` in the mapper.
-
-**Possible bug — edit-window comparison looks inverted.** `EditMessage`'s check is `bool canEdit = DateTime.UtcNow - message.CreatedAt > Constants.EditMessageWindow;` — as written, `canEdit` is `true` once *more* time than the window has elapsed (i.e. after the window closes), and `false` while still inside it. That's the opposite of "editable within a 20-minute window" as described elsewhere in this doc set and in `Constants.EditMessageWindow`'s name. Worth confirming against actual behavior before relying on either reading.
 
 ### `AuthController`
 

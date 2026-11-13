@@ -180,6 +180,14 @@ public static class TestDataSeeder
                     Id = 4, SenderUserId = 3, ReceiverUserId = 2,
                     MessageContent = "Latest unread message from Bob to Alice.", Seen = false,
                     CreatedAt = DateTime.UtcNow
+                },
+                // A fixed time in the past, so it is always older than Constants.EditMessageWindow.
+                new Message
+                {
+                    Id = 5, SenderUserId = 2, ReceiverUserId = 3,
+                    MessageContent = "Old message from Alice to Bob, past the edit window.", Seen = true,
+                    SeenAt = new DateTime(2026, 9, 1, 10, 5, 0, DateTimeKind.Utc),
+                    CreatedAt = new DateTime(2026, 9, 1, 10, 0, 0, DateTimeKind.Utc)
                 }
             );
 
@@ -262,7 +270,7 @@ public static class TestDataSeeder
         await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Users', RESEED, 7)");
         await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Friendships', RESEED, 4)");
         await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Posts', RESEED, 5)");
-        await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Messages', RESEED, 4)");
+        await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Messages', RESEED, 5)");
         await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Comments', RESEED, 5)");
         await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Logs', RESEED, 5)");
     }

@@ -12,7 +12,7 @@ For the earlier, API-only state of this repository and the history behind it, se
 - Create, view, update and delete posts; a friends-only feed
 - Comment on posts and edit own comments; delete a comment as its author, as the post's author, or as an administrator; live `ReceiveComment` push to the post's author
 - Send, accept, decline and remove friend requests; view friends, pending and sent requests; search users by username
-- Send, edit and delete messages between friends; live push (`ReceiveMessage`, `MessageEdited`, `MessageSeen`) over SignalR; paginated conversations and read receipts. **Possible bug:** editing is meant to be limited to a 20-minute window, but the check looks inverted in the code (see `docs/backend/controllers.md`)
+- Send, edit and delete messages between friends; live push (`ReceiveMessage`, `MessageEdited`, `MessageSeen`) over SignalR; paginated conversations and read receipts. A message can be edited for 20 minutes after it is sent, and the receiver sees the edit live
 - Presence: `UserOnline` / `UserOffline` broadcast to friends when a user's first connection opens or last connection closes
 - View a user's profile; edit own profile
 - Roles (`User`, `Administrator`): an administrator can create, update, deactivate, reactivate and soft-delete other users' accounts, delete any post or comment, and assign or remove the `Administrator` role

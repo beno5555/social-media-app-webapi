@@ -89,7 +89,7 @@ Policy name: `OriginPolicy` (`CorsExtensions.AddCorsPolicies`), applied globally
 |---|---|---|---|
 | `ReceiveMessage` | `SendMessage` persists successfully | `PushMessageDto` | Receiver's group |
 | `MessageSeen` | Conversation marked read (last unread message from the other user, seen) | `{ SeenBy, SeenAt }` | Sender's group |
-| `MessageEdited` | Message edit persists successfully | `MessageEditedDto` | Editor's own group |
+| `MessageEdited` | Message edit persists successfully | `MessageEditedDto` | Receiver's group only (the editor gets the edited message in the HTTP response) |
 | `ReceiveComment` | A comment is added to a post, by someone other than the post's author | `NotifyCommentDto` | Post author's group |
 | `UserOnline` | A user's first connection opens | `{ UserId }` | Each accepted friend's group |
 | `UserOffline` | A user's last connection closes | `{ UserId, LastActiveAt }` | Each accepted friend's group |

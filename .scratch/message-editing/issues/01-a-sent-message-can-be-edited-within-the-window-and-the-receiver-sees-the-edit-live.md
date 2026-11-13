@@ -16,15 +16,15 @@ The docs currently record the inverted window as a possible bug and name the edi
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Difficulty:** tricky: real-time behaviour with no existing test pattern for asserting where a SignalR push went; the implementer has to choose that seam.
 
-- [ ] Editing a message younger than the edit window succeeds and returns the edited message, marked as edited
-- [ ] Editing a message older than the edit window fails with the "edit window expired" message
-- [ ] A successful edit pushes `MessageEdited` to the receiver's group and to no other group, and a failed edit pushes nothing
-- [ ] Integration tests cover both window cases, the push target, and the existing refusals (receiver, outsider, unknown message)
-- [ ] `docs/backend/signalr.md`, `docs/backend/controllers.md` and `README.md` no longer carry the possible-bug note and state the receiver as the target of `MessageEdited`
+- [x] Editing a message younger than the edit window succeeds and returns the edited message, marked as edited
+- [x] Editing a message older than the edit window fails with the "edit window expired" message
+- [x] A successful edit pushes `MessageEdited` to the receiver's group and to no other group, and a failed edit pushes nothing
+- [x] Integration tests cover both window cases, the push target, and the existing refusals (receiver, outsider, unknown message)
+- [x] `docs/backend/signalr.md`, `docs/backend/controllers.md` and `README.md` no longer carry the possible-bug note and state the receiver as the target of `MessageEdited`
 
 ## Comments
 

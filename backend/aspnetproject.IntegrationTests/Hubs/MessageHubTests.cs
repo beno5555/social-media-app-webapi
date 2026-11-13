@@ -70,4 +70,81 @@ public class MessageHubTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
         await charlie.AssertNoEventAsync(HubEvents.ReceiveMessage);
     }
+
+    // ---------- PUT /messages/{id} → MessageEdited ----------
+    // Message 3: alice (2) → bob (3), inside the edit window. Message 5: alice → bob, past the edit window.
+
+    [Fact]
+    public async Task EditMessage_WithinWindow_DeliversMessageEditedToReceiver()
+    {
+        await using var bob = await HubTestClient.ConnectAsync(_factory, "bob");
+        var token = await AuthTestHelper.LoginAsync(_client, "alice", TestDataSeeder.SharedPlaintextPassword);
+        AuthTestHelper.AttachToken(_client, token);
+
+        var response = await _client.PutAsJsonAsync("api/messages/3", new EditMessageDto
+        {
+            NewContent = "Bob, I meant this."
+        });
+        var pushed = await bob.WaitForEventAsync<MessageEditedDto>(HubEvents.MessageEdited);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(3, pushed.Id);
+        Assert.Equal("Bob, I meant this.", pushed.Content);
+    }
+
+    [Fact]
+    public async Task EditMessage_WithinWindow_DeliversNothingToEditorOrThirdUser()
+    {
+        await using var alice   = await HubTestClient.ConnectAsync(_factory, "alice");
+        await using var bob     = await HubTestClient.ConnectAsync(_factory, "bob");
+        await using var charlie = await HubTestClient.ConnectAsync(_factory, "charlie");
+        var token = await AuthTestHelper.LoginAsync(_client, "alice", TestDataSeeder.SharedPlaintextPassword);
+        AuthTestHelper.AttachToken(_client, token);
+
+        var response = await _client.PutAsJsonAsync("api/messages/3", new EditMessageDto
+        {
+            NewContent = "Only Bob should see this edit."
+        });
+        await bob.WaitForEventAsync<MessageEditedDto>(HubEvents.MessageEdited);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        await alice.AssertNoEventAsync(HubEvents.MessageEdited);
+        await charlie.AssertNoEventAsync(HubEvents.MessageEdited);
+    }
+
+    [Fact]
+    public async Task EditMessage_PastWindow_DeliversNothing()
+    {
+        await using var alice = await HubTestClient.ConnectAsync(_factory, "alice");
+        await using var bob   = await HubTestClient.ConnectAsync(_factory, "bob");
+        var token = await AuthTestHelper.LoginAsync(_client, "alice", TestDataSeeder.SharedPlaintextPassword);
+        AuthTestHelper.AttachToken(_client, token);
+
+        var response = await _client.PutAsJsonAsync("api/messages/5", new EditMessageDto
+        {
+            NewContent = "Too late to correct this."
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        await alice.AssertNoEventAsync(HubEvents.MessageEdited);
+        await bob.AssertNoEventAsync(HubEvents.MessageEdited);
+    }
+
+    [Fact]
+    public async Task EditMessage_ByReceiver_DeliversNothing()
+    {
+        await using var alice = await HubTestClient.ConnectAsync(_factory, "alice");
+        await using var bob   = await HubTestClient.ConnectAsync(_factory, "bob");
+        var token = await AuthTestHelper.LoginAsync(_client, "bob", TestDataSeeder.SharedPlaintextPassword);
+        AuthTestHelper.AttachToken(_client, token);
+
+        var response = await _client.PutAsJsonAsync("api/messages/3", new EditMessageDto // alice's message
+        {
+            NewContent = "Bob rewrites Alice's words."
+        });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        await alice.AssertNoEventAsync(HubEvents.MessageEdited);
+        await bob.AssertNoEventAsync(HubEvents.MessageEdited);
+    }
 }

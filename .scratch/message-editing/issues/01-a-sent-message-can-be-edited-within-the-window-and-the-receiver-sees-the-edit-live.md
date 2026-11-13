@@ -25,3 +25,10 @@ The docs currently record the inverted window as a possible bug and name the edi
 - [ ] A successful edit pushes `MessageEdited` to the receiver's group and to no other group, and a failed edit pushes nothing
 - [ ] Integration tests cover both window cases, the push target, and the existing refusals (receiver, outsider, unknown message)
 - [ ] `docs/backend/signalr.md`, `docs/backend/controllers.md` and `README.md` no longer carry the possible-bug note and state the receiver as the target of `MessageEdited`
+
+## Comments
+
+2026-11-14, from the documented-backend-features spec:
+
+- The way to observe a push is now decided with the owner: tests connect a real SignalR client to the test host and assert on what each connected user receives. The commented-out hub-context replacement in the test host is not the route.
+- The shared helper is built by ticket 01 of `.scratch/documented-backend-features/issues/`. Implement that ticket first and use its helper here. If this ticket is taken first anyway, build the helper to that ticket's acceptance criteria.

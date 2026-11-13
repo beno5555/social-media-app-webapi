@@ -53,6 +53,10 @@ Dates are the day a step should finish.
 10. [ ] **Tue 24: buffer and finish.** Responsive pass on a phone width. Walk the document top to bottom against the running app and fix what fails. Update `README.md` (monorepo ticket 04) and `docs/backend/*.md` for everything added.
 11. [ ] **Wed 25: hand in.**
 
+### Days the owner is away
+
+The owner expects to lose more than a day, which is more than the buffer. The backend tickets (step 3 and gaps A to F) are the work that can run without the owner: they are covered by integration tests and can be implemented in a cloud session and reviewed afterwards. The pages cannot, because someone has to look at them. So the backend tickets are written first, on Sat 14, and a day away is spent on them, not lost.
+
 ### Last in line
 
 If time runs short, these are finished last, in this order from the end: the weekly digest, birthday notifications, grouping of repeated exception alerts, automatic hiding after several reports, the mutual-friends tier of the feed ranking, the activity part of the statistics page.

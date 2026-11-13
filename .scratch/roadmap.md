@@ -13,14 +13,14 @@ Settle these before the spec session that needs them. Each has a going-in recomm
 1. **Who sends email.** The document says n8n sends every transactional email; today MailKit does. Recommendation: move it in step 9, and leave MailKit working until then.
 2. **Admin and developer channels.** Telegram for both, which needs one bot token and a chat id from the owner.
 3. **What a guest sees.** Today a signed-out visitor can read a profile, a user's posts, one post and its comments. Recommendation: the frontend shows exactly that, read-only, and sends every other route to sign-in.
-4. **Hiding a reported user.** The document says a report ends in "hide the content" or "reject". Recommendation: for a `USER` report, hiding means the admin deactivates the account.
-5. **Image rules.** Recommendation: JPEG, PNG and WebP; 5 MB each; up to 10 per post and 5 per message; files under `backend/aspnetproject/wwwroot/uploads/`, gitignored.
-6. **Where the demo runs.** On the owner's machine (dev proxy, n8n in Docker) or on a host behind nginx (ADR 0001). A host costs most of a day and must come out of step 10.
+4. **Image rules.** Recommendation: JPEG, PNG and WebP; 5 MB each; up to 10 per post and 5 per message; files under `backend/aspnetproject/wwwroot/uploads/`, gitignored.
+5. **Where the demo runs.** On the owner's machine (dev proxy, n8n in Docker) or on a host behind nginx (ADR 0001). A host costs most of a day and must come out of step 10.
 
 Settled on 2026-11-14:
 
 - **An unexpected server error keeps the failure envelope.** The document says `ProblemDetails`; the owner accepts the difference (readiness ticket 02 and ADR 0003 stand).
 - **AI moderation uses OpenAI's moderation endpoint.** The owner provides the API key before step 9.
+- **Hiding a reported user means deactivating the account.** For a `USER` report, the admin's "hide" decision deactivates that user.
 
 ## Now
 

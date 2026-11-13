@@ -49,6 +49,7 @@ public partial class Program
 
             app.UseExceptionHandler();
             app.UseHttpsRedirection();
+            app.UseImageStorage();
             app.UseRouting();
             
             app.UseCors("OriginPolicy");

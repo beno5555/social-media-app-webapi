@@ -7,6 +7,7 @@ namespace aspnetproject.Data;
 public class ApplicationDbContext : DbContext
 {
     public DbSet<Post>         Posts         { get; set; }
+    public DbSet<PostImage>    PostImages    { get; set; }
     public DbSet<Comment>      Comments      { get; set; }
     public DbSet<Friendship>   Friendships   { get; set; }
     public DbSet<Message>      Messages      { get; set; }

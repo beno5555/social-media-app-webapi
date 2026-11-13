@@ -19,6 +19,21 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     private const string ReloadConfigOnChangeSetting = "hostBuilder:reloadConfigOnChange";
     private const string DisabledSettingValue        = "false";
 
+    private const string UploadFolderSetting      = "ImageStorage:UploadFolder";
+    private const string TestUploadFolderRootName = "webcity-test-uploads";
+
+    private readonly IReadOnlyDictionary<string, string?> _settingOverrides;
+
+    // Each host stores uploads in its own temporary folder, removed when the host is disposed.
+    public string UploadFolder { get; } =
+        Path.Combine(Path.GetTempPath(), TestUploadFolderRootName, Guid.NewGuid().ToString("N"));
+
+    // settingOverrides win over the settings file and the suite's defaults, e.g. a lower ImageStorage:MaxFileSizeBytes.
+    public CustomWebApplicationFactory(IReadOnlyDictionary<string, string?>? settingOverrides = null)
+    {
+        _settingOverrides = settingOverrides ?? new Dictionary<string, string?>();
+    }
+
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.UseEnvironment("Testing");
@@ -32,8 +47,11 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
                 ["EmailConfiguration:Enabled"] = "false",
-                ["Cors:AllowedOrigins:0"] = TrustedFrontendOrigin
+                ["Cors:AllowedOrigins:0"] = TrustedFrontendOrigin,
+                [UploadFolderSetting] = UploadFolder
             });
+
+            config.AddInMemoryCollection(_settingOverrides);
         });
 
         builder.ConfigureServices(services =>
@@ -47,5 +65,26 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
                 services.Remove(serviceDescriptor);
             }
         });
+    }
+
+    public override async ValueTask DisposeAsync()
+    {
+        await base.DisposeAsync();
+        DeleteUploadFolder();
+    }
+
+    protected override void Dispose(bool disposing)
+    {
+        base.Dispose(disposing);
+        DeleteUploadFolder();
+    }
+
+    private void DeleteUploadFolder()
+    {
+        bool folderExists = Directory.Exists(UploadFolder);
+        if (folderExists)
+        {
+            Directory.Delete(UploadFolder, recursive: true);
+        }
     }
 }

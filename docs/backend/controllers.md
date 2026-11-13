@@ -52,7 +52,7 @@ Route: `api/posts`. Inherits `BaseController`. `[Authorize]` at controller level
 
 | Method | Route                     | Auth      | Notes                                              |
 |--------|---------------------------|-----------|----------------------------------------------------|
-| POST   | `api/posts`               | Required  | Create                                             |
+| POST   | `api/posts`               | Required  | Create, `multipart/form-data`, with up to 10 photos |
 | GET    | `api/posts/feed`          | Required  | Friends-only, via `PostService.GetFeedAsync`       |
 | GET    | `api/posts/mine`          | Required  | Caller's own posts                                 |
 | GET    | `api/posts/{id}`          | Anonymous | Single post (with comments, split query)           |
@@ -61,6 +61,17 @@ Route: `api/posts`. Inherits `BaseController`. `[Authorize]` at controller level
 | DELETE | `api/posts/{id}`          | Required  | Delete, ownership-scoped **or admin**              |
 
 `GetOwnPosts` (`/mine`) and `GetPostsByUser` (`/user/{userId}`) both call `PostService.GetByUserIdAsync`.
+
+**Creating a post with photos.** `POST api/posts` takes `multipart/form-data` (`CreatePostDto`): `PostTitle` (required), `PostContent` (optional) and `Images` (zero or more files, in display order). A post needs a title and either text or at least one photo (`ResponseMessages.TextOrImageRequired`). A JSON body gets `415`. The response is `201` with the standard post shape. Every post read (`{id}`, `feed`, `mine`, `user/{userId}`) carries `Images`: a list of `ImageDto` (`Id`, `Address`, `OrderIndex`) in upload order. Editing stays text-only (`PUT` keeps its JSON body).
+
+**Images.** `ImageStorage` (`Infrastructure/Services/Storage`) owns all file handling, and nothing else touches the disk:
+
+- **Checks, all before anything is saved.** At most `MaxImagesPerPost` files (`TooManyPostImages`), each at most `MaxFileSizeBytes` (`ImageTooLarge`), and each a JPEG, PNG or WebP judged by its leading bytes, never by its name or declared content type (`ImageFormatNotAccepted`). If any file fails, the request is refused with `400` and no post or file is stored. If saving a file or the post fails unexpectedly, the files already written are deleted before the exception reaches `GlobalExceptionHandler`.
+- **Names and addresses.** Files are saved as `{guid}{extension}`, with the extension taken from the detected format; the client's file name is never used. The stored and returned address is relative: `/api/images/{name}`, so only `/api` and `/hubs` cross the proxy (ADR 0001).
+- **Serving.** `UseImageStorage` (`Extensions/ImageStorageExtensions.cs`) serves the upload folder as static files at `/api/images`, before routing, CORS and the rate limiter. Anyone can fetch an image, signed in or not, because an image tag cannot send the in-memory access token (ADR 0004). Responses carry `X-Content-Type-Options: nosniff`.
+- **Configuration** (`ImageStorageConfiguration`, section `ImageStorage`, every key optional): `UploadFolder` (default `Uploads`, relative to the content root, gitignored), `MaxFileSizeBytes` (default 5 MB), `MaxImagesPerPost` (default 10).
+- **Request size.** The server's default request limit (30 MB) is smaller than ten 5 MB photos, so `PostUploadRequestSizeFilter` raises the body and multipart limits of `POST api/posts` to `MaxFileSizeBytes × MaxImagesPerPost` plus 1 MB for the text fields.
+- **Not yet built:** removing a photo, deleting a post's files with the post (a deleted post's `PostImages` rows cascade, its files stay on disk), photos on messages.
 
 **Ownership checks** (`Update`) remain a scoped comparison in the service (`post.UserId == userId`) rather than a separate authorization step. **Delete now also accepts admins**: `DeletePostAsync(callerId, isAdmin, id)` allows the post owner *or* a caller with the `Administrator` role, sourced from `BaseController.IsAdministrator()`.
 

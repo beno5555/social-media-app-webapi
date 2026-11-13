@@ -1,5 +1,7 @@
-﻿using aspnetproject.Common.Domain;
+﻿using System.Net.Mime;
+using aspnetproject.Common.Domain;
 using aspnetproject.Controllers.Base;
+using aspnetproject.Controllers.Filters;
 using aspnetproject.Extensions;
 using aspnetproject.Infrastructure.Dtos.Posts;
 using aspnetproject.Infrastructure.Queries;
@@ -22,8 +24,10 @@ public class PostController : BaseController
     }
     
     [HttpPost]
+    [Consumes(MediaTypeNames.Multipart.FormData)]
+    [TypeFilter(typeof(PostUploadRequestSizeFilter))]
     [EnableRateLimiting(RateLimitConfig.Policies.CreatePost)]
-    public async Task<ActionResult<ApplicationResponse<FullPostDisplayDto>>> CreatePost([FromBody] CreatePostDto createPostDto)
+    public async Task<ActionResult<ApplicationResponse<StandardPostDisplayDto>>> CreatePost([FromForm] CreatePostDto createPostDto)
     {
         var userId   = GetUserId();
         var response = await _postService.UploadPost(userId, createPostDto);

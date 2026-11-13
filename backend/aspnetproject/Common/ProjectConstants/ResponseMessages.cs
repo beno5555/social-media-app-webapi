@@ -170,6 +170,17 @@ public static class ResponseMessages
     
     #endregion
 
+    #region Images
+
+    public const string ImageFormatNotAccepted = "Only JPEG, PNG and WebP images are accepted";
+
+    public static readonly Func<double, string> ImageTooLarge =
+        maxSizeInMegabytes => $"Each image must be {maxSizeInMegabytes:0.###} MB or smaller";
+
+    public static readonly Func<int, string> TooManyPostImages = maxImageCount => $"A post can have at most {maxImageCount} images";
+
+    #endregion
+
     #region Posts
     
     public const string PostNotFound  = $"Post {NotFound}";
@@ -178,8 +189,8 @@ public static class ResponseMessages
     public const string PostUpdated   = $"Post {Updated} {Successfully}";
     public const string PostDeleted   = $"Post {Deleted} {Successfully}";
 
-    public const string ContentRequired = $"Post Content {IsRequired}";
-    public const string TitleRequired   = $"Post Title {IsRequired}";
+    public const string TextOrImageRequired = $"Post Text or at least one Image {IsRequired}";
+    public const string TitleRequired       = $"Post Title {IsRequired}";
 
     public const string CouldNotUpdatePost = $"{CouldNot} {Update} Post";
     public const string CouldNotDeletePost = $"{CouldNot} {Delete} Post";

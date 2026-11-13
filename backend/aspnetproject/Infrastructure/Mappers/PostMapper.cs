@@ -1,5 +1,6 @@
 ﻿using aspnetproject.Data.Models;
 using aspnetproject.Infrastructure.Dtos.Comments;
+using aspnetproject.Infrastructure.Dtos.Images;
 using aspnetproject.Infrastructure.Dtos.Posts;
 using aspnetproject.Infrastructure.Dtos.Users;
 
@@ -7,13 +8,16 @@ namespace aspnetproject.Infrastructure.Mappers;
 
 public static class PostMapper
 {
-    public static Post ToEntity(int userId, CreatePostDto createPostDto)
+    public static Post ToEntity(int userId, CreatePostDto createPostDto, IReadOnlyList<string> imageAddresses)
     {
         return new Post
         {
             UserId = userId,
             PostTitle = createPostDto.PostTitle,
-            PostContent = createPostDto.PostContent,
+            PostContent = createPostDto.PostContent ?? string.Empty,
+            Images = imageAddresses
+                .Select((address, index) => new PostImage { Address = address, OrderIndex = index })
+                .ToList()
         };
     }
 
@@ -32,6 +36,7 @@ public static class PostMapper
 
             PostContent = post.PostContent,
             UploadedAt = post.CreatedAt,
+            Images = ToImageDtos(post),
             
             Comments = post.Comments.Select(comment => new StandardCommentDto
             {
@@ -62,6 +67,7 @@ public static class PostMapper
 
             PostContent = post.PostContent,
             UploadedAt = post.CreatedAt,
+            Images = ToImageDtos(post),
         };
     }
     
@@ -76,4 +82,16 @@ public static class PostMapper
         };
     }
 
+    private static List<ImageDto> ToImageDtos(Post post)
+    {
+        return post.Images
+            .OrderBy(image => image.OrderIndex)
+            .Select(image => new ImageDto
+            {
+                Id = image.Id,
+                Address = image.Address,
+                OrderIndex = image.OrderIndex
+            })
+            .ToList();
+    }
 }

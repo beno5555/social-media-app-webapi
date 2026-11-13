@@ -19,19 +19,19 @@ Out of scope: removing a photo and cleaning up files when a post is deleted (tic
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Difficulty:** tricky: the first file upload in the codebase, a security boundary (content check, server-made names), and a contract change to multipart with a new test-host setting.
 
-- [ ] A post created with a title, text and several photos returns the post with its photos in upload order, each with an id, a relative address under `/api` and an order index
-- [ ] Fetching a returned address returns the photo's bytes, signed in or not
-- [ ] A post with photos and no text is accepted, and a post with text and no photos is accepted as before
-- [ ] A post with neither text nor photos, or with no title, is refused
-- [ ] A file whose content is not JPEG, PNG or WebP is refused whatever its name or declared type says
-- [ ] A photo over the size limit and a request with more than 10 photos are each refused with a clear message
-- [ ] When any file is refused, no post is saved and no file is stored
-- [ ] Every post read (by id, the feed, a user's posts, own posts) returns the post's photos in order
-- [ ] The image limits and the upload folder are read from configuration, default sensibly when the section is missing, and are added to the prerequisites in `CLAUDE.md`; the default upload folder is gitignored
-- [ ] The integration test host points the upload folder at a temporary directory that does not outlive the run; tests may lower the size limit through configuration instead of uploading megabytes
-- [ ] Existing post tests pass against the multipart contract
-- [ ] `docs/backend/controllers.md`, `docs/backend/data.md` and `README.md` describe photos on posts
+- [x] A post created with a title, text and several photos returns the post with its photos in upload order, each with an id, a relative address under `/api` and an order index
+- [x] Fetching a returned address returns the photo's bytes, signed in or not
+- [x] A post with photos and no text is accepted, and a post with text and no photos is accepted as before
+- [x] A post with neither text nor photos, or with no title, is refused
+- [x] A file whose content is not JPEG, PNG or WebP is refused whatever its name or declared type says
+- [x] A photo over the size limit and a request with more than 10 photos are each refused with a clear message
+- [x] When any file is refused, no post is saved and no file is stored
+- [x] Every post read (by id, the feed, a user's posts, own posts) returns the post's photos in order
+- [x] The image limits and the upload folder are read from configuration, default sensibly when the section is missing, and are added to the prerequisites in `CLAUDE.md`; the default upload folder is gitignored
+- [x] The integration test host points the upload folder at a temporary directory that does not outlive the run; tests may lower the size limit through configuration instead of uploading megabytes
+- [x] Existing post tests pass against the multipart contract
+- [x] `docs/backend/controllers.md`, `docs/backend/data.md` and `README.md` describe photos on posts

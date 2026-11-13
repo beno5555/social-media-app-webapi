@@ -1,5 +1,9 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
+using aspnetproject.Common.Domain;
+using aspnetproject.Common.ProjectConstants;
+using aspnetproject.Infrastructure.Dtos.Images;
+using aspnetproject.Infrastructure.Dtos.Posts;
 using aspnetproject.IntegrationTests.Fixtures;
 using aspnetproject.IntegrationTests.Helpers;
 
@@ -182,15 +186,48 @@ public class PostControllerTests : IAsyncLifetime
     }
 
     // ---------- POST /posts ----------
+    // multipart/form-data: PostTitle, PostContent, Images (up to 10). A post needs a title and either text or a photo.
+
+    [Fact]
+    public async Task Create_WithTitleTextAndPhotos_ReturnsPhotosInUploadOrder()
+    {
+        await LoginAsync("diana");
+
+        var response = await _client.PostAsync("api/posts", PostForm.Create("Diana's Album", "Three photos",
+            Png(1), Jpeg(2), WebP(3)));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+
+        var post = await ReadDataAsync<StandardPostDisplayDto>(response);
+        Assert.Equal([0, 1, 2], post.Images.Select(image => image.OrderIndex));
+        Assert.All(post.Images, image =>
+        {
+            Assert.True(image.Id > 0);
+            Assert.StartsWith("/api/", image.Address);
+        });
+        Assert.Equal(3, post.Images.Select(image => image.Id).Distinct().Count());
+    }
+
+    [Fact]
+    public async Task Create_ReturnedPhotoAddresses_ServeThePhotosToAnyone()
+    {
+        await LoginAsync("diana");
+        var response = await _client.PostAsync("api/posts", PostForm.Create("Diana's Album", "Two photos",
+            Png(1), Jpeg(2)));
+        var post = await ReadDataAsync<StandardPostDisplayDto>(response);
+
+        _client.DefaultRequestHeaders.Authorization = null;
+        var firstPhoto  = await _client.GetByteArrayAsync(post.Images[0].Address);
+        var secondPhoto = await _client.GetByteArrayAsync(post.Images[1].Address);
+
+        Assert.Equal(TestImages.Png(1), firstPhoto);
+        Assert.Equal(TestImages.Jpeg(2), secondPhoto);
+    }
 
     [Fact]
     public async Task Create_WithoutToken_ReturnsUnauthorized()
     {
-        var response = await _client.PostAsJsonAsync("api/posts", new
-        {
-            PostTitle = "New Post",
-            PostContent = "Content"
-        });
+        var response = await _client.PostAsync("api/posts", PostForm.Create("New Post", "Content"));
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
@@ -198,16 +235,11 @@ public class PostControllerTests : IAsyncLifetime
     [Fact]
     public async Task Create_WithToken_CreatesPostOwnedByCaller()
     {
-        var token = await AuthTestHelper.LoginAsync(_client, "diana", TestDataSeeder.SharedPlaintextPassword);
-        AuthTestHelper.AttachToken(_client, token);
+        await LoginAsync("diana");
 
-        var createResponse = await _client.PostAsJsonAsync("api/posts", new
-        {
-            PostTitle = "Diana's New Post",
-            PostContent = "Fresh content"
-        });
+        var createResponse = await _client.PostAsync("api/posts", PostForm.Create("Diana's New Post", "Fresh content"));
 
-        Assert.True(createResponse.StatusCode is HttpStatusCode.OK or HttpStatusCode.Created);
+        Assert.Equal(HttpStatusCode.Created, createResponse.StatusCode);
 
         var mineResponse = await _client.GetAsync("api/posts/mine");
         var mineBody = await mineResponse.Content.ReadAsStringAsync();
@@ -218,16 +250,169 @@ public class PostControllerTests : IAsyncLifetime
     [Fact]
     public async Task Create_WithEmptyTitle_ReturnsBadRequest()
     {
-        var token = await AuthTestHelper.LoginAsync(_client, "alice", TestDataSeeder.SharedPlaintextPassword);
-        AuthTestHelper.AttachToken(_client, token);
+        await LoginAsync("alice");
 
-        var response = await _client.PostAsJsonAsync("api/posts", new
-        {
-            PostTitle = "",
-            PostContent = "Content"
-        });
+        var response = await _client.PostAsync("api/posts", PostForm.Create("", "Content"));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_WithPhotosAndNoText_ReturnsCreated()
+    {
+        await LoginAsync("diana");
+
+        var response = await _client.PostAsync("api/posts", PostForm.Create("Just a picture", null, Jpeg(1)));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var post = await ReadDataAsync<StandardPostDisplayDto>(response);
+        Assert.Single(post.Images);
+    }
+
+    [Fact]
+    public async Task Create_WithTextAndNoPhotos_ReturnsPostWithNoPhotos()
+    {
+        await LoginAsync("diana");
+
+        var response = await _client.PostAsync("api/posts", PostForm.Create("Words only", "No pictures here"));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        var post = await ReadDataAsync<StandardPostDisplayDto>(response);
+        Assert.Empty(post.Images);
+    }
+
+    [Fact]
+    public async Task Create_WithNeitherTextNorPhotos_ReturnsBadRequest()
+    {
+        await LoginAsync("diana");
+
+        var response = await _client.PostAsync("api/posts", PostForm.Create("Empty post", "   "));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(ResponseMessages.TextOrImageRequired, await ReadMessageAsync(response));
+    }
+
+    [Fact]
+    public async Task Create_WithoutTitle_ReturnsBadRequest()
+    {
+        await LoginAsync("diana");
+
+        var response = await _client.PostAsync("api/posts", PostForm.Create(null, "Content", Jpeg(1)));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_WithScriptNamedAndTypedAsJpeg_ReturnsBadRequest()
+    {
+        await LoginAsync("diana");
+        var disguisedScript = new PostFormFile(TestImages.NotAnImage(), "photo.jpg", TestImages.JpegContentType);
+
+        var response = await _client.PostAsync("api/posts", PostForm.Create("Sneaky", "Content", disguisedScript));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(ResponseMessages.ImageFormatNotAccepted, await ReadMessageAsync(response));
+    }
+
+    [Fact]
+    public async Task Create_WithPhotoOverSizeLimit_ReturnsBadRequestWithLimit()
+    {
+        // The limit is lowered through configuration, so the test does not upload megabytes.
+        await using var factory = new CustomWebApplicationFactory(new Dictionary<string, string?>
+        {
+            ["ImageStorage:MaxFileSizeBytes"] = "1024"
+        });
+        using var client = factory.CreateClient();
+        AuthTestHelper.AttachToken(client, await AuthTestHelper.LoginAsync(client, "diana", TestDataSeeder.SharedPlaintextPassword));
+        var oversizedPhoto = new PostFormFile(TestImages.JpegOfSize(1025), "big.jpg", TestImages.JpegContentType);
+
+        var response = await client.PostAsync("api/posts", PostForm.Create("Too big", "Content", oversizedPhoto));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("Each image must be 0.001 MB or smaller", await ReadMessageAsync(response));
+    }
+
+    [Fact]
+    public async Task Create_WithElevenPhotos_ReturnsBadRequestWithLimit()
+    {
+        await LoginAsync("diana");
+        var photos = Enumerable.Range(1, 11).Select(marker => Jpeg((byte)marker)).ToArray();
+
+        var response = await _client.PostAsync("api/posts", PostForm.Create("Too many", "Content", photos));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal("A post can have at most 10 images", await ReadMessageAsync(response));
+    }
+
+    [Fact]
+    public async Task Create_WithTenPhotos_ReturnsCreated()
+    {
+        await LoginAsync("diana");
+        var photos = Enumerable.Range(1, 10).Select(marker => Jpeg((byte)marker)).ToArray();
+
+        var response = await _client.PostAsync("api/posts", PostForm.Create("Ten photos", "Content", photos));
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task Create_WhenOneFileIsRefused_SavesNoPostAndStoresNoFile()
+    {
+        await LoginAsync("diana");
+        var script = new PostFormFile(TestImages.NotAnImage(), "photo.png", TestImages.PngContentType);
+
+        var response = await _client.PostAsync("api/posts", PostForm.Create("Half good", "Content", Png(1), script));
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        var mineBody = await (await _client.GetAsync("api/posts/mine")).Content.ReadAsStringAsync();
+        Assert.DoesNotContain("Half good", mineBody);
+        Assert.Empty(Directory.EnumerateFiles(_factory.UploadFolder));
+    }
+
+    // ---------- photos on every post read ----------
+    // bob (3) creates a post with photos; alice (2) is his accepted friend.
+
+    [Fact]
+    public async Task GetById_PostWithPhotos_ReturnsPhotosInOrder()
+    {
+        int postId = await CreateBobsPhotoPostAsync();
+        _client.DefaultRequestHeaders.Authorization = null;
+
+        var post = await ReadDataAsync<FullPostDisplayDto>(await _client.GetAsync($"api/posts/{postId}"));
+
+        AssertBobsPhotosInOrder(post.Images);
+    }
+
+    [Fact]
+    public async Task GetFeed_PostWithPhotos_ReturnsPhotosInOrder()
+    {
+        await CreateBobsPhotoPostAsync();
+        await LoginAsync("alice");
+
+        var posts = await ReadListAsync(await _client.GetAsync("api/posts/feed"));
+
+        AssertBobsPhotosInOrder(posts.Single(post => post.Title == BobsPhotoPostTitle).Images);
+    }
+
+    [Fact]
+    public async Task GetPostsByUser_PostWithPhotos_ReturnsPhotosInOrder()
+    {
+        await CreateBobsPhotoPostAsync();
+        _client.DefaultRequestHeaders.Authorization = null;
+
+        var posts = await ReadListAsync(await _client.GetAsync("api/posts/user/3"));
+
+        AssertBobsPhotosInOrder(posts.Single(post => post.Title == BobsPhotoPostTitle).Images);
+    }
+
+    [Fact]
+    public async Task GetMine_PostWithPhotos_ReturnsPhotosInOrder()
+    {
+        await CreateBobsPhotoPostAsync();
+
+        var posts = await ReadListAsync(await _client.GetAsync("api/posts/mine"));
+
+        AssertBobsPhotosInOrder(posts.Single(post => post.Title == BobsPhotoPostTitle).Images);
     }
 
     // ---------- PUT /posts/{id} ----------
@@ -353,4 +538,52 @@ public class PostControllerTests : IAsyncLifetime
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
+
+    // ---------- helpers ----------
+
+    private async Task LoginAsync(string username)
+    {
+        var token = await AuthTestHelper.LoginAsync(_client, username, TestDataSeeder.SharedPlaintextPassword);
+        AuthTestHelper.AttachToken(_client, token);
+    }
+
+    private const string BobsPhotoPostTitle = "Bob's Photos";
+
+    // Signs in as bob and creates a post with a WebP then a PNG.
+    private async Task<int> CreateBobsPhotoPostAsync()
+    {
+        await LoginAsync("bob");
+        var response = await _client.PostAsync("api/posts", PostForm.Create(BobsPhotoPostTitle, "Holiday", WebP(7), Png(8)));
+        var post = await ReadDataAsync<StandardPostDisplayDto>(response);
+        return post.Id;
+    }
+
+    private static void AssertBobsPhotosInOrder(List<ImageDto> images)
+    {
+        Assert.Equal([0, 1], images.Select(image => image.OrderIndex));
+        Assert.EndsWith(".webp", images[0].Address);
+        Assert.EndsWith(".png", images[1].Address);
+    }
+
+    private static async Task<List<StandardPostDisplayDto>> ReadListAsync(HttpResponseMessage response)
+    {
+        var body = await response.Content.ReadFromJsonAsync<ListResponse<StandardPostDisplayDto>>();
+        return body!.Data;
+    }
+
+    private static async Task<string?> ReadMessageAsync(HttpResponseMessage response)
+    {
+        var body = await response.Content.ReadFromJsonAsync<ApplicationResponse>();
+        return body!.Message;
+    }
+
+    private static async Task<T> ReadDataAsync<T>(HttpResponseMessage response)
+    {
+        var body = await response.Content.ReadFromJsonAsync<ApplicationResponse<T>>();
+        return body!.Data!;
+    }
+
+    private static PostFormFile Jpeg(byte marker) => new(TestImages.Jpeg(marker), "photo.jpg", TestImages.JpegContentType);
+    private static PostFormFile Png(byte marker)  => new(TestImages.Png(marker), "photo.png", TestImages.PngContentType);
+    private static PostFormFile WebP(byte marker) => new(TestImages.WebP(marker), "photo.webp", TestImages.WebPContentType);
 }

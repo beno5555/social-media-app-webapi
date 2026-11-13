@@ -496,5 +496,7 @@ $RECYCLE.BIN/
 
 appsettings.json
 appsettings.Development.json
+# Default upload folder for post photos (ImageStorage:UploadFolder)
+backend/aspnetproject/Uploads/
 # Claude Code personal settings
 .claude/settings.local.json

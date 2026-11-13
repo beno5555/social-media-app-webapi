@@ -6,6 +6,7 @@ using aspnetproject.Infrastructure.Dtos.Posts;
 using aspnetproject.Infrastructure.Mappers;
 using aspnetproject.Infrastructure.Services.BusinessLogic.Base;
 using aspnetproject.Infrastructure.Services.Logging;
+using aspnetproject.Infrastructure.Services.Storage;
 
 namespace aspnetproject.Infrastructure.Services.BusinessLogic.Content;
 
@@ -15,12 +16,14 @@ public class PostService : BaseService
     private readonly FriendshipRepository _friendshipRepository;
     private readonly UserRepository       _userRepository;
     private readonly CommentRepository    _commentRepository;
+    private readonly ImageStorage         _imageStorage;
 
     public PostService(
         PostRepository postRepository,
         FriendshipRepository friendshipRepository,
         UserRepository userRepository,
         CommentRepository commentRepository,
+        ImageStorage imageStorage,
         DatabaseLogger dbLogger
         ) : base(dbLogger)
     {
@@ -28,41 +31,23 @@ public class PostService : BaseService
         _friendshipRepository = friendshipRepository;
         _userRepository = userRepository;
         _commentRepository = commentRepository;
+        _imageStorage = imageStorage;
     }
     
     public async Task<ApplicationResponse<StandardPostDisplayDto>> UploadPost(int userId, CreatePostDto createPostDto)
     {
-        var response = new ApplicationResponse<StandardPostDisplayDto>();
-        
-        var userExists = await _userRepository.ExistsByIdAsync(userId);
+        var response   = new ApplicationResponse<StandardPostDisplayDto>();
+        var newPostCheck = await CheckNewPostAsync(userId, createPostDto);
 
-        if (userExists)
+        if (newPostCheck.Succeeded)
         {
-            if (!string.IsNullOrEmpty(createPostDto.PostTitle))
-            {
-                if (!string.IsNullOrWhiteSpace(createPostDto.PostContent))
-                {
-                    var post      = PostMapper.ToEntity(userId, createPostDto);
-                    var addedPost = await _postRepository.AddPostAsync(post);
-
-                    var postDisplay = PostMapper.ToStandardDisplay(addedPost);
-                    response.Ok(postDisplay, ResponseMessages.PostUploaded);
-                }
-                else
-                {
-                    response.Fail(ResponseMessages.ContentRequired);
-                    await LogResultAsync(response.Succeeded, nameof(UploadPost), nameof(Post), $"Could not upload post: {response.Message}", null);
-                }
-            }
-            else
-            {
-                response.Fail(ResponseMessages.TitleRequired);
-                await LogResultAsync(response.Succeeded, nameof(UploadPost), nameof(Post), $"Could not upload post: {response.Message}", null);
-            }
+            var addedPost   = await AddPostWithImagesAsync(userId, createPostDto, newPostCheck.Data!);
+            var postDisplay = PostMapper.ToStandardDisplay(addedPost);
+            response.Ok(postDisplay, ResponseMessages.PostUploaded);
         }
         else
         {
-            response.Fail(ResponseMessages.UserNotFound);
+            response.Fail(newPostCheck.Message);
             await LogResultAsync(response.Succeeded, nameof(UploadPost), nameof(Post), $"Could not upload post: {response.Message}", null);
         }
 
@@ -194,5 +179,60 @@ public class PostService : BaseService
         }
 
         return response;
+    }
+
+    // Every rule a new post must meet, images included. Nothing is stored until all of them pass.
+    private async Task<ApplicationResponse<List<CheckedImage>>> CheckNewPostAsync(int userId, CreatePostDto createPostDto)
+    {
+        var response = new ApplicationResponse<List<CheckedImage>>();
+
+        bool userExists = await _userRepository.ExistsByIdAsync(userId);
+        bool hasTitle   = !string.IsNullOrWhiteSpace(createPostDto.PostTitle);
+        bool hasText    = !string.IsNullOrWhiteSpace(createPostDto.PostContent);
+        bool hasImages  = createPostDto.Images.Count > 0;
+
+        if (userExists)
+        {
+            if (hasTitle)
+            {
+                if (hasText || hasImages)
+                {
+                    response = await _imageStorage.CheckPostImagesAsync(createPostDto.Images);
+                }
+                else
+                {
+                    response.Fail(ResponseMessages.TextOrImageRequired);
+                }
+            }
+            else
+            {
+                response.Fail(ResponseMessages.TitleRequired);
+            }
+        }
+        else
+        {
+            response.Fail(ResponseMessages.UserNotFound);
+        }
+
+        return response;
+    }
+
+    // Files are saved first so the post can store their addresses. If the post cannot be saved, they are removed again.
+    private async Task<Post> AddPostWithImagesAsync(int userId, CreatePostDto createPostDto, List<CheckedImage> images)
+    {
+        var imageAddresses = await _imageStorage.SaveAsync(images);
+        var post           = PostMapper.ToEntity(userId, createPostDto, imageAddresses);
+
+        try
+        {
+            post = await _postRepository.AddPostAsync(post);
+        }
+        catch (Exception)
+        {
+            await _imageStorage.DeleteAsync(imageAddresses);
+            throw;
+        }
+
+        return post;
     }
 }

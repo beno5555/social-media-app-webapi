@@ -7,6 +7,8 @@ using aspnetproject.Infrastructure.Services.BusinessLogic.Content;
 using aspnetproject.Infrastructure.Services.BusinessLogic.Users;
 using aspnetproject.Infrastructure.Services.Helpers;
 using aspnetproject.Infrastructure.Services.Logging;
+using aspnetproject.Infrastructure.Services.Storage;
+using aspnetproject.Infrastructure.Services.Storage.Configuration;
 using aspnetproject.Infrastructure.Services.Websockets;
 
 namespace aspnetproject.Extensions;
@@ -44,6 +46,7 @@ public static class ApplicationServicesExtensions
         services.AddScoped<PasswordHasher>();
         services.AddScoped<TokenGenerator>();
         services.AddScoped<UrlSecurityService>();
+        services.AddScoped<ImageStorage>();
 
         services.AddScoped<SystemLogger>();
         services.AddScoped<DatabaseLogger>();
@@ -51,6 +54,8 @@ public static class ApplicationServicesExtensions
         services.Configure<EmailConfiguration>(configuration.GetSection("EmailConfiguration"));
         services.AddTransient<EmailSender>();
         
+        services.Configure<ImageStorageConfiguration>(configuration.GetSection("ImageStorage"));
+
         services.Configure<OldLogsCleanupConfiguration>(configuration.GetSection("CleanupConfiguration:OldLogs"));
         services.Configure<RefreshTokenCleanupConfiguration>(configuration.GetSection("CleanupConfiguration:RefreshTokens"));
         services.Configure<SoftDeletedUsersCleanupConfiguration>(configuration.GetSection("CleanupConfiguration:SoftDeletedUsers"));

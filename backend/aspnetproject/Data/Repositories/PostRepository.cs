@@ -16,12 +16,14 @@ public class PostRepository : BaseEntityRepository<Post>
         await AddAsync(post);
         return (await _dbSet
             .Include(postFromDb => postFromDb.User)
+            .Include(postFromDb => postFromDb.Images)
             .FirstOrDefaultAsync(postFromDb => postFromDb.Id == post.Id))!;
     }
 
     public async Task<Post?> GetPostByIdAsync(int id)
     {
         return await _dbSet.Include(post => post.User)
+            .Include(post => post.Images)
             .Include(post => post.Comments)
                 .ThenInclude(comment => comment.CommenterUser)
             .AsSplitQuery()
@@ -45,7 +47,8 @@ public class PostRepository : BaseEntityRepository<Post>
     protected override IQueryable<Post> Query(bool track = true)
     {
         var query = _dbSet
-            .Include(post => post.User);
+            .Include(post => post.User)
+            .Include(post => post.Images);
 
         return track ? query : query.AsNoTracking();
     }

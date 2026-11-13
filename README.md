@@ -9,7 +9,7 @@ For the earlier, API-only state of this repository and the history behind it, se
 ## Features
 
 - Register and log in; JWT access tokens plus rotating refresh tokens; password reset via an emailed token
-- Create, view, update and delete posts; a friends-only feed
+- Create, view, update and delete posts, with up to 10 photos (JPEG, PNG or WebP, checked by content) per post; a friends-only feed
 - Comment on posts and edit own comments; delete a comment as its author, as the post's author, or as an administrator; live `ReceiveComment` push to the post's author
 - Send, accept, decline and remove friend requests; view friends, pending and sent requests; search users by username
 - Send, edit and delete messages between friends; live push (`ReceiveMessage`, `MessageEdited`, `MessageSeen`) over SignalR; paginated conversations and read receipts. A message can be edited for 20 minutes after it is sent, and the receiver sees the edit live
@@ -97,6 +97,8 @@ CLAUDE.md
         BaseController.cs
     /Content
         CommentController.cs, MessageController.cs, PostController.cs
+    /Filters
+        PostUploadRequestSizeFilter.cs
     /Users
         AccountActivationController.cs, AccountManagementController.cs,
         AuthController.cs, FriendshipController.cs, UserController.cs
@@ -107,7 +109,7 @@ CLAUDE.md
         ...
     /Models
         BaseEntity.cs
-        Comment.cs, Friendship.cs, Log.cs, Message.cs, Post.cs,
+        Comment.cs, Friendship.cs, Log.cs, Message.cs, Post.cs, PostImage.cs,
         RefreshToken.cs, Role.cs, User.cs, UserRole.cs
     /Repositories
         /Base
@@ -122,12 +124,13 @@ CLAUDE.md
         DeterministicFixtureSeed.cs
 /Extensions
     ApplicationServicesExtensions.cs, AuthenticationExtensions.cs, CorsExtensions.cs,
-    GlobalExceptionHandler.cs, RateLimitConfig.cs, SwaggerExtensions.cs, TestSeedExtensions.cs
+    GlobalExceptionHandler.cs, ImageStorageExtensions.cs, RateLimitConfig.cs, SwaggerExtensions.cs,
+    TestSeedExtensions.cs
 /Hubs
     MessageHub.cs
 /Infrastructure
     /Dtos
-        /Accounts, /Auth, /Comments, /DatabaseLogs, /Friendships,
+        /Accounts, /Auth, /Comments, /DatabaseLogs, /Friendships, /Images,
         /Messages, /Posts, /UserRoles, /Users, /WebsocketsTransfer
     /Mappers
         UserMapper.cs
@@ -147,6 +150,9 @@ CLAUDE.md
             LogService.cs
         /Helpers
         /Logging
+        /Storage
+            /Configuration
+            ImageStorage.cs
         /Websockets
 /Migrations
 Program.cs
@@ -166,7 +172,7 @@ dotnet run --project aspnetproject
 dotnet test aspnetproject.IntegrationTests
 ```
 
-`appsettings.json`, `appsettings.Development.json` and `appsettings.Testing.json` are gitignored and there is no example template, so a fresh clone does not run until they exist in `backend/aspnetproject/`. The application reads `ConnectionStrings:DefaultConnection`, `Jwt`, `EmailConfiguration`, `PasswordConfiguration:ResetTokenMinutes`, `CleanupConfiguration:{OldLogs,RefreshTokens,SoftDeletedUsers}` and `Cors:AllowedOrigins`.
+`appsettings.json`, `appsettings.Development.json` and `appsettings.Testing.json` are gitignored and there is no example template, so a fresh clone does not run until they exist in `backend/aspnetproject/`. The application reads `ConnectionStrings:DefaultConnection`, `Jwt`, `EmailConfiguration`, `PasswordConfiguration:ResetTokenMinutes`, `CleanupConfiguration:{OldLogs,RefreshTokens,SoftDeletedUsers}` and `Cors:AllowedOrigins`, and optionally `ImageStorage:{UploadFolder,MaxFileSizeBytes,MaxImagesPerPost}` (defaults: `Uploads/` under the project, 5 MB, 10). Uploaded photos are written to the upload folder, which is gitignored.
 
 The integration tests need a real SQL Server database. On Linux, `scripts/test-linux.sh` (run from the repository root) starts one in Docker and runs the same tests; CI uses that script.
 
@@ -230,6 +236,7 @@ if (app.Environment.IsDevelopment())
 
 app.UseExceptionHandler();
 app.UseHttpsRedirection();
+app.UseImageStorage();
 app.UseRouting();
 
 app.UseCors("OriginPolicy");
@@ -244,7 +251,7 @@ app.MapHub<MessageHub>("hubs/messages");
 app.Run();
 ```
 
-`AddApplicationServices` (`Extensions/ApplicationServicesExtensions.cs`) registers SignalR, the singleton `UserConnectionTracker`, every repository and service (scoped), the two loggers (scoped), `EmailSender` (transient), the options classes for email and the three cleanup jobs, and the three hosted services.
+`AddApplicationServices` (`Extensions/ApplicationServicesExtensions.cs`) registers SignalR, the singleton `UserConnectionTracker`, every repository and service (scoped), the two loggers (scoped), `EmailSender` (transient), `ImageStorage` (scoped), the options classes for email, image storage and the three cleanup jobs, and the three hosted services. `UseImageStorage` serves the upload folder as static files at `/api/images`.
 
 ---
 
@@ -260,6 +267,7 @@ app.Run();
 - **`LastUpdatedAt` carries meaning.** It is nullable and stamped by services on update, not defaulted by the database: `Message.IsEdited` is `LastUpdatedAt is not null`.
 - **Mutate and notify together.** Services push SignalR events through `IHubContext` in the same method that changes the data.
 - **Authorization.** `[Authorize]` is set per controller, with `[AllowAnonymous]` on public actions. `BaseController` provides `GetUserId()`, `GetUsername()` and `IsAdministrator()`. `AuthController` is the exception: every action is public, so it has no `[Authorize]` and does not inherit `BaseController`. Ownership checks are made in services.
+- **One storage class for files.** `ImageStorage` checks uploads by their leading bytes, names them itself, saves, deletes and turns a stored file into its relative address under `/api/images`. Nothing else touches the disk, so moving images to cloud storage changes that one class. An upload with any bad file stores nothing.
 - **Pagination.** List endpoints bind `PageQuery` from the query string: `PageNumber` defaults to 1, and `PageSize` defaults to 10 and is validated to 1–100.
 - **Rate limiting.** Sliding-window policies, designed as per-IP before login and per-user after, with a global limiter as a backstop. Today every limit counts by IP, because the limiter runs before authentication (see `docs/backend/auth.md`).
 

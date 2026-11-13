@@ -18,6 +18,13 @@ public static class Constants
     public const int PostContentMaxLength = 3000;
     public const int CommentMaxLength     = 500;
     public const int MessageMaxLength     = 1000;
+
+    public const int    BytesPerMegabyte      = 1024 * 1024;
+    public const int    ImageAddressMaxLength = 200;
+    public const string ImagesRequestPath     = "/api/images";
+
+    // Room in an upload request for its text fields and multipart boundaries, on top of the images themselves.
+    public const int MultipartTextAllowanceBytes = BytesPerMegabyte;
     
     public const int MinAge                     = 13;
     public const int MaxAge                     = 100;

@@ -43,7 +43,7 @@ Dates are the day a step should finish.
 5. [ ] **Tue 17: feed, posts and comments.** Feed with pagination, create a post with photos, edit and delete, like, comment, edit and delete a comment, report a post or comment.
    - Backend alongside: **feed ranking** (gap C).
 6. [ ] **Wed 18: profile, friends and search.** Profile page (bio, posts, friends), edit profile, user search, friend requests (send, accept, decline, remove; the three lists), account settings (deactivate, delete, digest opt-out), the guest view.
-   - Backend alongside: **typing on the hub** (gap D).
+   - Backend alongside: **typing on the hub** (gap D), done on 2026-11-14 (ticket 07).
 7. [ ] **Fri 20: chat and live notifications.** The SignalR service and the central state (signals) for the session, conversations, online friends and unread count. Conversation list with last message, conversation with photos, edit and delete, seen, typing, presence and last active. Toasts for a new message, comment, like and a friend coming online.
    - Backend alongside: **admin logs and statistics**, **reports and moderation** (gaps E and F).
 8. [ ] **Sat 21: admin panel.** Users (create, edit, deactivate, restore, delete, grant and remove the administrator role), delete any post or comment, logs, statistics, the reports list, the moderation queue.
@@ -82,7 +82,7 @@ Checked against the code on 2026-11-14. Everything not listed here already exist
 - **A. Images.** No upload exists anywhere. Needed: storage on disk with format and size checks, static serving, `PostImage` and `MessageImage`, `POST /api/posts` and `POST /api/messages/{receiverId}` as `multipart/form-data`, `DELETE /api/posts/{postId}/images/{imageId}`, image URLs in the post and message DTOs and in the `ReceiveMessage` push.
 - **B. Likes.** `PostLike`, the three `/api/posts/{postId}/likes` endpoints, the `PostLiked` push to the author, and a like count and "liked by me" on the post DTOs.
 - **C. Feed ranking.** The feed today is friends' posts only, newest first. Needed: friends' and other users' posts, ranked by connection (friends, then users with mutual friends), activity (likes and comments) and age.
-- **D. Hub.** `SendTyping` from the client and the `UserTyping` push.
+- **D. Hub.** `SendTyping` from the client and the `UserTyping` push. Done on 2026-11-14.
 - **E. Admin reads.** `GET /api/admin/logs` (`LogService` exists but is empty and nothing calls it), `GET /api/admin/statistics`, and a list of accounts in any state, which the document does not list but restoring a deactivated account needs.
 - **F. Reports and moderation.** The `Report` entity and its three endpoints; `moderationStatus` on `Post` and `Comment`, with hidden content filtered from every read that other users make; `GET /api/admin/moderation-queue` and the two `PUT /api/admin/{posts|comments}/{id}/moderation` endpoints.
 - **G. n8n plumbing.** Outbound webhooks signed with a shared secret for registration, post and comment creation, a new report and an exception (from requests and from background jobs). An API-key identity that can reach only the internal and moderation endpoints. `GET /api/internal/digest`, `GET /api/internal/birthdays`, `POST /api/internal/notifications` with the `ReceiveNotification` push it sends. `digestEmailEnabled` on `User`, editable in the profile settings.

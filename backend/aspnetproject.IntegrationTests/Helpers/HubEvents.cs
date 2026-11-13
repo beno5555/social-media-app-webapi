@@ -10,6 +10,7 @@ public static class HubEvents
     public const string ReceiveComment = "ReceiveComment";
     public const string UserOnline     = "UserOnline";
     public const string UserOffline    = "UserOffline";
+    public const string UserTyping     = "UserTyping";
 
     public static readonly string[] All =
     [
@@ -18,6 +19,7 @@ public static class HubEvents
         MessageEdited,
         ReceiveComment,
         UserOnline,
-        UserOffline
+        UserOffline,
+        UserTyping
     ];
 }

@@ -10,13 +10,13 @@ Decisions are under "Typing" in `.scratch/documented-backend-features/spec.md`. 
 
 **Blocked by:** 01 (Real-time tests connect a real SignalR client)
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Difficulty:** routine: small and fully specified, and the test helper from ticket 01 already covers calling a hub method and asserting who received what.
 
-- [ ] When a user's client calls `SendTyping` for an accepted friend, the friend's connected client receives `UserTyping` with the sender's id
-- [ ] No other connected user receives it
-- [ ] A call that names a non-friend, an unknown user or the caller delivers nothing and raises no error for the caller
-- [ ] The hub method contains no checks of its own; the friendship check lives in a service
-- [ ] No `Log` row and no database write results from a typing signal
-- [ ] `docs/backend/signalr.md` no longer calls the hub push-only and lists `SendTyping` and `UserTyping`; `README.md` mentions the typing indicator
+- [x] When a user's client calls `SendTyping` for an accepted friend, the friend's connected client receives `UserTyping` with the sender's id
+- [x] No other connected user receives it
+- [x] A call that names a non-friend, an unknown user or the caller delivers nothing and raises no error for the caller
+- [x] The hub method contains no checks of its own; the friendship check lives in a service
+- [x] No `Log` row and no database write results from a typing signal
+- [x] `docs/backend/signalr.md` no longer calls the hub push-only and lists `SendTyping` and `UserTyping`; `README.md` mentions the typing indicator

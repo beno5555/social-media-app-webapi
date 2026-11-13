@@ -10,10 +10,10 @@ SignalR (not raw WebSockets) — automatic transport fallback, simpler API than 
 
 `MessageHub`, in `/Hubs` (sibling to `/Controllers`, its own transport-layer tier). Mapped at `hubs/messages` (`app.MapHub<MessageHub>("hubs/messages")`).
 
-- Push-only. No client-invokable methods. All validation stays in the relevant controller/service (`MessageController`/`MessageService`, `CommentController`/`CommentService`), not the hub.
+- Mostly push. The one client-called method is `SendTyping` (see Typing). The hub holds no logic: all validation stays in the relevant controller/service (`MessageController`/`MessageService`, `CommentController`/`CommentService`, `TypingService`), not the hub.
 - One SignalR group per `userId` (one-on-one messaging only — no conversation/group table). Connection added to its group in `OnConnectedAsync`; SignalR removes it from all groups automatically on disconnect.
 - `IHubContext<MessageHub>` is injected directly into `MessageService` **and now also `CommentService`** — both treat "mutate + notify" as one atomic unit per service method.
-- `MessageHub` now also depends on `UserConnectionTracker` and `PresenceService` to track and broadcast online/offline state:
+- `MessageHub` now also depends on `UserConnectionTracker` and `PresenceService` to track and broadcast online/offline state, and on `TypingService` for `SendTyping` (left out of the excerpt below):
 
 ```csharp
 [Authorize]
@@ -59,6 +59,12 @@ public class MessageHub : Hub
   - `NotifyUserOfflineAsync(userId)` — stamps `User.LastOnlineAt = DateTime.UtcNow` (`MarkUserOfflineAsync`), broadcasts `UserOffline { UserId, LastActiveAt }` to friends.
 - `User.LastOnlineAt`: `null` means online; a timestamp means "last seen at." `DisplayFriendDto.IsActive => LastActiveAt == null` mirrors this convention client-side.
 
+## Typing
+
+- The client calls `SendTyping(receiverId)` while its user writes to a friend. The hub passes the caller's id and `receiverId` to `TypingService.RelayTypingAsync`.
+- The service pushes `UserTyping` (`UserTypingDto { UserId }`, the sender's id) to the receiver's group only if the two are accepted friends. A non-friend, an unknown user or oneself gets nothing, and the caller gets no error.
+- Nothing is stored and nothing is logged. There is no "stopped typing" event; the client hides the indicator after a short silence. The server does not throttle the signal.
+
 ## Auth
 
 Hub requires `[Authorize]`, same JWT scheme as REST.
@@ -82,6 +88,7 @@ Policy name: `OriginPolicy` (`CorsExtensions.AddCorsPolicies`), applied globally
 | `StandardMessageDto` | Full conversation history (`GetConversation`) | Id, Content, Sender, ReceiverId, SentAt, Seen, SeenAt, IsEdited |
 | `MessageEditedDto` | Edit push (`MessageEdited`) | Id, Content |
 | `NotifyCommentDto` | Live comment push (`ReceiveComment`) | Id, AuthorUsername, Content |
+| `UserTypingDto` | Typing signal (`UserTyping`) | UserId (the sender) |
 
 ## Hub events (server → client push)
 
@@ -93,8 +100,13 @@ Policy name: `OriginPolicy` (`CorsExtensions.AddCorsPolicies`), applied globally
 | `ReceiveComment` | A comment is added to a post, by someone other than the post's author | `NotifyCommentDto` | Post author's group |
 | `UserOnline` | A user's first connection opens | `{ UserId }` | Each accepted friend's group |
 | `UserOffline` | A user's last connection closes | `{ UserId, LastActiveAt }` | Each accepted friend's group |
+| `UserTyping` | An accepted friend calls `SendTyping` for this user | `UserTypingDto` | Receiver's group only |
 
-No client-invokable hub methods (server ← client) exist. Typing indicators remain the earmarked future use case for that pattern.
+## Hub methods (client → server)
+
+| Method | Arguments | Effect |
+|---|---|---|
+| `SendTyping` | `receiverId` (int) | Relays `UserTyping` to the receiver if the two are accepted friends; otherwise does nothing and reports nothing |
 
 ## Read receipts
 
@@ -116,11 +128,10 @@ Integration tests connect a real SignalR client to the test host and assert on w
 - From the moment it connects, it records every event listed in `Helpers/HubEvents.All`. A test acts first (usually through HTTP as another user) and reads afterwards, so no push is lost. Add each new server event to `HubEvents`.
 - `WaitForEventAsync<T>(eventName)` returns the oldest unread payload of that event. It fails with a message naming the user and the event if nothing arrives within 5 seconds.
 - `AssertNoEventAsync(eventName)` fails if that event has arrived. It uses a marker, not a fixed wait. The helper pushes a marker event to this one connection through the real `IHubContext<MessageHub>`, then waits for it. Earlier events are ahead of the marker on the wire, and the client runs event handlers one at a time in arrival order, so once the marker arrives they have been recorded. A call's reply is not a substitute: the .NET client handles replies on a different loop from events.
-- `InvokeAsync(methodName, args...)` calls a hub method as the user and waits up to 5 seconds for the server to finish it.
+- `InvokeAsync(methodName, args...)` calls a hub method as the user and waits up to 5 seconds for the server to finish it. Method names live in `Helpers/HubMethods`.
 
 Dispose each client with `await using`, and the factory in the test class's `DisposeAsync`, so no connection or host outlives its test.
 
 ## Not implemented / explicitly deferred
 
-- **Typing indicators** — earmarked as the correct future use case for a client-invokable hub method; not built yet.
 - **`EditedAt` timestamp** on `MessageEditedDto` — deferred to frontend work; `Message.IsEdited` (computed from `LastUpdatedAt`) is available server-side if needed sooner.

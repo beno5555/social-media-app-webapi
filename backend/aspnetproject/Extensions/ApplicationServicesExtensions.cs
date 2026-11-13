@@ -38,6 +38,7 @@ public static class ApplicationServicesExtensions
         services.AddScoped<MessageService>();
         services.AddScoped<PostService>();
         services.AddScoped<PresenceService>();
+        services.AddScoped<TypingService>();
         services.AddScoped<LogService>();
         
         services.AddScoped<PasswordHasher>();

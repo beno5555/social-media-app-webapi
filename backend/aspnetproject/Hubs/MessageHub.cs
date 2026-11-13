@@ -11,14 +11,17 @@ public class MessageHub : Hub
 {
     private readonly UserConnectionTracker _userConnectionTracker;
     private readonly PresenceService       _presenceService;
+    private readonly TypingService         _typingService;
 
     public MessageHub(
         UserConnectionTracker userConnectionTracker,
-        PresenceService presenceService
+        PresenceService presenceService,
+        TypingService typingService
         )
     {
         _userConnectionTracker = userConnectionTracker;
         _presenceService = presenceService;
+        _typingService = typingService;
     }
     
     private int GetUserId()
@@ -54,5 +57,11 @@ public class MessageHub : Hub
         }
         
         await base.OnDisconnectedAsync(exception);
+    }
+
+    // Called by the client while its user writes to receiverId. The service decides whether the signal is relayed.
+    public async Task SendTyping(int receiverId)
+    {
+        await _typingService.RelayTypingAsync(GetUserId(), receiverId);
     }
 }

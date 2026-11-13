@@ -14,6 +14,7 @@ For the earlier, API-only state of this repository and the history behind it, se
 - Send, accept, decline and remove friend requests; view friends, pending and sent requests; search users by username
 - Send, edit and delete messages between friends; live push (`ReceiveMessage`, `MessageEdited`, `MessageSeen`) over SignalR; paginated conversations and read receipts. A message can be edited for 20 minutes after it is sent, and the receiver sees the edit live
 - Presence: `UserOnline` / `UserOffline` broadcast to friends when a user's first connection opens or last connection closes
+- Typing indicator: a client calls `SendTyping` while its user writes to a friend, and the friend receives `UserTyping`. Only accepted friends get it; nothing is stored or logged
 - View a user's profile; edit own profile
 - Roles (`User`, `Administrator`): an administrator can create, update, deactivate, reactivate and soft-delete other users' accounts, delete any post or comment, and assign or remove the `Administrator` role
 - Admin reads (`api/admin`): an administrator reads the `Logs` table page by page, newest first, filtered by user, authorized or not, succeeded or not, entity, action and date range, and lists accounts in any state (active, deactivated, soft-deleted), filtered by state and username
@@ -29,7 +30,7 @@ For the earlier, API-only state of this repository and the history behind it, se
 - ASP.NET Core Web API (C#), target framework `net10.0`
 - Entity Framework Core (SQL Server, code-first migrations)
 - JWT bearer authentication
-- SignalR (real-time push: messages, comments, presence)
+- SignalR (real-time push: messages, comments, presence, typing)
 - ASP.NET Core rate limiting middleware
 - MailKit (SMTP email delivery)
 - Swashbuckle and `Microsoft.AspNetCore.OpenApi` (Swagger UI and OpenAPI, Development only)
@@ -183,7 +184,7 @@ Dependencies point one way: **Controllers / Hubs → Services → Repositories �
 
 **Controllers**: thin. They delegate to services and map `ApplicationResponse` outcomes to HTTP status codes. All routes are under `api/` (for example `api/posts`, `api/auth`).
 
-**Hubs**: the SignalR transport, a tier of its own beside the controllers. One hub, `MessageHub` at `hubs/messages`, carries messages, comment notifications and presence. It is push-only and does no validation.
+**Hubs**: the SignalR transport, a tier of its own beside the controllers. One hub, `MessageHub` at `hubs/messages`, carries messages, comment notifications, presence and typing signals. Its one client-called method, `SendTyping`, hands the call to a service; the hub itself does no validation.
 
 **Background jobs**: three hosted services built on `PeriodicHostedService` clean up refresh tokens, soft-deleted users and old log rows.
 

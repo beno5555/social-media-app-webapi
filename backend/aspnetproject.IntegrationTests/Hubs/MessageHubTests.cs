@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using aspnetproject.Common.Domain;
+using aspnetproject.Infrastructure.Dtos.DatabaseLogs;
 using aspnetproject.Infrastructure.Dtos.Messages;
 using aspnetproject.Infrastructure.Dtos.WebsocketsTransfer;
 using aspnetproject.IntegrationTests.Fixtures;
@@ -146,5 +147,79 @@ public class MessageHubTests : IAsyncLifetime
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         await alice.AssertNoEventAsync(HubEvents.MessageEdited);
         await bob.AssertNoEventAsync(HubEvents.MessageEdited);
+    }
+
+    // ---------- SendTyping (hub method) → UserTyping ----------
+    // alice (2) and bob (3) are accepted friends. charlie (4) has only a pending request to alice.
+
+    [Fact]
+    public async Task SendTyping_ToFriend_DeliversUserTypingToFriend()
+    {
+        await using var alice = await HubTestClient.ConnectAsync(_factory, "alice");
+        await using var bob   = await HubTestClient.ConnectAsync(_factory, "bob");
+
+        await alice.InvokeAsync(HubMethods.SendTyping, 3); // to bob
+        var pushed = await bob.WaitForEventAsync<UserTypingDto>(HubEvents.UserTyping);
+
+        Assert.Equal(2, pushed.UserId); // alice
+    }
+
+    [Fact]
+    public async Task SendTyping_ToFriend_DeliversNothingToSenderOrThirdUser()
+    {
+        await using var alice   = await HubTestClient.ConnectAsync(_factory, "alice");
+        await using var bob     = await HubTestClient.ConnectAsync(_factory, "bob");
+        await using var charlie = await HubTestClient.ConnectAsync(_factory, "charlie");
+
+        await alice.InvokeAsync(HubMethods.SendTyping, 3); // to bob
+        await bob.WaitForEventAsync<UserTypingDto>(HubEvents.UserTyping);
+
+        await alice.AssertNoEventAsync(HubEvents.UserTyping);
+        await charlie.AssertNoEventAsync(HubEvents.UserTyping);
+    }
+
+    // InvokeAsync throws if the server reports an error, so each call completing is the "no error" half.
+    [Theory]
+    [InlineData(4)]   // charlie: pending request only
+    [InlineData(999)] // no such user
+    [InlineData(2)]   // alice herself
+    public async Task SendTyping_ToNonFriendUnknownOrSelf_DeliversNothing(int receiverId)
+    {
+        await using var alice   = await HubTestClient.ConnectAsync(_factory, "alice");
+        await using var bob     = await HubTestClient.ConnectAsync(_factory, "bob");
+        await using var charlie = await HubTestClient.ConnectAsync(_factory, "charlie");
+
+        await alice.InvokeAsync(HubMethods.SendTyping, receiverId);
+
+        await alice.AssertNoEventAsync(HubEvents.UserTyping);
+        await bob.AssertNoEventAsync(HubEvents.UserTyping);
+        await charlie.AssertNoEventAsync(HubEvents.UserTyping);
+    }
+
+    [Fact]
+    public async Task SendTyping_ToFriendOrNonFriend_WritesNoLog()
+    {
+        await using var alice = await HubTestClient.ConnectAsync(_factory, "alice");
+        await using var bob   = await HubTestClient.ConnectAsync(_factory, "bob");
+        var token = await AuthTestHelper.LoginAsync(_client, "sandro_beno", TestDataSeeder.SharedPlaintextPassword); // administrator
+        AuthTestHelper.AttachToken(_client, token);
+        var logIdsBefore = await GetLogIdsAsync();
+
+        await alice.InvokeAsync(HubMethods.SendTyping, 3); // to bob
+        await bob.WaitForEventAsync<UserTypingDto>(HubEvents.UserTyping);
+        await alice.InvokeAsync(HubMethods.SendTyping, 4); // to charlie, not a friend
+        var logIdsAfter = await GetLogIdsAsync();
+
+        Assert.Equal(logIdsBefore, logIdsAfter);
+    }
+
+    // Page size 100 holds every seeded row plus the ones the sign-ins above wrote.
+    private async Task<List<int>> GetLogIdsAsync()
+    {
+        var response = await _client.GetAsync("api/admin/logs?pageSize=100");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        var body = await response.Content.ReadFromJsonAsync<ListResponse<LogDisplayDto>>();
+        return body!.Data.Select(log => log.Id).ToList();
     }
 }

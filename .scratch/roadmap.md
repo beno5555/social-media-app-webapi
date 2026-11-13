@@ -13,14 +13,15 @@ Settle these before the spec session that needs them. Each has a going-in recomm
 1. **Who sends email.** The document says n8n sends every transactional email; today MailKit does. Recommendation: move it in step 9, and leave MailKit working until then.
 2. **Admin and developer channels.** Telegram for both, which needs one bot token and a chat id from the owner.
 3. **What a guest sees.** Today a signed-out visitor can read a profile, a user's posts, one post and its comments. Recommendation: the frontend shows exactly that, read-only, and sends every other route to sign-in.
-4. **Image rules.** Recommendation: JPEG, PNG and WebP; 5 MB each; up to 10 per post and 5 per message; files under `backend/aspnetproject/wwwroot/uploads/`, gitignored.
-5. **Where the demo runs.** On the owner's machine (dev proxy, n8n in Docker) or on a host behind nginx (ADR 0001). A host costs most of a day and must come out of step 10.
+4. **Where the demo runs.** On the owner's machine (dev proxy, n8n in Docker) or on a host behind nginx (ADR 0001). A host costs most of a day and must come out of step 10.
 
 Settled on 2026-11-14:
 
 - **An unexpected server error keeps the failure envelope.** The document says `ProblemDetails`; the owner accepts the difference (readiness ticket 02 and ADR 0003 stand).
 - **AI moderation uses OpenAI's moderation endpoint.** The owner provides the API key before step 9.
 - **Hiding a reported user means deactivating the account.** For a `USER` report, the admin's "hide" decision deactivates that user.
+- **Images go on local disk.** JPEG, PNG and WebP; 5 MB each; up to 10 per post and 5 per message. AWS S3 was considered and left for after the deadline.
+- **Real-time behaviour is tested with a real SignalR client** connected to the test host.
 
 ## Now
 
@@ -63,15 +64,15 @@ If time runs short, these are finished last, in this order from the end: the wee
 
 ## What the document promises and the backend lacks
 
-Checked against the code on 2026-11-14. Everything not listed here already exists (auth, users, accounts, posts and comments as text, friendships, text chat with seen and unread, presence, rate limiting, cleanup jobs, integration tests). This list is the input to the backend and n8n spec sessions.
+Checked against the code on 2026-11-14. Everything not listed here already exists (auth, users, accounts, posts and comments as text, friendships, text chat with seen and unread, presence, rate limiting, cleanup jobs, integration tests). Gaps A to F are specified in `.scratch/documented-backend-features/spec.md`; G and H wait for the n8n spec.
 
 - **A. Images.** No upload exists anywhere. Needed: storage on disk with format and size checks, static serving, `PostImage` and `MessageImage`, `POST /api/posts` and `POST /api/messages/{receiverId}` as `multipart/form-data`, `DELETE /api/posts/{postId}/images/{imageId}`, image URLs in the post and message DTOs and in the `ReceiveMessage` push.
 - **B. Likes.** `PostLike`, the three `/api/posts/{postId}/likes` endpoints, the `PostLiked` push to the author, and a like count and "liked by me" on the post DTOs.
 - **C. Feed ranking.** The feed today is friends' posts only, newest first. Needed: friends' and other users' posts, ranked by connection (friends, then users with mutual friends), activity (likes and comments) and age.
-- **D. Hub.** `SendTyping` from the client and the `UserTyping` push; the general `ReceiveNotification` push.
-- **E. Admin reads.** `GET /api/admin/logs` (`LogService` exists but is empty and nothing calls it) and `GET /api/admin/statistics`.
+- **D. Hub.** `SendTyping` from the client and the `UserTyping` push.
+- **E. Admin reads.** `GET /api/admin/logs` (`LogService` exists but is empty and nothing calls it), `GET /api/admin/statistics`, and a list of accounts in any state, which the document does not list but restoring a deactivated account needs.
 - **F. Reports and moderation.** The `Report` entity and its three endpoints; `moderationStatus` on `Post` and `Comment`, with hidden content filtered from every read that other users make; `GET /api/admin/moderation-queue` and the two `PUT /api/admin/{posts|comments}/{id}/moderation` endpoints.
-- **G. n8n plumbing.** Outbound webhooks signed with a shared secret for registration, post and comment creation, a new report and an exception (from requests and from background jobs). An API-key identity that can reach only the internal and moderation endpoints. `GET /api/internal/digest`, `GET /api/internal/birthdays`, `POST /api/internal/notifications`. `digestEmailEnabled` on `User`, editable in the profile settings.
+- **G. n8n plumbing.** Outbound webhooks signed with a shared secret for registration, post and comment creation, a new report and an exception (from requests and from background jobs). An API-key identity that can reach only the internal and moderation endpoints. `GET /api/internal/digest`, `GET /api/internal/birthdays`, `POST /api/internal/notifications` with the `ReceiveNotification` push it sends. `digestEmailEnabled` on `User`, editable in the profile settings.
 - **H. Email through n8n.** The welcome, password-reset, account-reactivation and security emails leave the backend as events instead of being sent by MailKit (open decision 2).
 
 ## After the deadline

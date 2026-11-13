@@ -4,6 +4,7 @@ using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories;
 using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Infrastructure.Mappers;
+using aspnetproject.Infrastructure.Queries;
 using aspnetproject.Infrastructure.Services.BusinessLogic.Base;
 using aspnetproject.Infrastructure.Services.Logging;
 
@@ -88,6 +89,19 @@ public class UserService : BaseService
         response.Ok(userDtos, ResponseMessages.SearchResultsForUsername(usernameInput));
         await LogResultAsync(response.Succeeded, nameof(SearchUsersAsync), nameof(User), null, null);
         
+        return response;
+    }
+
+    // Administrator-only. A successful read writes no Log row, unlike SearchUsersAsync.
+    public async Task<ListResponse<AdminUserDto>> GetAccountsAsync(AccountListQuery accountQuery)
+    {
+        var response = new ListResponse<AdminUserDto>();
+
+        var accounts    = await _userRepository.GetAccountsAsync(accountQuery);
+        var accountDtos = accounts.Select(UserMapper.ToAdminDisplay).ToList();
+
+        response.Ok(accountDtos, ResponseMessages.AccountsRetrieved);
+
         return response;
     }
 

@@ -10,6 +10,11 @@ public static class RateLimitConfig
 {
     public static class Policies
     {
+        #region Admin
+        public const string AdminReadLogs     = "AdminReadLogs";
+        public const string AdminListAccounts = "AdminListAccounts";
+        #endregion
+
         #region Auth
         public const string Register             = "Register";
         public const string Login                = "Login";
@@ -74,6 +79,14 @@ public static class RateLimitConfig
         {
             options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
             options.OnRejected = WriteRejectionEnvelopeAsync;
+
+            #region Admin
+            options.AddPolicy(Policies.AdminReadLogs, httpContext =>
+                PerUserSlidingWindow(httpContext, 120, TimeSpan.FromMinutes(1)));
+
+            options.AddPolicy(Policies.AdminListAccounts, httpContext =>
+                PerUserSlidingWindow(httpContext, 120, TimeSpan.FromMinutes(1)));
+            #endregion
 
             #region Auth (IP-based, pre-authentication)
             options.AddPolicy(Policies.Login, httpContext =>

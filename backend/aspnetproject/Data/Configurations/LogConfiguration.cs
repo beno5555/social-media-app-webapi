@@ -22,7 +22,7 @@ public class LogConfiguration : IEntityTypeConfiguration<Log>
 
         builder.Property(log => log.Action)
             .IsRequired()
-            .HasMaxLength(100);
+            .HasMaxLength(Constants.LogActionMaxLength);
 
         builder.Property(log => log.Details)
             .IsRequired(false)
@@ -30,7 +30,7 @@ public class LogConfiguration : IEntityTypeConfiguration<Log>
 
         builder.Property(log => log.EntityName)
             .IsRequired(false)
-            .HasMaxLength(50);
+            .HasMaxLength(Constants.LogEntityNameMaxLength);
 
         builder.HasOne(log => log.User)
             .WithMany(user => user.Logs)

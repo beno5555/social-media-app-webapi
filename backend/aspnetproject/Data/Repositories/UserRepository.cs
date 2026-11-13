@@ -4,6 +4,7 @@ using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories.Base;
 using aspnetproject.Data.Repositories.Dtos;
 using aspnetproject.Infrastructure.Dtos.Users;
+using aspnetproject.Infrastructure.Queries;
 using aspnetproject.Infrastructure.Services.BackgroundJobs.Common;
 using aspnetproject.Infrastructure.Services.BackgroundJobs.Configuration;
 using Microsoft.Data.SqlClient;
@@ -170,6 +171,40 @@ public class UserRepository : BaseEntityRepository<User>
             pageNumber,
             pageSize
         );
+    }
+
+    /// <summary>
+    /// Lists accounts in any state for administrators, bypassing the filter that hides deactivated and soft-deleted users.
+    /// </summary>
+    public async Task<List<User>> GetAccountsAsync(AccountListQuery accountQuery)
+    {
+        var query = IncludeRoles()
+            .IgnoreQueryFilters()
+            .AsNoTracking();
+
+        if (accountQuery.State == AccountState.Active)
+        {
+            query = query.Where(user => user.AccountDeactivatedAt == null && user.AccountDeletedAt == null);
+        }
+        else if (accountQuery.State == AccountState.Deactivated)
+        {
+            query = query.Where(user => user.AccountDeactivatedAt != null && user.AccountDeletedAt == null);
+        }
+        else if (accountQuery.State == AccountState.SoftDeleted)
+        {
+            query = query.Where(user => user.AccountDeletedAt != null);
+        }
+
+        if (accountQuery.Username is not null)
+        {
+            query = query.Where(user => user.Username.Contains(accountQuery.Username));
+        }
+
+        return await query
+            .OrderBy(user => user.Id)
+            .Skip((accountQuery.PageNumber - 1) * accountQuery.PageSize)
+            .Take(accountQuery.PageSize)
+            .ToListAsync();
     }
 
     public async Task EditUserProfileAsync(User userToUpdate, EditUserDto editUserDto)

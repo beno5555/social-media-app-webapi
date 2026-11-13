@@ -219,11 +219,52 @@ public static class TestDataSeeder
             await db.SaveChangesAsync();
         });
         
+        // Fixed times in the past, so rows written while a test runs are always newer than these.
+        await InsertWithIdentityAsync(db, "Logs", async () =>
+        {
+            db.Logs.AddRange(
+                new Log
+                {
+                    Id = 1, UserId = 2, AuthorizedRequest = true, Succeeded = true,
+                    Action = "PostService.UploadPost", EntityName = "Post", EntityId = 1,
+                    CreatedAt = new DateTime(2026, 9, 1, 10, 0, 0, DateTimeKind.Utc)
+                },
+                new Log
+                {
+                    Id = 2, UserId = 3, AuthorizedRequest = true, Succeeded = false,
+                    Action = "PostService.UpdatePostAsync", EntityName = "Post", EntityId = 2,
+                    Details = "Caller does not own the post",
+                    CreatedAt = new DateTime(2026, 9, 2, 10, 0, 0, DateTimeKind.Utc)
+                },
+                new Log
+                {
+                    Id = 3, UserId = null, AuthorizedRequest = false, Succeeded = false,
+                    Action = "AuthService.LoginAsync", EntityName = "User", EntityId = null,
+                    CreatedAt = new DateTime(2026, 9, 3, 10, 0, 0, DateTimeKind.Utc)
+                },
+                new Log
+                {
+                    Id = 4, UserId = 2, AuthorizedRequest = true, Succeeded = true,
+                    Action = "CommentService.UploadCommentAsync", EntityName = "Comment", EntityId = 1,
+                    CreatedAt = new DateTime(2026, 9, 4, 10, 0, 0, DateTimeKind.Utc)
+                },
+                new Log
+                {
+                    Id = 5, UserId = null, AuthorizedRequest = false, Succeeded = true,
+                    Action = "SoftDeletedUsersCleanupService.ExecuteCycleAsync", EntityName = "User", EntityId = null,
+                    CreatedAt = new DateTime(2026, 9, 5, 10, 0, 0, DateTimeKind.Utc)
+                }
+            );
+
+            await db.SaveChangesAsync();
+        });
+
         await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Users', RESEED, 7)");
         await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Friendships', RESEED, 4)");
         await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Posts', RESEED, 5)");
         await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Messages', RESEED, 4)");
         await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Comments', RESEED, 5)");
+        await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Logs', RESEED, 5)");
     }
 
     private static async Task InsertWithIdentityAsync(ApplicationDbContext db, string tableName, Func<Task> insertAction)

@@ -16,6 +16,7 @@ For the earlier, API-only state of this repository and the history behind it, se
 - Presence: `UserOnline` / `UserOffline` broadcast to friends when a user's first connection opens or last connection closes
 - View a user's profile; edit own profile
 - Roles (`User`, `Administrator`): an administrator can create, update, deactivate, reactivate and soft-delete other users' accounts, delete any post or comment, and assign or remove the `Administrator` role
+- Admin reads (`api/admin`): an administrator reads the `Logs` table page by page, newest first, filtered by user, authorized or not, succeeded or not, entity, action and date range, and lists accounts in any state (active, deactivated, soft-deleted), filtered by state and username
 - Deactivate own account; reactivate it through an emailed activation token
 - Soft-delete own account; a background job later purges soft-deleted accounts and their messages, friendships and posts once a retention window has passed
 - Outcome logging of service calls to the `Logs` table, plus a file log for unhandled exceptions
@@ -85,9 +86,12 @@ CLAUDE.md
         Constants.cs
         ResponseMessages.cs
         /Enums
+            AccountState.cs
             FriendshipStatus.cs
             RoleName.cs
 /Controllers
+    /Admin
+        AdminController.cs
     /Base
         BaseController.cs
     /Content
@@ -128,7 +132,7 @@ CLAUDE.md
         UserMapper.cs
         ...
     /Queries
-        PageQuery.cs, SearchUserQuery.cs
+        AccountListQuery.cs, PageQuery.cs, SearchUserQuery.cs
     /Services
         /BackgroundJobs
             /Base
@@ -147,7 +151,7 @@ CLAUDE.md
 Program.cs
 ```
 
-Folders are grouped by domain area, not by REST noun, and the grouping repeats across layers: `AuthController`, `UserController`, `FriendshipController`, `AccountManagementController` and `AccountActivationController` all live under `Controllers/Users/`, mirroring `Services/BusinessLogic/Users/`.
+Folders are grouped by domain area, not by REST noun, and the grouping repeats across layers: `AuthController`, `UserController`, `FriendshipController`, `AccountManagementController` and `AccountActivationController` all live under `Controllers/Users/`, mirroring `Services/BusinessLogic/Users/`. `AdminController` (`Controllers/Admin/`) is the administrator-only area; it calls `LogService` and `UserService` rather than a service of its own.
 
 ---
 
@@ -175,7 +179,7 @@ Dependencies point one way: **Controllers / Hubs → Services → Repositories �
 
 **Repositories**: concrete classes. `BaseRepository<T>` and `BaseEntityRepository<T>` provide the shared query, pagination and transaction logic; specific repositories add domain queries.
 
-**Services**: business logic. The services under `BusinessLogic/Content` and `BusinessLogic/Users` inherit `BaseService` and consume repositories and mappers directly. `LogService` is registered but has no behavior yet.
+**Services**: business logic. The services under `BusinessLogic/Content` and `BusinessLogic/Users` inherit `BaseService` and consume repositories and mappers directly. `LogService` also inherits `BaseService` and serves the administrator's log read through `LogRepository`.
 
 **Controllers**: thin. They delegate to services and map `ApplicationResponse` outcomes to HTTP status codes. All routes are under `api/` (for example `api/posts`, `api/auth`).
 

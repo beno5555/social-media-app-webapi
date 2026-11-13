@@ -84,6 +84,14 @@ public static class ResponseMessages
     
     #endregion
     
+    #region Admin
+
+    public const string LogsRetrieved     = $"Logs {Retrieved} {Successfully}";
+    public const string AccountsRetrieved = $"Accounts {Retrieved} {Successfully}";
+    public const string InvalidDateRange  = "The start of the date range must not be after its end";
+
+    #endregion
+    
     #region Auth
 
     public const string RegistrationSuccessful = $"{Registration} {Successful}";

@@ -1,4 +1,5 @@
 ﻿using aspnetproject.Common.ProjectConstants;
+using aspnetproject.Common.ProjectConstants.Enums;
 using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories.Dtos;
 using aspnetproject.Infrastructure.Dtos.Auth;
@@ -56,6 +57,42 @@ public static class UserMapper
             RegisteredAt = user.CreatedAt,
             DateOfBirth = user.DateOfBirth
         };
+    }
+
+    public static AdminUserDto ToAdminDisplay(User user)
+    {
+        return new AdminUserDto
+        {
+            Id              = user.Id,
+            Username        = user.Username,
+            Email           = user.Email,
+            IsAdministrator = user.UserRoles.Any(userRole => userRole.Role!.Name == nameof(RoleName.Administrator)),
+            State           = ToAccountState(user),
+
+            RegisteredAt  = user.CreatedAt,
+            DeactivatedAt = user.AccountDeactivatedAt,
+            DeletedAt     = user.AccountDeletedAt
+        };
+    }
+
+    // Soft deletion wins over deactivation, matching UserRepository.GetAccountsAsync's state filter.
+    private static AccountState ToAccountState(User user)
+    {
+        var state = AccountState.Active;
+
+        bool isSoftDeleted = user.AccountDeletedAt is not null;
+        bool isDeactivated = user.AccountDeactivatedAt is not null;
+
+        if (isSoftDeleted)
+        {
+            state = AccountState.SoftDeleted;
+        }
+        else if (isDeactivated)
+        {
+            state = AccountState.Deactivated;
+        }
+
+        return state;
     }
 
     public static ConversationFriendDto ToConversationFriendDisplay(ConversationFriendProjection friend)

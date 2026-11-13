@@ -26,7 +26,9 @@ public static class Constants
     public const int DefaultPageSize = 10;
     public const int MaxPageSize     = 100;
 
-    public const int LogDetailsMaxLength = 1000;
+    public const int LogDetailsMaxLength    = 1000;
+    public const int LogActionMaxLength     = 100;
+    public const int LogEntityNameMaxLength = 50;
 
     public static readonly TimeSpan EditMessageWindow = TimeSpan.FromMinutes(20);
 

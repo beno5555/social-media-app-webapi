@@ -203,3 +203,18 @@ See `auth.md` for the full activation/deactivation flow and email notifications.
 **Rate-limit policies.** `mine/deactivate` uses `Policies.DeactivateOwnAccount` (5/hour); the admin route `{id}/deactivate` uses `Policies.AdminDeactivateAccount` (30/hour).
 
 **Who may deactivate whom.** Self-deactivation needs only a signed-in caller. Deactivating another user's account is `Administrator`-only; any other signed-in caller gets `403`.
+
+### `AdminController`
+
+Route: `api/admin`. Inherits `BaseController`. The whole controller is `[Authorize(Roles = nameof(RoleName.Administrator))]`: a guest gets `401`, any other signed-in caller `403`. Later tickets add statistics and moderation to it.
+
+| Method | Route             | Notes                                                                                                                       |
+|--------|-------------------|-----------------------------------------------------------------------------------------------------------------------------|
+| GET    | `api/admin/logs`  | `Log` rows, newest first, `LogQueryDto`, `ListResponse<LogDisplayDto>`. Policy `AdminReadLogs` (120/minute)                  |
+| GET    | `api/admin/users` | Accounts in any state, oldest account first, `AccountListQuery`, `ListResponse<AdminUserDto>`. Policy `AdminListAccounts` (120/minute) |
+
+**Log filters** (`LogQueryDto : PageQuery`, all optional, combined with AND): `userId`, `authorizedRequest`, `succeeded`, `entityName` (exact), `entityId`, `action` (matches any part, so `action=PostService` finds every `PostService` method), and `from` / `to` (both inclusive, UTC). A `from` later than `to` is refused by `LogQueryDto.Validate` with `400` and the framework's validation `ProblemDetails` (`ResponseMessages.InvalidDateRange`), like any other query-shape error. Rows written in the same millisecond are ordered by id, newest first, so paging is deterministic. `LogService` reads through `LogRepository.SearchLogsAsync`, not the `DbContext`.
+
+**Account list** (`AccountListQuery : PageQuery`): `state` (`Active`, `Deactivated` or `SoftDeleted`) and `username` (matches any part), both optional. It ignores the `User` query filter, which is how an administrator finds a deactivated account to restore with `PATCH api/accounts/{id}/activate`. Each `AdminUserDto` row carries id, username, email, `isAdministrator`, `state` (written as text), `registeredAt`, `deactivatedAt` and `deletedAt`. A soft-deleted account reads as `SoftDeleted` even if it was also deactivated. This endpoint is not in the documentation's endpoint list; it was added because the admin panel cannot restore an account without it.
+
+**No log row on success.** Neither read writes a `Log` row when it succeeds, so reading the logs does not fill them. (`UserService.SearchUsersAsync`, by contrast, logs every search.)

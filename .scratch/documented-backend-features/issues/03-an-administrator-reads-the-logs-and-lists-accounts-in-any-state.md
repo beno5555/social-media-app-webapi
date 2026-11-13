@@ -13,16 +13,16 @@ Decisions are under "Admin reads" in `.scratch/documented-backend-features/spec.
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Difficulty:** routine: two filtered, paged reads that follow the existing controller, service, repository and mapper patterns.
 
-- [ ] An administrator gets log rows page by page, newest first
-- [ ] Each log filter narrows the result: user, authorized, succeeded, entity name, entity id, action, date range; filters combine
-- [ ] The log service reads through the log repository
-- [ ] An administrator gets accounts page by page, including deactivated and soft-deleted ones, each row showing its state
-- [ ] The account list can be narrowed by state and by username
-- [ ] An ordinary user is refused on both endpoints, and so is a guest
-- [ ] Each endpoint has its own rate-limit policy
-- [ ] A successful read of either list writes no `Log` row
-- [ ] `docs/backend/controllers.md` and `README.md` describe the admin controller and both reads
+- [x] An administrator gets log rows page by page, newest first
+- [x] Each log filter narrows the result: user, authorized, succeeded, entity name, entity id, action, date range; filters combine
+- [x] The log service reads through the log repository
+- [x] An administrator gets accounts page by page, including deactivated and soft-deleted ones, each row showing its state
+- [x] The account list can be narrowed by state and by username
+- [x] An ordinary user is refused on both endpoints, and so is a guest
+- [x] Each endpoint has its own rate-limit policy
+- [x] A successful read of either list writes no `Log` row
+- [x] `docs/backend/controllers.md` and `README.md` describe the admin controller and both reads

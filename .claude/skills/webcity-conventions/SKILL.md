@@ -36,7 +36,7 @@ When rules conflict, follow the first applicable item:
 | `references/dtos-and-mapping.md` | Audience tiers, DTO naming, mappers, validation | Input/output shapes |
 | `references/constants-and-config.md` | Constants, response messages, options classes | Any literal value or setting |
 | `references/naming.md` | Identifiers, booleans, async, routes | Naming anything |
-| `references/testing.md` | Integration tests, isolated DB, test naming | Adding or changing behavior |
+| `references/testing.md` | Integration tests, isolated DB, test naming, time-dependent seeds, real-time pushes | Adding or changing behavior |
 | `references/comments-and-docs.md` | Comment style, doc comments, keeping docs in sync | Writing comments or changing documented behavior |
 | `references/csharp.md` | C#/.NET formatting and idioms, full reference examples | Writing C# |
 | `references/typescript.md` | TypeScript translation of every rule, and the Angular frontend rules (§10) | Writing TS/JS or any frontend code |

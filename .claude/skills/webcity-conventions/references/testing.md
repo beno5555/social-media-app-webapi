@@ -21,7 +21,13 @@ Never run tests against the dev database.
 public class PostControllerTests : IAsyncLifetime
 {
     public Task InitializeAsync() => _dbFixture.ResetAndSeedAsync(_dbFixture.GetOptions());
-    public Task DisposeAsync()    => Task.CompletedTask;
+
+    // Disposing the host releases its settings-file watchers; each one holds an inotify instance, and Linux caps them per user.
+    public async Task DisposeAsync()
+    {
+        _client.Dispose();
+        await _factory.DisposeAsync();
+    }
 }
 
 public async Task ResetAndSeedAsync(DbContextOptions<ApplicationDbContext> options)
@@ -58,13 +64,43 @@ var response = await _client.GetAsync("api/posts/mine");
 Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 ```
 
-## 6. Pin suspected bugs with a test, then report them
+## 6. Seed time-dependent cases with fixed past dates
+
+A rule that depends on age (an edit window, a cooldown, a retention period) needs seed rows on both sides of the boundary. Use `DateTime.UtcNow` for "fresh" and a fixed UTC date far in the past for "expired", never `UtcNow` minus a window, which drifts when the constant changes:
+
+```csharp
+// A fixed time in the past, so it is always older than Constants.EditMessageWindow.
+CreatedAt = new DateTime(2026, 9, 1, 10, 0, 0, DateTimeKind.Utc)
+```
+
+## 7. Test real-time pushes with a real client
+
+Connect `Helpers/HubTestClient` as each seeded user involved, act through HTTP, then assert on what each one received. Never mock or replace `IHubContext`. For every push, cover:
+
+- the target receives it, with the expected payload (`WaitForEventAsync<T>`);
+- every other connected user, including the actor, receives nothing (`AssertNoEventAsync`);
+- a failed request pushes nothing.
+
+```csharp
+await using var alice = await HubTestClient.ConnectAsync(_factory, "alice");
+await using var bob   = await HubTestClient.ConnectAsync(_factory, "bob");
+// ... alice edits message 3 through HTTP ...
+var pushed = await bob.WaitForEventAsync<MessageEditedDto>(HubEvents.MessageEdited);
+
+await alice.AssertNoEventAsync(HubEvents.MessageEdited);
+```
+
+A new server event must also be added to `HubEvents.All`, or the client does not record it.
+
+## 8. Pin suspected bugs with a test, then report them
+
+Write the test for the intended behavior and let it fail; say so in a comment that points at the doc note (see `comments-and-docs.md` §5). Remove the comment when the bug is fixed.
 
 ```csharp
 [Fact]
-public async Task EditMessage_WithinEditWindow_Succeeds()   // currently fails: comparison looks inverted
+public async Task DoThing_UnderCondition_ExpectedResult()   // currently fails: see "Possible bug" in docs/backend/<area>.md
 ```
 
-## 7. Report honestly
+## 9. Report honestly
 
-Report as: "Ran 110 tests: 108 passed, 2 failed (`EditMessage_WithinEditWindow_Succeeds`, ...)". Never write "all tests pass" without having run them.
+Report the counts, the failing names and the run time: "Ran 159 tests: 157 passed, 2 failed (`DoThing_UnderCondition_ExpectedResult`, ...). Duration: 18 s". Never write "all tests pass" without having run them.

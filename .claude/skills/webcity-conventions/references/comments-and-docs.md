@@ -50,6 +50,8 @@ Prefer:
 When you change behavior described in project docs (README, area docs), update them in the same change. Record suspected bugs in the docs as clearly labelled notes rather than fixing them silently:
 
 ```markdown
-**Possible bug: edit-window comparison looks inverted.** `canEdit = elapsed > window` is true only
-after the window closes. Confirm intended behavior before relying on either reading.
+**Possible bug: <what looks wrong>.** `<the code in question>` does <what it actually does>, which
+contradicts <the name, message or doc that states the intent>. Confirm intended behavior before relying on either reading.
 ```
+
+Delete the note, everywhere it appears, in the same change that fixes the bug or confirms the behavior is intended.

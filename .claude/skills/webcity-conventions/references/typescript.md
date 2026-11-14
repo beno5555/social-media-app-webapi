@@ -298,7 +298,6 @@ export class MyProfilePage implements OnInit {
 - The backend sends every time as UTC with a `Z` suffix. Keep times as ISO strings in DTO types and in state.
 - Format them only for display, through one shared formatter that follows the current language (built on `Intl.DateTimeFormat`).
 - A date of birth is a calendar date. Format it in UTC, or users west of UTC see the previous day.
-- **Temporary:** the backend converter that guarantees the `Z` is not built yet (ADR 0005). Do not compensate in the frontend. Delete this line when the converter lands.
 
 ### Styling
 

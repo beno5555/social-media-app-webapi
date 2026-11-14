@@ -17,7 +17,7 @@ public static class ApplicationServicesExtensions
 {
     public static void AddApplicationServices(this IServiceCollection services, IConfiguration configuration)
     {
-        services.AddSignalR();
+        services.AddSignalR().AddUtcTimeJson();
         services.AddSingleton<UserConnectionTracker>();
         
         services.AddScoped<CommentRepository>();

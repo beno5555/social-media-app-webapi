@@ -8,14 +8,22 @@ Out of scope: changing any column or property to `DateTimeOffset` (rejected in A
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Difficulty:** tricky: it touches every response and the hub, the suffix is only missing for values read back from the database, and no integration test observes a hub payload today.
 
-- [ ] A test, written failing first, reads a time that was stored earlier (seed data) from an HTTP response as raw text and finds it ends in `Z`
-- [ ] The same holds for a time in the chat list, which is read with raw SQL
-- [ ] A time created in the same request (not read back) also ends in `Z` and names the same instant as before
-- [ ] Hub payloads carry the suffix too, proven by a test if a hub payload can be observed through the existing test host, otherwise verified in a manual run and recorded in this ticket
-- [ ] A date of birth sent to the API and read back is the same calendar date
-- [ ] The temporary note under Dates in the conventions skill's frontend rules is removed, and the data doc describes how times are serialized
-- [ ] The full integration suite passes
+- [x] A test, written failing first, reads a time that was stored earlier (seed data) from an HTTP response as raw text and finds it ends in `Z`
+- [x] The same holds for a time in the chat list, which is read with raw SQL
+- [x] A time created in the same request (not read back) also ends in `Z` and names the same instant as before
+- [x] Hub payloads carry the suffix too, proven by a test if a hub payload can be observed through the existing test host, otherwise verified in a manual run and recorded in this ticket
+- [x] A date of birth sent to the API and read back is the same calendar date
+- [x] The temporary note under Dates in the conventions skill's frontend rules is removed, and the data doc describes how times are serialized
+- [x] The full integration suite passes
+
+## Comments
+
+- The first test failed before the converter existed: `sentAt` came back as `"2026-09-01T10:00:00"`. With the converter's registration removed, the chat-list and date-of-birth tests fail too.
+- Hub payloads are tested through `HubTestClient`. Every time a service pushes today is created in the same request, so it already carries the `Z`. The test therefore pushes a time with no kind through the real `IHubContext` and protocol (`HubPush_TimeWithoutKind_WritesTimeAsUtc`). It failed until the converter was added to the hub's JSON protocol.
+- A friend's last-active time in the chat list is null in the seed, so no test pins it. The converter covers it as it covers every `DateTime`.
+- Responses written with `WriteAsJsonAsync` (the exception handler, the rate-limit rejection) do not get the converter. They carry no times today. This is recorded under Times in `docs/backend/data.md`.
+- Both OpenAPI documents still describe `DateTime` as `date-time`, with the date-of-birth default unchanged (checked with a temporary probe, since removed).

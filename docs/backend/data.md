@@ -75,6 +75,16 @@ public class BaseEntity
 - `FriendshipStatus` is stored as a string in the database, lives under `Common/ProjectConstants/Enums`.
 - `User.DateOfBirth` is validated via a DB check constraint (`CK_User_DateOfBirth`, 13–100 years) and, at the DTO layer, via `ValidAgeAttribute` (same bounds, `Constants.MinAge`/`MaxAge`).
 
+### Times
+
+Every time is a UTC `DateTime`, stored in a `datetime2` column, which carries no zone. A value read back from such a column has `DateTimeKind.Unspecified`, and the chat list (`GetConversationFriendsAsync`) is read with raw SQL, past any EF Core mapping. So the zone is added where JSON is written, not where data is read (ADR 0005):
+
+- `UtcDateTimeJsonConverter` (`Common/Json`) writes every `DateTime` and `DateTime?` as ISO 8601 with a `Z` suffix, for example `2026-09-01T10:00:00Z`. It labels the value as UTC and never shifts it, so code must keep writing UTC.
+- `AddUtcTimeJson()` (`Extensions/UtcTimeJsonExtensions.cs`) registers it for controller responses (`AddControllers()`) and for hub payloads (`AddSignalR()`).
+- Responses written with `WriteAsJsonAsync` (`GlobalExceptionHandler`, the rate-limit rejection) use the separate minimal-API JSON options and do not get the converter. They carry no times today. If one ever does, register the converter there too, and check that both OpenAPI documents still describe `DateTime` as `date-time`, since the built-in generator reads those options.
+- Reading is unchanged from the built-in converter: `2000-08-16` and `2000-08-16T00:00:00.000Z` both store midnight on that date. A date of birth therefore reads back as `2000-08-16T00:00:00Z`, and the frontend formats it in UTC.
+- Covered by `Serialization/UtcTimeSerializationTests`.
+
 ### Account lifecycle fields on `User`
 
 - `AccountDeactivatedAt` (nullable) — set by deactivation, cleared by reactivation. Reversible.

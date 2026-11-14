@@ -1,6 +1,7 @@
 ---
 name: tdd
 description: Test-driven development. Use when the user wants to build features or fix bugs test-first, mentions "red-green-refactor", or wants integration tests.
+model: sonnet
 ---
 
 # Test-Driven Development
@@ -35,4 +36,5 @@ When the shape of that interface is itself in question (how deep the module is, 
 
 - **Red before green.** Write the failing test first, then only enough code to pass it. Don't anticipate future tests or add speculative features.
 - **One slice at a time.** One seam, one test, one minimal implementation per cycle.
+- **Run only what the cycle touches.** Run the one test or test file through a filter, and read only the summary and failure lines. Run the full suite once, at the end.
 - **Refactoring is not part of the loop.** It belongs to the review stage (see the `spec-review` skill), not the red → green implementation cycle.

@@ -9,7 +9,7 @@ For the earlier, API-only state of this repository and the history behind it, se
 ## Features
 
 - Register and log in; JWT access tokens plus rotating refresh tokens; password reset via an emailed token
-- Create, view, update and delete posts, with up to 10 photos (JPEG, PNG or WebP, checked by content) per post; a friends-only feed. Every post read carries its like count, comment count and whether the caller liked it
+- Create, view, update and delete posts, with up to 10 photos (JPEG, PNG or WebP, checked by content) per post; a ranked feed of friends' and other users' posts, scored by connection, activity and age. Every post read carries its like count, comment count and whether the caller liked it
 - Comment on posts and edit own comments; delete a comment as its author, as the post's author, or as an administrator; live `ReceiveComment` push to the post's author
 - Like and unlike posts, once per user per post; list a post's likers, newest first; live `PostLiked` push to the post's author
 - Send, accept, decline and remove friend requests; view friends, pending and sent requests; search users by username
@@ -269,6 +269,7 @@ app.Run();
 - **Mutate and notify together.** Services push SignalR events through `IHubContext` in the same method that changes the data.
 - **Authorization.** `[Authorize]` is set per controller, with `[AllowAnonymous]` on public actions. `BaseController` provides `GetUserId()`, `GetUsername()` and `IsAdministrator()`. `AuthController` is the exception: every action is public, so it has no `[Authorize]` and does not inherit `BaseController`. Ownership checks are made in services.
 - **One storage class for files.** `ImageStorage` checks uploads by their leading bytes, names them itself, saves, deletes and turns a stored file into its relative address under `/api/images`. Nothing else touches the disk, so moving images to cloud storage changes that one class. An upload with any bad file stores nothing.
+- **Ranked feed in one query.** The feed scores every post the caller did not write by connection (friend, mutual friend, anyone else), likes plus comments, and age, then orders and pages it in a single SQL query, so it never loads all posts into memory. The weights and the decay are named constants in `Constants` (see Posts in `docs/backend/controllers.md`).
 - **Pagination.** List endpoints bind `PageQuery` from the query string: `PageNumber` defaults to 1, and `PageSize` defaults to 10 and is validated to 1–100.
 - **Rate limiting.** Sliding-window policies, per-IP before login and per-user after, with a per-user global limiter as a backstop. The limiter runs between authentication and authorization, so it sees the signed-in user; a request without a valid token counts against its IP (see `docs/backend/auth.md`).
 

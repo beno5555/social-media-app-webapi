@@ -32,8 +32,15 @@ public class PostControllerTests : IAsyncLifetime
     }
 
     // ---------- GET /posts/feed ----------
-    // alice (2) is friends (accepted) with bob (3) only.
-    // pending/declined relationships (diana, charlie) should not surface in feed.
+    // alice (2) is friends (accepted) with bob (3). bob is also friends with diana (5), so diana is a
+    // mutual-friend user for alice even though their own request is pending. charlie (4) is a stranger to alice.
+    // Posts 1 to 5 are created at seed time, so they are the newest. Posts 6 to 13 have fixed past times
+    // and come in groups where two ranking factors are equal (see TestDataSeeder):
+    //   connection: 6 (bob), 7 (diana), 8 (charlie), all at 09:00 with no activity
+    //   activity:   9 (one like, one comment) and 10 (none), charlie's at 08:00
+    //   age:        11 (07:00) and 12 (06:00), charlie's with no activity
+    //   tie:        13, the same score as 10
+    // Posts 4 (erin, deactivated) and 5 (frank, soft-deleted) must never appear.
 
     [Fact]
     public async Task GetFeed_WithoutToken_ReturnsUnauthorized()
@@ -44,32 +51,99 @@ public class PostControllerTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task GetFeed_ShowsAcceptedFriendsPostsOnly()
+    public async Task GetFeed_IncludesFriendsAndOtherUsersPosts()
     {
-        var token = await AuthTestHelper.LoginAsync(_client, "alice", TestDataSeeder.SharedPlaintextPassword);
-        AuthTestHelper.AttachToken(_client, token);
+        await LoginAsync("alice");
 
-        var response = await _client.GetAsync("api/posts/feed");
-        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        var ids = await ReadFeedIdsAsync();
 
-        var body = await response.Content.ReadAsStringAsync();
-
-        Assert.Contains("Bob Post", body); // accepted friend
-        Assert.DoesNotContain("Charlie Post", body); // charlie->alice is Pending, not Accepted
-        Assert.DoesNotContain("Alice Post", body); // feed excludes caller's own posts
+        Assert.Contains(2, ids); // bob, a friend
+        Assert.Contains(3, ids); // charlie, not a friend
     }
 
     [Fact]
-    public async Task GetFeed_DoesNotIncludePendingOrDeclinedFriendPosts()
+    public async Task GetFeed_EqualAgeAndActivity_RanksFriendThenMutualFriendThenStranger()
     {
-        // bob -> charlie is Declined; charlie should not appear in bob's feed either
-        var token = await AuthTestHelper.LoginAsync(_client, "bob", TestDataSeeder.SharedPlaintextPassword);
-        AuthTestHelper.AttachToken(_client, token);
+        await LoginAsync("alice");
 
-        var response = await _client.GetAsync("api/posts/feed");
-        var body = await response.Content.ReadAsStringAsync();
+        var ids = await ReadFeedIdsAsync();
 
-        Assert.DoesNotContain("Charlie Post", body);
+        Assert.Equal([6, 7, 8], ids.Where(id => id is 6 or 7 or 8));
+    }
+
+    [Fact]
+    public async Task GetFeed_EqualConnectionAndAge_RanksMoreActivePostFirst()
+    {
+        await LoginAsync("alice");
+
+        var ids = await ReadFeedIdsAsync();
+
+        Assert.Equal([9, 10], ids.Where(id => id is 9 or 10));
+    }
+
+    [Fact]
+    public async Task GetFeed_EqualConnectionAndActivity_RanksNewerPostFirst()
+    {
+        await LoginAsync("alice");
+
+        var ids = await ReadFeedIdsAsync();
+
+        Assert.Equal([11, 12], ids.Where(id => id is 11 or 12));
+    }
+
+    [Fact]
+    public async Task GetFeed_EqualScores_ReturnsNewestIdFirstOnEveryRequest()
+    {
+        await LoginAsync("alice");
+
+        var first  = await ReadFeedIdsAsync();
+        var second = await ReadFeedIdsAsync();
+
+        Assert.Equal([13, 10], first.Where(id => id is 10 or 13));
+        Assert.Equal(first, second);
+    }
+
+    [Fact]
+    public async Task GetFeed_UserWithNoFriends_ReturnsPosts()
+    {
+        await LoginAsync("charlie"); // charlie's only relationships are pending or declined
+
+        var ids = await ReadFeedIdsAsync();
+
+        Assert.NotEmpty(ids);
+    }
+
+    [Fact]
+    public async Task GetFeed_NeverIncludesCallersOwnPosts()
+    {
+        await LoginAsync("charlie");
+
+        var ids = await ReadFeedIdsAsync();
+
+        Assert.DoesNotContain(ids, id => id is 3 or >= 8 and <= 13); // every post charlie (4) owns
+    }
+
+    [Fact]
+    public async Task GetFeed_PostsByDeactivatedOrSoftDeletedAccounts_AreLeftOut()
+    {
+        await LoginAsync("alice");
+
+        var ids = await ReadFeedIdsAsync();
+
+        Assert.DoesNotContain(4, ids); // erin, deactivated
+        Assert.DoesNotContain(5, ids); // frank, soft-deleted
+    }
+
+    [Fact]
+    public async Task GetFeed_TwoPages_ContinueTheRankedOrder()
+    {
+        await LoginAsync("alice");
+        var allIds = await ReadFeedIdsAsync();
+
+        var firstPage  = await ReadListAsync(await _client.GetAsync("api/posts/feed?pageNumber=1&pageSize=4"));
+        var secondPage = await ReadListAsync(await _client.GetAsync("api/posts/feed?pageNumber=2&pageSize=4"));
+
+        Assert.Equal(allIds.Take(8), firstPage.Concat(secondPage).Select(post => post.Id));
     }
 
     // ---------- GET /posts/mine ----------
@@ -104,7 +178,8 @@ public class PostControllerTests : IAsyncLifetime
 
         var posts = await ReadListAsync(await _client.GetAsync("api/posts/mine"));
 
-        Assert.Equal([newerId, olderId, 2], posts.Select(post => post.Id)); // 2 is bob's seeded post
+        // 2 and 6 are bob's seeded posts; 2 is created at seed time, 6 at a fixed past time.
+        Assert.Equal([newerId, olderId, 2, 6], posts.Select(post => post.Id));
     }
 
     // ---------- GET /posts/{id} ----------
@@ -199,7 +274,8 @@ public class PostControllerTests : IAsyncLifetime
 
         var posts = await ReadListAsync(await _client.GetAsync("api/posts/user/3"));
 
-        Assert.Equal([newerId, olderId, 2], posts.Select(post => post.Id)); // 2 is bob's seeded post
+        // 2 and 6 are bob's seeded posts; 2 is created at seed time, 6 at a fixed past time.
+        Assert.Equal([newerId, olderId, 2, 6], posts.Select(post => post.Id));
     }
 
     [Fact]
@@ -732,6 +808,13 @@ public class PostControllerTests : IAsyncLifetime
         Assert.Equal([0, 1], images.Select(image => image.OrderIndex));
         Assert.EndsWith(".webp", images[0].Address);
         Assert.EndsWith(".png", images[1].Address);
+    }
+
+    // One page large enough to hold every candidate, so the whole ranking is visible.
+    private async Task<List<int>> ReadFeedIdsAsync()
+    {
+        var posts = await ReadListAsync(await _client.GetAsync($"api/posts/feed?pageSize={Constants.MaxPageSize}"));
+        return posts.Select(post => post.Id).ToList();
     }
 
     private static async Task<List<StandardPostDisplayDto>> ReadListAsync(HttpResponseMessage response)

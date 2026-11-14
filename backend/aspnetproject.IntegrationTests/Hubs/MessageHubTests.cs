@@ -30,7 +30,7 @@ public class MessageHubTests : IAsyncLifetime
     public async Task DisposeAsync() => await _factory.DisposeAsync();
 
     // ---------- POST /messages/{receiverId} → ReceiveMessage ----------
-    // alice (2) and bob (3) are accepted friends.
+    // alice (2) and bob (3) are accepted friends; bob (3) and diana (5) are too.
     // charlie (4) has no accepted friendship, so he receives no presence events either.
 
     [Fact]

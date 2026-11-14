@@ -53,7 +53,7 @@ Route: `api/posts`. Inherits `BaseController`. `[Authorize]` at controller level
 | Method | Route                     | Auth      | Notes                                              |
 |--------|---------------------------|-----------|----------------------------------------------------|
 | POST   | `api/posts`               | Required  | Create, `multipart/form-data`, with up to 10 photos |
-| GET    | `api/posts/feed`          | Required  | Friends-only, via `PostService.GetFeedAsync`       |
+| GET    | `api/posts/feed`          | Required  | Ranked posts by everyone but the caller            |
 | GET    | `api/posts/mine`          | Required  | Caller's own posts                                 |
 | GET    | `api/posts/{id}`          | Anonymous | Single post (with comments, split query)           |
 | GET    | `api/posts/user/{userId}` | Anonymous | Any user's posts — public-profile-style visibility |
@@ -61,6 +61,18 @@ Route: `api/posts`. Inherits `BaseController`. `[Authorize]` at controller level
 | DELETE | `api/posts/{id}`          | Required  | Delete, ownership-scoped **or admin**              |
 
 `GetOwnPosts` (`/mine`) and `GetPostsByUser` (`/user/{userId}`) both call `PostService.GetByUserIdAsync`, which returns the posts newest first (ties by post id, newest first), so paging is deterministic.
+
+**The ranked feed.** `GET api/posts/feed` (`PostService.GetFeedAsync` → `PostRepository.GetFeedAsync`) returns posts by friends and by other users, highest score first. Candidates are every post the caller did not write whose author is neither deactivated nor soft-deleted, so a user with no friends still gets a feed. The score is
+
+```
+(connection weight + likes + comments) / (age in hours + FeedAgeOffsetHours) ^ FeedAgeGravity
+```
+
+- **Connection weight:** `FeedFriendWeight` for an accepted friend, `FeedMutualFriendWeight` for a user who shares at least one accepted friend with the caller, `FeedOtherUserWeight` for anyone else. A weight counts as that many likes or comments. Pending and declined requests count as no connection. A shared friend counts even if their account is deactivated or soft-deleted, as in `FriendshipRepository.GetFriendshipsAsync`.
+- **Age:** minutes since `CreatedAt`, in hours, plus `FeedAgeOffsetHours` so a new post does not divide by zero, raised to `FeedAgeGravity`. Every weight is above zero, so even a post with no activity sinks as it ages. A post dated in the future counts as brand new.
+- **One query.** The connection tier, the counts and the age (`DATEDIFF` against the request time) are all expressions in the LINQ query, so ranking and paging run in SQL in one round trip; no raw SQL is needed. Ties are broken by newest post id, so equal scores keep their order on every request.
+- **Paging** is by page number, like every list. Scores change as time passes and posts gain likes, so a post can repeat or be skipped between two pages loaded minutes apart; that is accepted. Cursor paging and performance at scale are out of scope.
+- The values live only in `Constants`, with a note on what they mean in practice. They are a first guess, to be tuned once there is real traffic.
 
 **Creating a post with photos.** `POST api/posts` takes `multipart/form-data` (`CreatePostDto`): `PostTitle` (required), `PostContent` (optional) and `Images` (zero or more files, in display order). A post needs a title and either text or at least one photo (`ResponseMessages.TextOrImageRequired`). A JSON body gets `415`. The response is `201` with the standard post shape. Every post read (`{id}`, `feed`, `mine`, `user/{userId}`) carries `Images`: a list of `ImageDto` (`Id`, `Address`, `OrderIndex`) in upload order. Editing stays text-only (`PUT` keeps its JSON body).
 
@@ -77,7 +89,7 @@ Route: `api/posts`. Inherits `BaseController`. `[Authorize]` at controller level
 
 **Ownership checks** (`Update`) remain a scoped comparison in the service (`post.UserId == userId`) rather than a separate authorization step. **Delete now also accepts admins**: `DeletePostAsync(callerId, isAdmin, id)` allows the post owner *or* a caller with the `Administrator` role, sourced from `BaseController.IsAdministrator()`.
 
-**Visibility model, and the inconsistency it creates:** `feed`/`mine` are friends-gated; `GetById`/`GetPostsByUser` are fully public. Mirrors real platforms where the home feed is curated but profile pages are public — but "who can see a post" still depends on which endpoint is hit, not a single rule on the `Post` resource.
+**Visibility model.** Every post is readable by everyone: `GetById` and `GetPostsByUser` are public, `feed` shows any other user's post to a signed-in caller, and `mine` returns the caller's own. Friendship changes only a post's rank in the feed, never whether it can be seen.
 
 Deleting a post runs inside a transaction: comments are deleted first (`CommentRepository.DeletePostCommentsAsync`), then the post (`DeleteWithoutChangeTrackingAsync`), avoiding change-tracker/FK ordering issues. The post's likes go with it through the database cascade.
 

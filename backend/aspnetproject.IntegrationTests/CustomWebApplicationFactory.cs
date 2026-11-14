@@ -19,6 +19,7 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     private const string ReloadConfigOnChangeSetting = "hostBuilder:reloadConfigOnChange";
     private const string DisabledSettingValue        = "false";
 
+    private const string ConnectionStringSetting  = "ConnectionStrings:DefaultConnection";
     private const string UploadFolderSetting      = "ImageStorage:UploadFolder";
     private const string TestUploadFolderRootName = "webcity-test-uploads";
 
@@ -49,9 +50,11 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
         {
             config.AddJsonFile("appsettings.Testing.json", optional: false);
 
-            // Added after the settings file so it wins: the suite never sends real email, and always trusts TrustedFrontendOrigin.
+            // Added after the settings file so it wins: the suite never sends real email, always trusts TrustedFrontendOrigin,
+            // and always uses the database DatabaseFixture migrates and reseeds (one per git worktree).
             config.AddInMemoryCollection(new Dictionary<string, string?>
             {
+                [ConnectionStringSetting] = DatabaseFixture.ConnectionString,
                 ["EmailConfiguration:Enabled"] = "false",
                 ["Cors:AllowedOrigins:0"] = TrustedFrontendOrigin,
                 [UploadFolderSetting] = UploadFolder

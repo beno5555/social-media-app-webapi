@@ -500,3 +500,5 @@ appsettings.Development.json
 backend/aspnetproject/Uploads/
 # Claude Code personal settings
 .claude/settings.local.json
+# Worktrees made by claude --worktree (docs/agents/worktrees.md)
+.claude/worktrees/

@@ -9,13 +9,17 @@ namespace aspnetproject.IntegrationTests;
 
 public class DatabaseFixture : IAsyncLifetime
 {
-    // The same variable the app under test reads, so both sides agree. Set where Windows authentication is unavailable
-    // (scripts/test-linux.sh sets it); unset, the suite uses the local default below.
-    private const string ConnectionStringVariable = "ConnectionStrings__DefaultConnection";
-    private const string LocalConnectionString    = "Server=localhost;Database=TestSocialMediaWebApiDb;Trusted_Connection=True;TrustServerCertificate=True";
+    // Set where Windows authentication is unavailable (scripts/test-linux.sh sets it); unset, the suite uses the local
+    // default below. CustomWebApplicationFactory hands ConnectionString to the app under test, so both sides always agree.
+    private const string ConnectionStringVariable    = "ConnectionStrings__DefaultConnection";
+    private const string LocalConnectionStringFormat = "Server=localhost;Database={0};Trusted_Connection=True;TrustServerCertificate=True";
+    private const string LocalDatabaseName           = "TestSocialMediaWebApiDb";
+    private const string GitEntryName                = ".git";
+    private const char   DatabaseNameSeparator       = '_';
 
-    private static readonly string ConnectionString =
-        Environment.GetEnvironmentVariable(ConnectionStringVariable) ?? LocalConnectionString;
+    public static string ConnectionString { get; } =
+        Environment.GetEnvironmentVariable(ConnectionStringVariable)
+        ?? string.Format(LocalConnectionStringFormat, GetLocalDatabaseName());
 
     private Respawner _respawner = null!;
     private DbConnection _connection = null!;
@@ -55,6 +59,43 @@ public class DatabaseFixture : IAsyncLifetime
         new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseSqlServer(ConnectionString)
             .Options;
+
+    // A linked git worktree (claude --worktree) gets its own database named after its folder, so suites running in two
+    // checkouts at once never wipe each other's data. The main checkout keeps the plain name.
+    private static string GetLocalDatabaseName()
+    {
+        string databaseName = LocalDatabaseName;
+        DirectoryInfo? checkoutRoot = FindCheckoutRoot();
+        bool isLinkedWorktree = checkoutRoot is not null && File.Exists(Path.Combine(checkoutRoot.FullName, GitEntryName));
+
+        if (isLinkedWorktree)
+        {
+            string suffix = new string(checkoutRoot!.Name
+                .Select(character => char.IsAsciiLetterOrDigit(character) ? character : DatabaseNameSeparator)
+                .ToArray());
+            databaseName = $"{LocalDatabaseName}{DatabaseNameSeparator}{suffix}";
+        }
+
+        return databaseName;
+    }
+
+    // The nearest folder above the test binaries that holds a .git entry: a folder in the main checkout, a file in a linked worktree.
+    private static DirectoryInfo? FindCheckoutRoot()
+    {
+        DirectoryInfo? directory = new DirectoryInfo(AppContext.BaseDirectory);
+        bool found = false;
+
+        while (directory is not null && !found)
+        {
+            found = Path.Exists(Path.Combine(directory.FullName, GitEntryName));
+            if (!found)
+            {
+                directory = directory.Parent;
+            }
+        }
+
+        return directory;
+    }
 
     public async Task DisposeAsync()
     {

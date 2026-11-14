@@ -1,0 +1,5 @@
+# Gitignored files that `claude --worktree` copies into each new worktree (docs/agents/worktrees.md).
+backend/aspnetproject/appsettings.json
+backend/aspnetproject/appsettings.Development.json
+backend/aspnetproject/appsettings.Testing.json
+.claude/settings.local.json

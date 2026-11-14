@@ -9,6 +9,7 @@ using aspnetproject.Infrastructure.Services.BackgroundJobs;
 using aspnetproject.IntegrationTests.Fixtures;
 using aspnetproject.IntegrationTests.Helpers;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Options;
 
 namespace aspnetproject.IntegrationTests.BackgroundJobs;
 
@@ -141,6 +142,24 @@ public class OrphanImagesCleanupServiceTests : IAsyncLifetime
         await SweepAsync();
 
         Assert.Empty(await GetJobLogsAsync());
+    }
+
+    // ---------- settings ----------
+
+    [Theory]
+    [InlineData("00:00:00")]
+    [InlineData("-01:00:00")]
+    [InlineData("00:00:59")]
+    public async Task Startup_WithMinimumAgeUnderOneMinute_FailsToStart(string minimumAge)
+    {
+        await using var factory = new CustomWebApplicationFactory(new Dictionary<string, string?>
+        {
+            ["CleanupConfiguration:OrphanImages:MinimumAge"] = minimumAge
+        });
+
+        var exception = Record.Exception(() => factory.CreateClient());
+
+        Assert.IsType<OptionsValidationException>(exception);
     }
 
     // ---------- helpers ----------

@@ -106,7 +106,7 @@ Result accumulation: `SoftDeleteCleanupResult` (Users/Posts/Messages/Friendships
 
 ## `OrphanImagesCleanupService`
 
-Config: `OrphanImagesCleanupConfiguration` (section `CleanupConfiguration:OrphanImages`, every key optional): `Interval` (default 24 hours), `MinimumAge` (default 1 hour), `BatchSize` (default 500).
+Config: `OrphanImagesCleanupConfiguration` (section `CleanupConfiguration:OrphanImages`, every key optional): `Interval` (default 24 hours), `MinimumAge` (default 1 hour, at least one minute), `BatchSize` (default 500).
 
 The backstop for photo files that no row points at. They are left behind when the process crashes between writing the files and saving their post or message, when a best-effort delete fails (removing a friendship, the purge above, deleting a message) or when the purge stops partway through a batch. The immediate cleanup paths stay: `ImageStorage.SaveWithOwnerAsync` removes the files when saving the owner throws, and each database delete removes its files afterwards. This job catches what those miss.
 
@@ -115,11 +115,11 @@ Each sweep:
 2. Splits the addresses into batches of `BatchSize`. For each batch, `ImageRepository.GetReferencedAddressesAsync` returns the ones a `PostImages` or `MessageImages` row still holds (one `UNION` query), and the rest go to `ImageStorage.DeleteAsync`, which returns how many files it removed. A file that cannot be removed is logged to `SystemLogger` and the sweep goes on.
 3. Writes one `Log` row (`EntityName` `BaseImage`) with the number of files removed, only if it removed any.
 
-**Why `MinimumAge`.** An upload writes its files before it saves the post or message that refers to them (a file and a row cannot share a transaction), so for a moment a new file has no row. A sweep in that moment would delete a photo that is about to be referenced. The age is the file's last write time, so even a slow upload is measured from when its last byte landed, and a file younger than `MinimumAge` is never a candidate. Any file older than that had the whole window to get its row. The cutoff is taken once, before the listing, so a file written during the sweep is never considered.
+**Why `MinimumAge`.** An upload writes its files before it saves the post or message that refers to them (a file and a row cannot share a transaction), so for a moment a new file has no row. A sweep in that moment would delete a photo that is about to be referenced. The age is the file's last write time, so even a slow upload is measured from when its last byte landed, and a file younger than `MinimumAge` is never a candidate. Any file older than that had the whole window to get its row. The cutoff is taken once, before the listing, so a file written during the sweep is never considered. Zero or a negative age would switch this protection off without a sign, so the options are validated at startup (`AddOptions<OrphanImagesCleanupConfiguration>().Validate(...).ValidateOnStart()`): a `MinimumAge` under `OrphanImagesCleanupConfiguration.MinimumAgeFloor` (one minute) stops the host with an `OptionsValidationException`. It is the codebase's only validated options class so far.
 
 `ImageStorage` stays the only code that lists or deletes uploaded files; the job only decides which ones.
 
-Tests: `OrphanImagesCleanupServiceTests` (see **Testing a job**) cover deleting an old unreferenced file, keeping old files that a post's or a message's photo refers to, keeping a young unreferenced file, leaving files with other names alone, a missing upload folder, and the `Log` row with and without removals. A file that cannot be deleted is not tested: a held file blocks deletion on Windows but not on Linux, so the test could not run the same on both.
+Tests: `OrphanImagesCleanupServiceTests` (see **Testing a job**) cover deleting an old unreferenced file, keeping old files that a post's or a message's photo refers to, keeping a young unreferenced file, leaving files with other names alone, a missing upload folder, the `Log` row with and without removals, and a host that refuses to start with a `MinimumAge` under one minute. A file that cannot be deleted is not tested: a held file blocks deletion on Windows but not on Linux, so the test could not run the same on both.
 
 ---
 

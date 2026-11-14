@@ -62,7 +62,10 @@ public static class ApplicationServicesExtensions
         services.Configure<OldLogsCleanupConfiguration>(configuration.GetSection("CleanupConfiguration:OldLogs"));
         services.Configure<RefreshTokenCleanupConfiguration>(configuration.GetSection("CleanupConfiguration:RefreshTokens"));
         services.Configure<SoftDeletedUsersCleanupConfiguration>(configuration.GetSection("CleanupConfiguration:SoftDeletedUsers"));
-        services.Configure<OrphanImagesCleanupConfiguration>(configuration.GetSection("CleanupConfiguration:OrphanImages"));
+        services.AddOptions<OrphanImagesCleanupConfiguration>()
+            .Bind(configuration.GetSection("CleanupConfiguration:OrphanImages"))
+            .Validate(config => config.HasSafeMinimumAge(), OrphanImagesCleanupConfiguration.MinimumAgeTooShortMessage)
+            .ValidateOnStart();
 
         services.AddHostedService<RefreshTokenCleanupService>();
         services.AddHostedService<SoftDeletedUsersCleanupService>();

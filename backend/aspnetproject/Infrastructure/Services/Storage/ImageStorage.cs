@@ -16,6 +16,8 @@ public class ImageStorage
     private const string PngExtension  = ".png";
     private const string WebPExtension = ".webp";
 
+    private static readonly HashSet<string> AcceptedExtensions = [JpegExtension, PngExtension, WebPExtension];
+
     private static readonly byte[] JpegSignature       = [0xFF, 0xD8, 0xFF];
     private static readonly byte[] PngSignature        = [0x89, 0x50, 0x4E, 0x47, 0x0D, 0x0A, 0x1A, 0x0A];
     private static readonly byte[] RiffSignature       = "RIFF"u8.ToArray();
@@ -103,11 +105,42 @@ public class ImageStorage
         return savedFileNames.Select(ToAddress).ToList();
     }
 
-    /// <summary>Best effort: a file that cannot be removed is logged and does not fail the caller.</summary>
-    public async Task DeleteAsync(IEnumerable<string> addresses)
+    /// <summary>
+    /// Best effort: a file that cannot be removed is logged and does not fail the caller. Returns how many were removed.
+    /// </summary>
+    public async Task<int> DeleteAsync(IEnumerable<string> addresses)
     {
         // Only the file name of an address is used, so an address can never point outside the upload folder.
-        await DeleteFilesAsync(addresses.Select(Path.GetFileName).OfType<string>());
+        return await DeleteFilesAsync(addresses.Select(Path.GetFileName).OfType<string>());
+    }
+
+    /// <summary>
+    /// The addresses of the stored images last written before <paramref name="writtenBeforeUtc"/>. Only files directly in
+    /// the upload folder, named the way this class names them, count; anything else there is left alone. A missing folder
+    /// holds none.
+    /// </summary>
+    public List<string> ListImageAddressesWrittenBefore(DateTime writtenBeforeUtc)
+    {
+        var addresses    = new List<string>();
+        var uploadFolder = new DirectoryInfo(UploadFolderPath);
+
+        if (uploadFolder.Exists)
+        {
+            addresses = uploadFolder.EnumerateFiles()
+                .Where(file => IsStoredImageName(file.Name) && file.LastWriteTimeUtc < writtenBeforeUtc)
+                .Select(file => ToAddress(file.Name))
+                .ToList();
+        }
+
+        return addresses;
+    }
+
+    private bool IsStoredImageName(string fileName)
+    {
+        bool hasAcceptedExtension = AcceptedExtensions.Contains(Path.GetExtension(fileName));
+        bool hasGeneratedStem     = Guid.TryParseExact(Path.GetFileNameWithoutExtension(fileName), FileNameFormat, out _);
+
+        return hasAcceptedExtension && hasGeneratedStem;
     }
 
     private string ToAddress(string fileName)
@@ -206,18 +239,23 @@ public class ImageStorage
         return extension;
     }
 
-    private async Task DeleteFilesAsync(IEnumerable<string> fileNames)
+    private async Task<int> DeleteFilesAsync(IEnumerable<string> fileNames)
     {
+        int deletedCount = 0;
+
         foreach (string fileName in fileNames)
         {
             try
             {
                 File.Delete(Path.Combine(UploadFolderPath, fileName));
+                deletedCount++;
             }
             catch (Exception exception) when (exception is IOException or UnauthorizedAccessException)
             {
                 await _systemLogger.LoggingErrorAsync(exception, $"Could not delete stored image {fileName}");
             }
         }
+
+        return deletedCount;
     }
 }

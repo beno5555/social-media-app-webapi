@@ -10,18 +10,18 @@ The integration test host removes every hosted service, so no existing job has a
 
 **Blocked by:** None (can start immediately)
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Difficulty:** tricky: first background job with a test (new seam while the test host removes hosted services), and a race with uploads still in progress that the minimum age must handle correctly.
 
-- [ ] Settings live under `CleanupConfiguration:OrphanImages`: `Interval` (default 24 hours), `MinimumAge` (default 1 hour) and `BatchSize`, each with a default so existing settings files keep working
-- [ ] A sweep deletes a photo file older than `MinimumAge` that no post and no message refers to
-- [ ] A sweep keeps a file a post's photo refers to, and a file a message's photo refers to, however old they are
-- [ ] A sweep keeps a file nothing refers to that is younger than `MinimumAge`
-- [ ] Only files with an accepted image extension (the names `ImageStorage` makes) directly in the upload folder are considered; anything else there is left alone
-- [ ] A missing or empty upload folder is a sweep that removes nothing, not a failure
-- [ ] A file that cannot be deleted is logged and does not stop the sweep
-- [ ] A sweep that removed files writes one `Log` row with the count, through `DatabaseLogger` like the other jobs; a sweep that removed nothing writes none
-- [ ] The job is registered with the other hosted services, and the test host still removes it
-- [ ] Integration tests cover the delete, keep-referenced and keep-young cases by running one sweep directly
-- [ ] `docs/backend/background-jobs.md` describes the job and how its sweep is tested, and the Images section of `docs/backend/controllers.md` names the job as the backstop for files left behind
+- [x] Settings live under `CleanupConfiguration:OrphanImages`: `Interval` (default 24 hours), `MinimumAge` (default 1 hour) and `BatchSize`, each with a default so existing settings files keep working
+- [x] A sweep deletes a photo file older than `MinimumAge` that no post and no message refers to
+- [x] A sweep keeps a file a post's photo refers to, and a file a message's photo refers to, however old they are
+- [x] A sweep keeps a file nothing refers to that is younger than `MinimumAge`
+- [x] Only files with an accepted image extension (the names `ImageStorage` makes) directly in the upload folder are considered; anything else there is left alone
+- [x] A missing or empty upload folder is a sweep that removes nothing, not a failure
+- [x] A file that cannot be deleted is logged and does not stop the sweep
+- [x] A sweep that removed files writes one `Log` row with the count, through `DatabaseLogger` like the other jobs; a sweep that removed nothing writes none
+- [x] The job is registered with the other hosted services, and the test host still removes it
+- [x] Integration tests cover the delete, keep-referenced and keep-young cases by running one sweep directly
+- [x] `docs/backend/background-jobs.md` describes the job and how its sweep is tested, and the Images section of `docs/backend/controllers.md` names the job as the backstop for files left behind

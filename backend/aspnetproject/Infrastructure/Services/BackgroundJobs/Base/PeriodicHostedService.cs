@@ -26,22 +26,32 @@ public abstract class PeriodicHostedService : BackgroundService
 
         while (await timer.WaitForNextTickAsync(stoppingToken))
         {
-            using var scope  = _scopeFactory.CreateScope();
+            await RunOnceAsync(stoppingToken);
+        }
+    }
 
-            var dbLogger = scope.ServiceProvider.GetRequiredService<DatabaseLogger>();
-            
-            try
-            {
-                await RunCycleAsync(scope.ServiceProvider, stoppingToken);
-            }
-            catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
-            {
-                //
-            }
-            catch (Exception ex)
-            {
-                await LogResultAsync(dbLogger, false, null, ex.Message);
-            }
+    /// <summary>
+    /// Runs one cycle in its own scope, as each timer tick does; a failed cycle is logged, not thrown. Public so a test can
+    /// run a cycle without the timer. The test host removes hosted services, so a job under test is also registered as a
+    /// singleton (see docs/backend/background-jobs.md).
+    /// </summary>
+    public async Task RunOnceAsync(CancellationToken stoppingToken)
+    {
+        using var scope = _scopeFactory.CreateScope();
+
+        var dbLogger = scope.ServiceProvider.GetRequiredService<DatabaseLogger>();
+
+        try
+        {
+            await RunCycleAsync(scope.ServiceProvider, stoppingToken);
+        }
+        catch (OperationCanceledException) when (stoppingToken.IsCancellationRequested)
+        {
+            //
+        }
+        catch (Exception ex)
+        {
+            await LogResultAsync(dbLogger, false, null, ex.Message);
         }
     }
 

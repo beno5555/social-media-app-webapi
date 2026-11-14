@@ -30,7 +30,7 @@ Extends `BaseRepository<T>`. Adds:
 
 ### Pagination
 
-`GetWhereAsync`/`GetAllAsync` accept optional `pageNumber`/`pageSize`; both null skips pagination (used by background jobs / internal callers). At the API layer, `PageQuery` now defaults `PageNumber = 1` and `PageSize = Constants.DefaultPageSize` (10) with `[Range(1, Constants.MaxPageSize)]` (100) validation — no longer unbounded/unvalidated.
+`GetWhereAsync`/`GetAllAsync` accept optional `pageNumber`/`pageSize`; both null skips pagination (used by background jobs / internal callers). At the API layer, `PageQuery` now defaults `PageNumber = 1` and `PageSize = Constants.DefaultPageSize` (10), and validates both with `[Range]`: `PageNumber` from 1 to `Constants.MaxPageNumber` (so the offset `(PageNumber - 1) * PageSize` cannot overflow an `int`), `PageSize` from 1 to `Constants.MaxPageSize` (100) — no longer unbounded/unvalidated.
 
 ### SaveChanges Strategy
 

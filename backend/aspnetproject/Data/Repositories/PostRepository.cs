@@ -58,7 +58,7 @@ public class PostRepository : BaseEntityRepository<Post>
             .SqlQueryRaw<int>(RankedFeedPageSql, RankedFeedPageParameters(callerId, pageNumber, pageSize))
             .ToListAsync();
 
-        var posts = await Query(false)
+        var posts = await Query(track: false)
             .Where(post => pageIds.Contains(post.Id))
             .Select(WithStats(callerId))
             .ToListAsync();
@@ -102,7 +102,7 @@ public class PostRepository : BaseEntityRepository<Post>
                     ELSE @otherUserWeight
                 END AS ConnectionWeight,
                 (SELECT COUNT(*) FROM PostLikes l WHERE l.PostId = p.Id)
-                    + (SELECT COUNT(*) FROM Comments c WHERE c.PostId = p.Id) AS Reactions,
+                    + (SELECT COUNT(*) FROM Comments c WHERE c.PostId = p.Id) AS Activity,
                 CASE
                     WHEN p.CreatedAt > @now THEN 0
                     ELSE DATEDIFF(MINUTE, p.CreatedAt, @now) / @minutesPerHour
@@ -115,7 +115,7 @@ public class PostRepository : BaseEntityRepository<Post>
         )
         SELECT Id AS Value
         FROM CandidatePosts
-        ORDER BY (ConnectionWeight + Reactions) / POWER(AgeHours + @ageOffsetHours, @ageGravity) DESC, Id DESC
+        ORDER BY (ConnectionWeight + Activity) / POWER(AgeHours + @ageOffsetHours, @ageGravity) DESC, Id DESC
         OFFSET @skip ROWS FETCH NEXT @take ROWS ONLY
         """;
 

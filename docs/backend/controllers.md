@@ -6,7 +6,7 @@
 
 ## Controllers Layer
 
-All routes are prefixed `api/` (e.g. `api/posts`, not `/posts`). Nearly every action carries `[EnableRateLimiting(RateLimitConfig.Policies.X)]` — omitted from the tables below for brevity; see `auth.md`/`RateLimitConfig.cs` for the concrete limits (every limit currently counts by IP; see the rate-limiting section of `auth.md`).
+All routes are prefixed `api/` (e.g. `api/posts`, not `/posts`). Nearly every action carries `[EnableRateLimiting(RateLimitConfig.Policies.X)]` — omitted from the tables below for brevity; see `auth.md`/`RateLimitConfig.cs` for the concrete limits (per-IP before login, per-user after; see the rate-limiting section of `auth.md`).
 
 ### `BaseController`
 

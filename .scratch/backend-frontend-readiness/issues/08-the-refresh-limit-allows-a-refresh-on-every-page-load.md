@@ -14,3 +14,7 @@ Out of scope: until ticket 07 lands, everyone behind the proxy shares this one b
 - [ ] The existing test that exhausts the refresh policy still reaches a 429 with the failure envelope
 - [ ] The auth doc states the new limit
 - [ ] The full integration suite passes
+
+## Comments
+
+- From ticket 06's review: `RateLimitRejectionTests` stops trying after `MaxAttempts = 50`, so once Refresh allows 60 per 10 minutes the exhaust loop never reaches a 429 and the existing rejection test fails. Raise the cap above the new limit while adapting that test. The same exhaust loop (send until the status is no longer the "still allowed" one, capped by `MaxAttempts`) is copied in `RateLimitPartitionTests.ExhaustSearchUsersAsync`. Since this ticket has to change the loop anyway, consider moving it into one shared helper in `Helpers/` that takes the request and the "still allowed" status, used by both classes.

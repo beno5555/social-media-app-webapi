@@ -15,6 +15,7 @@ namespace aspnetproject.IntegrationTests.Controllers;
 // Seed state used here (see TestDataSeeder):
 //   post 1 is alice's, with comments 4 (bob) and 5 (orphaned), and one like by bob
 //   post 2 is bob's, with comments 1 (alice), 2 (bob) and 3 (charlie)
+//   posts 10 and 13 are charlie's, with no activity and the same feed score
 [Collection("Database")]
 public class ContentVisibilityTests : IAsyncLifetime
 {
@@ -23,6 +24,7 @@ public class ContentVisibilityTests : IAsyncLifetime
     private const string OtherUser     = "charlie";
     private const string Liker         = "bob";
     private const string PostAuthor    = "bob";
+    private const string Commenter     = "bob";
 
     private const int AliceId              = 2;
     private const int AlicesPostId         = 1;
@@ -31,6 +33,8 @@ public class ContentVisibilityTests : IAsyncLifetime
     private const int AlicesCommentId      = 1;
     private const int BobsCommentId        = 2;
     private const int CharliesCommentId    = 3;
+    private const int CharliesQuietPostId  = 10;
+    private const int CharliesTwinPostId   = 13;
 
     private readonly DatabaseFixture _dbFixture;
     private readonly CustomWebApplicationFactory _factory;
@@ -135,6 +139,30 @@ public class ContentVisibilityTests : IAsyncLifetime
 
         var posts = await ResponseReader.ReadListAsync<StandardPostDisplayDto>(response);
         Assert.Equal(expectedCount, posts.Single(post => post.Id == BobsPostId).CommentCount);
+    }
+
+    // Charlie's posts 10 and 13 have the same score, so the newer id (13) ranks first. One comment by bob on post 10
+    // lifts it above 13, but only for a caller who may read that comment once it is hidden.
+    // This covers the ranking SQL, which repeats the visibility rule by hand.
+    [Theory]
+    [InlineData(Author, false)]
+    [InlineData(Commenter, true)]
+    [InlineData(Administrator, true)]
+    public async Task GetFeed_PostWithHiddenComment_RanksByActivityTheCallerCanRead(string caller, bool countsHiddenComment)
+    {
+        await SignInAsync(Commenter);
+        var created   = await _client.PostAsJsonAsync($"api/comments/posts/{CharliesQuietPostId}", new { Content = "A new comment." });
+        var commentId = (await ResponseReader.ReadDataAsync<FullCommentDto>(created)).Id;
+        await SetCommentStatusAsync(commentId, "Hidden");
+        await SignInAsync(caller);
+
+        var response = await _client.GetAsync($"api/posts/feed?pageSize={Constants.MaxPageSize}");
+
+        var ids = (await ResponseReader.ReadListAsync<StandardPostDisplayDto>(response)).Select(post => post.Id);
+        int[] expectedOrder = countsHiddenComment
+            ? [CharliesQuietPostId, CharliesTwinPostId]
+            : [CharliesTwinPostId, CharliesQuietPostId];
+        Assert.Equal(expectedOrder, ids.Where(id => id is CharliesQuietPostId or CharliesTwinPostId));
     }
 
     // ---------- GET /posts/user/{id} and /posts/mine ----------

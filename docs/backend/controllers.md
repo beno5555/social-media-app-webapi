@@ -29,7 +29,8 @@ In `/Infrastructure/Queries/`:
 ```csharp
 public class PageQuery
 {
-    public int PageNumber { get; set; } = 1;
+    [Range(Constants.FirstPageNumber, int.MaxValue)]
+    public int PageNumber { get; set; } = Constants.FirstPageNumber;
 
     [Range(1, Constants.MaxPageSize)]
     public int PageSize { get; set; } = Constants.DefaultPageSize;
@@ -42,7 +43,7 @@ public class SearchUserQuery : PageQuery
 }
 ```
 
-Bound via `[FromQuery]`. Unlike the earlier nullable design, both properties now default and validate (`PageSize` capped via `[Range]`) — no more unpaginated "return everything" mode reachable from the API surface (internal/background callers still pass `null`/`null` directly to repository methods).
+Bound via `[FromQuery]`. Unlike the earlier nullable design, both properties now default and validate (`PageNumber` at least 1 and `PageSize` capped, both via `[Range]`, so a page number below 1 gets `400` instead of a negative SQL offset) — no more unpaginated "return everything" mode reachable from the API surface (internal/background callers still pass `null`/`null` directly to repository methods).
 
 ---
 

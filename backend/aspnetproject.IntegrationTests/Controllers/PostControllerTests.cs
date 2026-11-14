@@ -146,6 +146,18 @@ public class PostControllerTests : IAsyncLifetime
         Assert.Equal(allIds.Take(8), firstPage.Concat(secondPage).Select(post => post.Id));
     }
 
+    [Theory]
+    [InlineData(0)]
+    [InlineData(-1)]
+    public async Task GetFeed_PageNumberBelowOne_ReturnsBadRequest(int pageNumber)
+    {
+        await LoginAsync("alice");
+
+        var response = await _client.GetAsync($"api/posts/feed?pageNumber={pageNumber}");
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
     // ---------- GET /posts/mine ----------
 
     [Fact]

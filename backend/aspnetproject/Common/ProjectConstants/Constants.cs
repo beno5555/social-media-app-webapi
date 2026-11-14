@@ -30,6 +30,7 @@ public static class Constants
     public const int MaxAge                     = 100;
     public const int UsernameChangeCooldownDays = 20;
     
+    public const int FirstPageNumber = 1;
     public const int DefaultPageSize = 10;
     public const int MaxPageSize     = 100;
 

@@ -143,7 +143,8 @@ CLAUDE.md
             /Base
             /Common
             /Configuration
-            OldLogsCleanupService.cs, RefreshTokenCleanupService.cs, SoftDeletedUsersCleanupService.cs
+            OldLogsCleanupService.cs, OrphanImagesCleanupService.cs, RefreshTokenCleanupService.cs,
+            SoftDeletedUsersCleanupService.cs
         /BusinessLogic
             /Base
             /Content
@@ -173,7 +174,7 @@ dotnet run --project aspnetproject
 dotnet test aspnetproject.IntegrationTests
 ```
 
-`appsettings.json`, `appsettings.Development.json` and `appsettings.Testing.json` are gitignored and there is no example template, so a fresh clone does not run until they exist in `backend/aspnetproject/`. The application reads `ConnectionStrings:DefaultConnection`, `Jwt`, `EmailConfiguration`, `PasswordConfiguration:ResetTokenMinutes`, `CleanupConfiguration:{OldLogs,RefreshTokens,SoftDeletedUsers}` and `Cors:AllowedOrigins`, and optionally `ImageStorage:{UploadFolder,MaxFileSizeBytes,MaxImagesPerPost,MaxImagesPerMessage}` (defaults: `Uploads/` under the project, 5 MB, 10, 5). Uploaded photos, of posts and of messages, are written to the upload folder, which is gitignored.
+`appsettings.json`, `appsettings.Development.json` and `appsettings.Testing.json` are gitignored and there is no example template, so a fresh clone does not run until they exist in `backend/aspnetproject/`. The application reads `ConnectionStrings:DefaultConnection`, `Jwt`, `EmailConfiguration`, `PasswordConfiguration:ResetTokenMinutes`, `CleanupConfiguration:{OldLogs,RefreshTokens,SoftDeletedUsers}` and `Cors:AllowedOrigins`, and optionally `ImageStorage:{UploadFolder,MaxFileSizeBytes,MaxImagesPerPost,MaxImagesPerMessage}` (defaults: `Uploads/` under the project, 5 MB, 10, 5) and `CleanupConfiguration:OrphanImages:{Interval,MinimumAge,BatchSize}` (defaults: 24 hours, 1 hour, 500). Uploaded photos, of posts and of messages, are written to the upload folder, which is gitignored.
 
 The integration tests need a real SQL Server database. On Linux, `scripts/test-linux.sh` (run from the repository root) starts one in Docker and runs the same tests; CI uses that script.
 
@@ -193,7 +194,7 @@ Dependencies point one way: **Controllers / Hubs → Services → Repositories �
 
 **Hubs**: the SignalR transport, a tier of its own beside the controllers. One hub, `MessageHub` at `hubs/messages`, carries messages, comment and like notifications, presence and typing signals. Its one client-called method, `SendTyping`, hands the call to a service; the hub itself does no validation.
 
-**Background jobs**: three hosted services built on `PeriodicHostedService` clean up refresh tokens, soft-deleted users and old log rows.
+**Background jobs**: four hosted services built on `PeriodicHostedService` clean up refresh tokens, soft-deleted users, old log rows and photo files no post or message refers to.
 
 ### Startup
 
@@ -252,7 +253,7 @@ app.MapHub<MessageHub>("hubs/messages");
 app.Run();
 ```
 
-`AddApplicationServices` (`Extensions/ApplicationServicesExtensions.cs`) registers SignalR, the singleton `UserConnectionTracker`, every repository and service (scoped), the two loggers (scoped), `EmailSender` (transient), `ImageStorage` (scoped), the options classes for email, image storage and the three cleanup jobs, and the three hosted services. `UseImageStorage` serves the upload folder as static files at `/api/images`.
+`AddApplicationServices` (`Extensions/ApplicationServicesExtensions.cs`) registers SignalR, the singleton `UserConnectionTracker`, every repository and service (scoped), the two loggers (scoped), `EmailSender` (transient), `ImageStorage` (scoped), the options classes for email, image storage and the four cleanup jobs, and the four hosted services (`OrphanImagesCleanupService` also as a singleton, so the integration tests can run one sweep). `UseImageStorage` serves the upload folder as static files at `/api/images`.
 
 ---
 

@@ -30,6 +30,7 @@ public static class ApplicationServicesExtensions
         services.AddScoped<UserRoleRepository>();
         services.AddScoped<RefreshTokenRepository>();
         services.AddScoped<LogRepository>();
+        services.AddScoped<ImageRepository>();
         
         services.AddScoped<UserService>();
         services.AddScoped<AuthService>();
@@ -61,9 +62,14 @@ public static class ApplicationServicesExtensions
         services.Configure<OldLogsCleanupConfiguration>(configuration.GetSection("CleanupConfiguration:OldLogs"));
         services.Configure<RefreshTokenCleanupConfiguration>(configuration.GetSection("CleanupConfiguration:RefreshTokens"));
         services.Configure<SoftDeletedUsersCleanupConfiguration>(configuration.GetSection("CleanupConfiguration:SoftDeletedUsers"));
+        services.Configure<OrphanImagesCleanupConfiguration>(configuration.GetSection("CleanupConfiguration:OrphanImages"));
 
         services.AddHostedService<RefreshTokenCleanupService>();
         services.AddHostedService<SoftDeletedUsersCleanupService>();
         services.AddHostedService<OldLogsCleanupService>();
+
+        // Also a singleton, so integration tests can run one sweep: their host removes every IHostedService.
+        services.AddSingleton<OrphanImagesCleanupService>();
+        services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<OrphanImagesCleanupService>());
     }
 }

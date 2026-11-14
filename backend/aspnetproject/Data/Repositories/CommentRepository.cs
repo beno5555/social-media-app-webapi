@@ -1,4 +1,5 @@
-﻿using aspnetproject.Data.Models;
+﻿using aspnetproject.Common.ProjectConstants.Enums;
+using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories.Base;
 using aspnetproject.Data.Repositories.Visibility;
 using Microsoft.EntityFrameworkCore;
@@ -54,6 +55,17 @@ public class CommentRepository : BaseEntityRepository<Comment>
         var query = Query()
             .Where(comment => comment.CommenterUserId == userId)
             .Where(ModerationVisibility.CommentAndPostReadableBy(userId, isAdmin));
+
+        return await Page(query, pageNumber, pageSize).ToListAsync();
+    }
+
+    // The moderation queue: every flagged comment, oldest first. Id breaks ties between comments written in the same millisecond.
+    public async Task<List<Comment>> GetFlaggedAsync(int pageNumber, int pageSize)
+    {
+        var query = Query(track: false)
+            .Where(comment => comment.ModerationStatus == ModerationStatus.Flagged)
+            .OrderBy(comment => comment.CreatedAt)
+            .ThenBy(comment => comment.Id);
 
         return await Page(query, pageNumber, pageSize).ToListAsync();
     }

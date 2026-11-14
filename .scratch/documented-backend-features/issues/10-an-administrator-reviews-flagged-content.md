@@ -17,14 +17,14 @@ Decisions are under "Reports and moderation" in `.scratch/documented-backend-fea
 
 **Blocked by:** 09 (An administrator can hide a post or a comment)
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Difficulty:** routine: one paged read per content type that follows existing patterns, built on the status from ticket 09.
 
-- [ ] An administrator gets the flagged posts, page by page, oldest first, each with its snapshot
-- [ ] An administrator gets the flagged comments the same way, chosen by the query parameter
-- [ ] Visible and hidden content never appear in the queue
-- [ ] Content leaves the queue once an administrator sets it to `VISIBLE` or `HIDDEN`
-- [ ] An ordinary user and a guest are refused
-- [ ] The endpoint has its own rate-limit policy
-- [ ] `docs/backend/controllers.md` and `README.md` describe the moderation queue
+- [x] An administrator gets the flagged posts, page by page, oldest first, each with its snapshot
+- [x] An administrator gets the flagged comments the same way, chosen by the query parameter
+- [x] Visible and hidden content never appear in the queue
+- [x] Content leaves the queue once an administrator sets it to `VISIBLE` or `HIDDEN`
+- [x] An ordinary user and a guest are refused
+- [x] The endpoint has its own rate-limit policy
+- [x] `docs/backend/controllers.md` and `README.md` describe the moderation queue

@@ -90,4 +90,24 @@ public class AdminController : BaseController
 
         return NotFound(response);
     }
+
+    // One content type per call: posts and comments live in separate tables, so there is no single page across both.
+    [HttpGet]
+    [Route("moderation-queue")]
+    [EnableRateLimiting(RateLimitConfig.Policies.AdminReadModerationQueue)]
+    [ProducesResponseType<ListResponse<PostSnapshotDto>>(StatusCodes.Status200OK)]
+    [ProducesResponseType<ListResponse<CommentSnapshotDto>>(StatusCodes.Status200OK)]
+    public async Task<ActionResult<ApplicationResponse>> GetModerationQueue([FromQuery] ModerationQueueQuery queueQuery)
+    {
+        ApplicationResponse response = queueQuery.Type == ModerationContentType.Post
+            ? await _moderationService.GetFlaggedPostsAsync(queueQuery)
+            : await _moderationService.GetFlaggedCommentsAsync(queueQuery);
+
+        if (response.Succeeded)
+        {
+            return Ok(response);
+        }
+
+        return BadRequest(response);
+    }
 }

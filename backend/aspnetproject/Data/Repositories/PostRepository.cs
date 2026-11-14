@@ -37,7 +37,9 @@ public class PostRepository : BaseEntityRepository<Post>
 
     public async Task<List<PostWithStatsProjection>> GetByUserIdAsync(int userId, int? callerId, int? pageNumber = null, int? pageSize = null)
     {
-        return await BuildWhereQuery(p => p.UserId == userId, pageNumber, pageSize)
+        // Newest first. Id breaks ties between posts written in the same millisecond, so paging is deterministic.
+        return await BuildWhereQuery(p => p.UserId == userId, pageNumber, pageSize,
+                query => query.OrderByDescending(post => post.CreatedAt).ThenByDescending(post => post.Id))
             .Select(WithStats(callerId))
             .ToListAsync();
     }

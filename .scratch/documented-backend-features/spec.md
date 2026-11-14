@@ -55,7 +55,7 @@ n8n and everything it drives (webhooks, the API key, the internal endpoints, AI 
 
 21. As a user, I want to like a post, so that I can show I appreciate it.
 22. As a user, I want to take my like back, so that a mistaken like is not permanent.
-23. As a user, I want a second like on the same post to be refused, so that one person counts once.
+23. As a user, I want a second like on the same post to count once and not show as an error, so that one person counts once. (Owner's decision, 2026-11-14: a repeated like succeeds without a second row; it was refused before.)
 24. As a post author, I want to be told at once when someone likes my post, so that I see reactions as they happen.
 25. As a post author, I want no notification for liking my own post, so that I am not notified about myself.
 26. As a reader, I want every post to show how many likes and comments it has, so that I can see how active it is.
@@ -150,7 +150,7 @@ n8n and everything it drives (webhooks, the API key, the internal endpoints, AI 
 
 - **`PostLike`,** unique per post and user.
 - **`POST /api/posts/{postId}/likes`** likes, **`DELETE`** unlikes, **`GET`** returns the users who liked, paged, in the minimal user shape, readable by anyone who can read the post.
-- **Refusals.** Liking twice, unliking a post one has not liked, and any like action on a post the caller cannot read (missing or hidden) fail with a message.
+- **Refusals.** Unliking a post one has not liked, and any like action on a post the caller cannot read (missing or hidden), fail with a message. Liking twice is not a failure: the second like succeeds and changes nothing (owner's decision, 2026-11-14).
 - **`PostLiked`** is pushed to the author's group, and not when the author likes their own post. Its payload names the post, the user who liked it and the new like count.
 - **The standard and full post shapes gain** a like count, a comment count and a "liked by caller" flag, which is false for a guest.
 

@@ -38,6 +38,7 @@ await LogResultAsync(response.Succeeded, nameof(DeletePostAsync), nameof(Post), 
 | Security-relevant read (user search, enumeration-capable) | Yes |
 | High-frequency, low-value read (feed, own inbox) | No |
 | Success that only repeats the row just written (sent message) | No, log failure only |
+| High-frequency toggle (like, unlike) | Failure only. The row itself is the record |
 | Login | Failure only (brute-force signal) |
 
 ## 4. Set the result first, then log from it

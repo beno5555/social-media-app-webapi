@@ -196,14 +196,14 @@ public class MessageHubTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task LikePost_RefusedSecondLike_DeliversNothing()
+    public async Task LikePost_RepeatedLike_DeliversNothing()
     {
         await using var bob = await HubTestClient.ConnectAsync(_factory, "bob");
         await LoginAsync("alice");
 
         var response = await _client.PostAsync("api/posts/2/likes", null); // alice already likes it
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
         await bob.AssertNoEventAsync(HubEvents.PostLiked);
     }
 

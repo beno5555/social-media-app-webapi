@@ -39,20 +39,16 @@ public class PostLikeService : BaseService
         {
             bool notLikedYet = !await _postLikeRepository.HasUserLikedPostAsync(postId, userId);
 
+            // A repeated like succeeds without adding a row or sending a push.
             if (notLikedYet)
             {
                 var like      = PostLikeMapper.ToEntity(postId, userId);
                 var addedLike = await _postLikeRepository.AddLikeAsync(like);
 
-                response.Ok(ResponseMessages.PostLiked);
-                await LogResultAsync(response.Succeeded, nameof(LikePostAsync), nameof(PostLike), null, addedLike.Id);
                 await NotifyAuthorAsync(post, addedLike);
             }
-            else
-            {
-                response.Fail(ResponseMessages.PostAlreadyLiked);
-                await LogResultAsync(response.Succeeded, nameof(LikePostAsync), nameof(PostLike), $"Could not like post {postId}. {response.Message}", null);
-            }
+
+            response.Ok(ResponseMessages.PostLiked);
         }
         else
         {
@@ -71,13 +67,11 @@ public class PostLikeService : BaseService
 
         if (postExists)
         {
-            int  removedCount = await _postLikeRepository.DeleteLikeAsync(postId, userId);
-            bool wasLiked     = removedCount > 0;
+            bool wasLiked = await _postLikeRepository.DeleteLikeAsync(postId, userId);
 
             if (wasLiked)
             {
                 response.Ok(ResponseMessages.PostUnliked);
-                await LogResultAsync(response.Succeeded, nameof(UnlikePostAsync), nameof(PostLike), $"Unliked post {postId}", null);
             }
             else
             {

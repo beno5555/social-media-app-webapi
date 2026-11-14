@@ -159,7 +159,6 @@ public static class ResponseMessages
     public const string PostLiked          = $"Post {Liked} {Successfully}";
     public const string PostUnliked        = $"Post {Unliked} {Successfully}";
     public const string PostLikesRetrieved = $"Post Likes {Retrieved} {Successfully}";
-    public const string PostAlreadyLiked   = "You already like this post";
     public const string PostNotLiked       = "You have not liked this post";
 
     #endregion

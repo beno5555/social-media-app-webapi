@@ -33,8 +33,7 @@ public class PostLikeController : BaseController
             return Ok(response);
         }
 
-        // Mixed meanings (unknown post, already liked), so one status for both.
-        return BadRequest(response);
+        return NotFound(response);
     }
 
     [HttpDelete]

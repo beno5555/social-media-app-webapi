@@ -95,6 +95,18 @@ public class PostControllerTests : IAsyncLifetime
         Assert.DoesNotContain("Bob Post", body);
     }
 
+    [Fact]
+    public async Task GetMine_SeveralPosts_ReturnsNewestFirst()
+    {
+        await LoginAsync("bob");
+        int olderId = await CreatePostAsync("Bob Older Post");
+        int newerId = await CreatePostAsync("Bob Newer Post");
+
+        var posts = await ReadListAsync(await _client.GetAsync("api/posts/mine"));
+
+        Assert.Equal([newerId, olderId, 2], posts.Select(post => post.Id)); // 2 is bob's seeded post
+    }
+
     // ---------- GET /posts/{id} ----------
 
     [Fact]
@@ -175,6 +187,19 @@ public class PostControllerTests : IAsyncLifetime
 
         var body = await response.Content.ReadAsStringAsync();
         Assert.Contains("Charlie Post", body);
+    }
+
+    [Fact]
+    public async Task GetPostsByUser_SeveralPosts_ReturnsNewestFirst()
+    {
+        await LoginAsync("bob");
+        int olderId = await CreatePostAsync("Bob Older Post");
+        int newerId = await CreatePostAsync("Bob Newer Post");
+        _client.DefaultRequestHeaders.Authorization = null;
+
+        var posts = await ReadListAsync(await _client.GetAsync("api/posts/user/3"));
+
+        Assert.Equal([newerId, olderId, 2], posts.Select(post => post.Id)); // 2 is bob's seeded post
     }
 
     [Fact]
@@ -690,6 +715,14 @@ public class PostControllerTests : IAsyncLifetime
     {
         await LoginAsync("bob");
         var response = await _client.PostAsync("api/posts", PostForm.Create(BobsPhotoPostTitle, "Holiday", WebP(7), Png(8)));
+        var post = await ReadDataAsync<StandardPostDisplayDto>(response);
+        return post.Id;
+    }
+
+    // Creates a text post as the signed-in user.
+    private async Task<int> CreatePostAsync(string title)
+    {
+        var response = await _client.PostAsync("api/posts", PostForm.Create(title, "Text"));
         var post = await ReadDataAsync<StandardPostDisplayDto>(response);
         return post.Id;
     }

@@ -50,37 +50,41 @@ public class PostLikeControllerTests : IAsyncLifetime
     }
 
     [Fact]
-    public async Task Like_PostAlreadyLiked_ReturnsBadRequest()
+    public async Task Like_AlreadyLikedPost_ReturnsOkAndKeepsOneLike()
     {
         await LoginAsync("alice");
 
         var response = await _client.PostAsync("api/posts/2/likes", null); // alice already likes bob's post
+        var likers   = await GetLikersAsync("api/posts/2/likes");
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal(ResponseMessages.PostAlreadyLiked, await ReadMessageAsync(response));
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(ResponseMessages.PostLiked, await ReadMessageAsync(response));
+        Assert.Equal([6, 4, 2], likers.Select(liker => liker.Id));
     }
 
     [Fact]
-    public async Task Like_SamePostTwice_RefusesTheSecondLike()
+    public async Task Like_SamePostTwice_ReturnsOkAndCountsOneLike()
     {
         await LoginAsync("diana");
 
         var first  = await _client.PostAsync("api/posts/3/likes", null);
         var second = await _client.PostAsync("api/posts/3/likes", null);
+        var likers = await GetLikersAsync("api/posts/3/likes");
 
         Assert.Equal(HttpStatusCode.OK, first.StatusCode);
-        Assert.Equal(HttpStatusCode.BadRequest, second.StatusCode);
-        Assert.Equal(ResponseMessages.PostAlreadyLiked, await ReadMessageAsync(second));
+        Assert.Equal(HttpStatusCode.OK, second.StatusCode);
+        var liker = Assert.Single(likers);
+        Assert.Equal(5, liker.Id); // diana
     }
 
     [Fact]
-    public async Task Like_NonexistentPost_ReturnsBadRequestWithNotFound()
+    public async Task Like_NonexistentPost_ReturnsNotFound()
     {
         await LoginAsync("alice");
 
         var response = await _client.PostAsync("api/posts/9999/likes", null);
 
-        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
         Assert.Equal(ResponseMessages.PostNotFound, await ReadMessageAsync(response));
     }
 

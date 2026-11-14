@@ -99,7 +99,7 @@ Policy name: `OriginPolicy` (`CorsExtensions.AddCorsPolicies`), applied globally
 | `MessageSeen` | Conversation marked read (last unread message from the other user, seen) | `{ SeenBy, SeenAt }` | Sender's group |
 | `MessageEdited` | Message edit persists successfully | `MessageEditedDto` | Receiver's group only (the editor gets the edited message in the HTTP response) |
 | `ReceiveComment` | A comment is added to a post, by someone other than the post's author | `NotifyCommentDto` | Post author's group |
-| `PostLiked` | A post is liked by someone other than its author. A refused like (already liked) pushes nothing; an unlike pushes nothing | `PostLikedDto` | Post author's group only |
+| `PostLiked` | A post is liked by someone other than its author. A repeated like (already liked) pushes nothing; an unlike pushes nothing | `PostLikedDto` | Post author's group only |
 | `UserOnline` | A user's first connection opens | `{ UserId }` | Each accepted friend's group |
 | `UserOffline` | A user's last connection closes | `{ UserId, LastActiveAt }` | Each accepted friend's group |
 | `UserTyping` | An accepted friend calls `SendTyping` for this user | `UserTypingDto` | Receiver's group only |

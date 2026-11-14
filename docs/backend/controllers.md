@@ -60,7 +60,7 @@ Route: `api/posts`. Inherits `BaseController`. `[Authorize]` at controller level
 | PUT    | `api/posts/{id}`          | Required  | Update, ownership-scoped                           |
 | DELETE | `api/posts/{id}`          | Required  | Delete, ownership-scoped **or admin**              |
 
-`GetOwnPosts` (`/mine`) and `GetPostsByUser` (`/user/{userId}`) both call `PostService.GetByUserIdAsync`.
+`GetOwnPosts` (`/mine`) and `GetPostsByUser` (`/user/{userId}`) both call `PostService.GetByUserIdAsync`, which returns the posts newest first (ties by post id, newest first), so paging is deterministic.
 
 **Creating a post with photos.** `POST api/posts` takes `multipart/form-data` (`CreatePostDto`): `PostTitle` (required), `PostContent` (optional) and `Images` (zero or more files, in display order). A post needs a title and either text or at least one photo (`ResponseMessages.TextOrImageRequired`). A JSON body gets `415`. The response is `201` with the standard post shape. Every post read (`{id}`, `feed`, `mine`, `user/{userId}`) carries `Images`: a list of `ImageDto` (`Id`, `Address`, `OrderIndex`) in upload order. Editing stays text-only (`PUT` keeps its JSON body).
 
@@ -87,14 +87,15 @@ Route: `api/posts/{postId}/likes`. Inherits `BaseController`. `[Authorize]` at c
 
 | Method | Route                      | Auth      | Notes                                         |
 |--------|----------------------------|-----------|-----------------------------------------------|
-| POST   | `api/posts/{postId}/likes` | Required  | Like as the caller. `200`, or `400`           |
+| POST   | `api/posts/{postId}/likes` | Required  | Like as the caller. `200`, or `404`           |
 | DELETE | `api/posts/{postId}/likes` | Required  | Remove the caller's like. `200`, or `404`     |
 | GET    | `api/posts/{postId}/likes` | Anonymous | Paginated likers, newest first. `200`, or `404` |
 
-- **Like** (`PostLikeService.LikePostAsync`): a user likes a post at most once. An unknown post (`PostNotFound`) and a second like (`PostAlreadyLiked`) both get `400`, because one status covers two meanings. Any post can be liked, the caller's own included, and so can the post of a deactivated or deleted account, because such posts are still readable. On success the post's author gets a `PostLiked` push, unless they liked their own post (see `signalr.md`).
+- **Like** (`PostLikeService.LikePostAsync`): a user likes a post at most once. A repeated like also gets `200` and `PostLiked`, but adds no row and sends no push, so the client never sees a failure for a like that is already there. An unknown post gets `404` (`PostNotFound`). Any post can be liked, the caller's own included, and so can the post of a deactivated or deleted account, because such posts are still readable. On success the post's author gets a `PostLiked` push, unless they liked their own post (see `signalr.md`).
 - **Unlike**: an unknown post (`PostNotFound`) or a post the caller has not liked (`PostNotLiked`) gets `404`. A user can like the post again after unliking it.
 - **Likers**: a `ListResponse<MinimalUserDto>`, newest like first (ties by like id, newest first), paged by `PageQuery`. A liker whose account is deactivated or deleted shows the placeholder username from `UsernameMapper`. An unknown post gets `404`; a post with no likes gets `200` and an empty list.
-- A simultaneous double like from one user hits the unique index on (`PostId`, `UserId`), and the losing request gets `409` with the generic envelope from `GlobalExceptionHandler` instead of `PostAlreadyLiked`; the data stays correct.
+- **Logging.** Only failures (an unknown post, an unlike of a post not liked) write a `Log` row. A successful like or unlike does not, because both happen often and the `PostLike` row is the record.
+- A simultaneous double like from one user hits the unique index on (`PostId`, `UserId`), and the losing request gets `409` with the generic envelope from `GlobalExceptionHandler`, though a repeated like is otherwise a success; the data stays correct.
 
 ### `CommentController`
 

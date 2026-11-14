@@ -27,12 +27,14 @@ public class PostLikeRepository : BaseEntityRepository<PostLike>
         return await _dbSet.CountAsync(like => like.PostId == postId);
     }
 
-    // Returns the number of likes removed: 1, or 0 when the user had not liked the post.
-    public async Task<int> DeleteLikeAsync(int postId, int userId)
+    // Returns false when the user had not liked the post.
+    public async Task<bool> DeleteLikeAsync(int postId, int userId)
     {
-        return await _dbSet
+        int removedCount = await _dbSet
             .Where(like => like.PostId == postId && like.UserId == userId)
             .ExecuteDeleteAsync();
+
+        return removedCount > 0;
     }
 
     // Newest first. Id breaks ties between likes written in the same millisecond, so paging is deterministic.

@@ -12,15 +12,13 @@ namespace aspnetproject.Infrastructure.Services.BusinessLogic.Content;
 
 public class PostService : BaseService
 {
-    private readonly PostRepository       _postRepository;
-    private readonly FriendshipRepository _friendshipRepository;
-    private readonly UserRepository       _userRepository;
-    private readonly CommentRepository    _commentRepository;
-    private readonly ImageStorage         _imageStorage;
+    private readonly PostRepository    _postRepository;
+    private readonly UserRepository    _userRepository;
+    private readonly CommentRepository _commentRepository;
+    private readonly ImageStorage      _imageStorage;
 
     public PostService(
         PostRepository postRepository,
-        FriendshipRepository friendshipRepository,
         UserRepository userRepository,
         CommentRepository commentRepository,
         ImageStorage imageStorage,
@@ -28,7 +26,6 @@ public class PostService : BaseService
         ) : base(dbLogger)
     {
         _postRepository = postRepository;
-        _friendshipRepository = friendshipRepository;
         _userRepository = userRepository;
         _commentRepository = commentRepository;
         _imageStorage = imageStorage;
@@ -73,17 +70,11 @@ public class PostService : BaseService
         return response;
     }
     
-    public async Task<ListResponse<StandardPostDisplayDto>> GetFeedAsync(int userId, int? pageNumber, int? pageSize)
+    public async Task<ListResponse<StandardPostDisplayDto>> GetFeedAsync(int userId, int pageNumber, int pageSize)
     {
         var response = new ListResponse<StandardPostDisplayDto>();
-        
-        var friends  = await _friendshipRepository.GetFriendshipsAsync(userId);
-        List<int> friendIds = friends
-            .Select(friend =>
-            friend.RequesterUserId == userId ? friend.AddresseeUserId : friend.RequesterUserId)
-            .ToList();
 
-        var posts    = await _postRepository.GetFeedAsync(friendIds, userId, pageNumber, pageSize);
+        var posts    = await _postRepository.GetFeedAsync(userId, pageNumber, pageSize);
         var postDtos = posts.Select(PostMapper.ToStandardDisplay).ToList();
 
         response.Ok(postDtos, ResponseMessages.Feed);

@@ -9,6 +9,7 @@ using aspnetproject.IntegrationTests.Helpers;
 namespace aspnetproject.IntegrationTests.Controllers;
 
 // Seeded likes, newest first:
+//   5: diana (5)            likes post 9 (charlie's, a feed ranking post)
 //   4: bob (3)              likes post 1 (alice's)
 //   3: erin_deactivated (6) likes post 2 (bob's)
 //   2: charlie (4)          likes post 2

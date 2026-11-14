@@ -18,19 +18,19 @@ Decisions are under "Feed ranking" in `.scratch/documented-backend-features/spec
 
 **Blocked by:** 05 (A post can be liked)
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Difficulty:** tricky: the score and the mutual-friends tier must be computed and paged inside one database query, and the weights need judgment.
 
-- [ ] The feed contains posts by friends and by users who are not friends
-- [ ] With equal age and activity, a friend's post ranks above a post by a user with a mutual friend, which ranks above a stranger's post
-- [ ] With equal connection and age, the post with more likes and comments ranks first
-- [ ] With equal connection and activity, the newer post ranks first
-- [ ] A user with no friends gets a non-empty feed
-- [ ] The caller's own posts never appear
-- [ ] Posts by deactivated or soft-deleted accounts do not appear
-- [ ] Two posts with the same score come back in the same order on every request
-- [ ] Ranking and paging run in one database query, with no in-memory sort over all posts
-- [ ] The weights and the decay are named constants
-- [ ] Seed data gains posts with fixed creation times without changing any existing seeded id
-- [ ] `docs/backend/controllers.md` and `README.md` describe the ranked feed
+- [x] The feed contains posts by friends and by users who are not friends
+- [x] With equal age and activity, a friend's post ranks above a post by a user with a mutual friend, which ranks above a stranger's post
+- [x] With equal connection and age, the post with more likes and comments ranks first
+- [x] With equal connection and activity, the newer post ranks first
+- [x] A user with no friends gets a non-empty feed
+- [x] The caller's own posts never appear
+- [x] Posts by deactivated or soft-deleted accounts do not appear
+- [x] Two posts with the same score come back in the same order on every request
+- [x] Ranking and paging run in one database query, with no in-memory sort over all posts
+- [x] The weights and the decay are named constants
+- [x] Seed data gains posts with fixed creation times without changing any existing seeded id
+- [x] `docs/backend/controllers.md` and `README.md` describe the ranked feed

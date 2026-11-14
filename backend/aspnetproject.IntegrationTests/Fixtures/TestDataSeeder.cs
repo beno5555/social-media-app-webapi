@@ -117,6 +117,12 @@ public static class TestDataSeeder
                 {
                     Id = 4, RequesterUserId = 3, AddresseeUserId = 4, FriendshipStatus = FriendshipStatus.Declined,
                     SentAt = DateTime.UtcNow, LastUpdatedAt = DateTime.UtcNow
+                },
+                // Makes bob a mutual friend of alice and diana, who are not friends themselves.
+                new Friendship
+                {
+                    Id = 5, RequesterUserId = 3, AddresseeUserId = 5, FriendshipStatus = FriendshipStatus.Accepted,
+                    SentAt = DateTime.UtcNow, LastUpdatedAt = DateTime.UtcNow
                 }
             );
 
@@ -139,7 +145,7 @@ public static class TestDataSeeder
                 new Post
                 {
                     Id = 3, UserId = 4, PostTitle = "Charlie Post",
-                    PostContent = "Charlie's public post should not appear in Alice's friend feed.",
+                    PostContent = "Charlie's post appears in Alice's feed although they are not friends.",
                     CreatedAt = DateTime.UtcNow
                 },
                 new Post
@@ -151,6 +157,52 @@ public static class TestDataSeeder
                 {
                     Id = 5, UserId = 7, PostTitle = "Frank Deleted Post",
                     PostContent = "Post owned by a soft-deleted user.", CreatedAt = DateTime.UtcNow
+                },
+                // Feed ranking posts, at fixed past times. Within each group the other two ranking factors are equal,
+                // and the ids run against the expected order, so the newest-id tie-break alone cannot produce it.
+                // Connection, at 09:00 with no activity: bob is alice's friend, diana shares bob with her, charlie is a stranger.
+                new Post
+                {
+                    Id = 6, UserId = 3, PostTitle = "Bob Ranked Post", PostContent = "Friend tier.",
+                    CreatedAt = new DateTime(2026, 9, 6, 9, 0, 0, DateTimeKind.Utc)
+                },
+                new Post
+                {
+                    Id = 7, UserId = 5, PostTitle = "Diana Ranked Post", PostContent = "Mutual friend tier.",
+                    CreatedAt = new DateTime(2026, 9, 6, 9, 0, 0, DateTimeKind.Utc)
+                },
+                new Post
+                {
+                    Id = 8, UserId = 4, PostTitle = "Charlie Ranked Post", PostContent = "Stranger tier.",
+                    CreatedAt = new DateTime(2026, 9, 6, 9, 0, 0, DateTimeKind.Utc)
+                },
+                // Activity, charlie's at 08:00: post 9 has one like and one comment, post 10 has none.
+                new Post
+                {
+                    Id = 9, UserId = 4, PostTitle = "Charlie Busy Post", PostContent = "Liked and commented.",
+                    CreatedAt = new DateTime(2026, 9, 6, 8, 0, 0, DateTimeKind.Utc)
+                },
+                new Post
+                {
+                    Id = 10, UserId = 4, PostTitle = "Charlie Quiet Post", PostContent = "No activity.",
+                    CreatedAt = new DateTime(2026, 9, 6, 8, 0, 0, DateTimeKind.Utc)
+                },
+                // Age, charlie's with no activity: post 11 at 07:00 is newer than post 12 at 06:00.
+                new Post
+                {
+                    Id = 11, UserId = 4, PostTitle = "Charlie Newer Post", PostContent = "Written at seven.",
+                    CreatedAt = new DateTime(2026, 9, 6, 7, 0, 0, DateTimeKind.Utc)
+                },
+                new Post
+                {
+                    Id = 12, UserId = 4, PostTitle = "Charlie Older Post", PostContent = "Written at six.",
+                    CreatedAt = new DateTime(2026, 9, 6, 6, 0, 0, DateTimeKind.Utc)
+                },
+                // Tie: the same score as post 10 (charlie's, 08:00, no activity).
+                new Post
+                {
+                    Id = 13, UserId = 4, PostTitle = "Charlie Twin Post", PostContent = "Scores the same as the quiet post.",
+                    CreatedAt = new DateTime(2026, 9, 6, 8, 0, 0, DateTimeKind.Utc)
                 }
             );
 
@@ -221,6 +273,11 @@ public static class TestDataSeeder
                 {
                     Id = 5, CommenterUserId = null, PostId = 1,
                     CommentContent = "Orphaned comment with no active author.", CreatedAt = DateTime.UtcNow
+                },
+                new Comment
+                {
+                    Id = 6, CommenterUserId = 5, PostId = 9, CommentContent = "Diana comments on Charlie's busy post.",
+                    CreatedAt = new DateTime(2026, 9, 6, 8, 30, 0, DateTimeKind.Utc)
                 }
             );
 
@@ -235,7 +292,8 @@ public static class TestDataSeeder
                 new PostLike { Id = 1, PostId = 2, UserId = 2, CreatedAt = new DateTime(2026, 9, 6, 10, 0, 0, DateTimeKind.Utc) },
                 new PostLike { Id = 2, PostId = 2, UserId = 4, CreatedAt = new DateTime(2026, 9, 6, 10, 1, 0, DateTimeKind.Utc) },
                 new PostLike { Id = 3, PostId = 2, UserId = 6, CreatedAt = new DateTime(2026, 9, 6, 10, 2, 0, DateTimeKind.Utc) },
-                new PostLike { Id = 4, PostId = 1, UserId = 3, CreatedAt = new DateTime(2026, 9, 6, 10, 3, 0, DateTimeKind.Utc) }
+                new PostLike { Id = 4, PostId = 1, UserId = 3, CreatedAt = new DateTime(2026, 9, 6, 10, 3, 0, DateTimeKind.Utc) },
+                new PostLike { Id = 5, PostId = 9, UserId = 5, CreatedAt = new DateTime(2026, 9, 6, 10, 4, 0, DateTimeKind.Utc) }
             );
 
             await db.SaveChangesAsync();
@@ -282,11 +340,11 @@ public static class TestDataSeeder
         });
 
         await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Users', RESEED, 7)");
-        await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Friendships', RESEED, 4)");
-        await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Posts', RESEED, 5)");
+        await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Friendships', RESEED, 5)");
+        await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Posts', RESEED, 13)");
         await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Messages', RESEED, 5)");
-        await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Comments', RESEED, 5)");
-        await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('PostLikes', RESEED, 4)");
+        await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Comments', RESEED, 6)");
+        await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('PostLikes', RESEED, 5)");
         await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Logs', RESEED, 5)");
     }
 

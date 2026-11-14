@@ -1,7 +1,11 @@
-﻿using System.Linq.Expressions;
+﻿using System.Data;
+using System.Linq.Expressions;
+using aspnetproject.Common.ProjectConstants;
+using aspnetproject.Common.ProjectConstants.Enums;
 using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories.Base;
 using aspnetproject.Data.Repositories.Dtos;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
 namespace aspnetproject.Data.Repositories;
@@ -45,14 +49,22 @@ public class PostRepository : BaseEntityRepository<Post>
     }
 
     /// <summary>
-    /// fetches the latest posts of the users that are included in the integer list containing userIds.
+    /// Ranks every post the caller did not write by the <see cref="FeedRanking"/> score, highest first.
+    /// One query ranks and pages, returning only the page's ids; a second loads those posts with their stats.
     /// </summary>
-    public async Task<List<PostWithStatsProjection>> GetFeedAsync(List<int> friendIds, int callerId, int? pageNumber, int? pageSize)
+    public async Task<List<PostWithStatsProjection>> GetFeedAsync(int callerId, int pageNumber, int pageSize)
     {
-        return await BuildWhereQuery(post => friendIds.Contains(post.UserId), pageNumber, pageSize,
-                query => query.OrderByDescending(post => post.CreatedAt))
+        var pageIds = await _dbContext.Database
+            .SqlQueryRaw<int>(RankedFeedPageSql, RankedFeedPageParameters(callerId, pageNumber, pageSize))
+            .ToListAsync();
+
+        var posts = await Query(track: false)
+            .Where(post => pageIds.Contains(post.Id))
             .Select(WithStats(callerId))
             .ToListAsync();
+
+        // The second query returns the posts in no set order, so the ranked order of the ids is put back.
+        return posts.OrderBy(post => pageIds.IndexOf(post.Post.Id)).ToList();
     }
 
     protected override IQueryable<Post> Query(bool track = true)
@@ -62,6 +74,67 @@ public class PostRepository : BaseEntityRepository<Post>
             .Include(post => post.Images);
 
         return track ? query : query.AsNoTracking();
+    }
+
+    // The score formula is described on FeedRanking. Each CTE names one input of it, and the final SELECT
+    // combines them. Raw SQL skips the global User filter, so the author's account state is checked by hand.
+    // A shared friend counts even if their own account is deactivated or soft-deleted.
+    // SQL Server cannot wrap a CTE in a subquery, so EF cannot compose this query: it pages itself.
+    private const string RankedFeedPageSql = """
+        WITH CallerFriends AS (
+            SELECT CASE WHEN f.RequesterUserId = @callerId THEN f.AddresseeUserId ELSE f.RequesterUserId END AS UserId
+            FROM Friendships f
+            WHERE f.FriendshipStatus = @accepted
+              AND @callerId IN (f.RequesterUserId, f.AddresseeUserId)
+        ),
+        FriendsOfCallerFriends AS (
+            SELECT CASE WHEN f.RequesterUserId = cf.UserId THEN f.AddresseeUserId ELSE f.RequesterUserId END AS UserId
+            FROM Friendships f
+            JOIN CallerFriends cf ON cf.UserId IN (f.RequesterUserId, f.AddresseeUserId)
+            WHERE f.FriendshipStatus = @accepted
+        ),
+        CandidatePosts AS (
+            SELECT
+                p.Id,
+                CASE
+                    WHEN p.UserId IN (SELECT UserId FROM CallerFriends)          THEN @friendWeight
+                    WHEN p.UserId IN (SELECT UserId FROM FriendsOfCallerFriends) THEN @mutualFriendWeight
+                    ELSE @otherUserWeight
+                END AS ConnectionWeight,
+                (SELECT COUNT(*) FROM PostLikes l WHERE l.PostId = p.Id)
+                    + (SELECT COUNT(*) FROM Comments c WHERE c.PostId = p.Id) AS Activity,
+                CASE
+                    WHEN p.CreatedAt > @now THEN 0
+                    ELSE DATEDIFF(MINUTE, p.CreatedAt, @now) / @minutesPerHour
+                END AS AgeHours
+            FROM Posts p
+            JOIN Users author ON author.Id = p.UserId
+            WHERE p.UserId <> @callerId
+              AND author.AccountDeactivatedAt IS NULL
+              AND author.AccountDeletedAt IS NULL
+        )
+        SELECT Id AS Value
+        FROM CandidatePosts
+        ORDER BY (ConnectionWeight + Activity) / POWER(AgeHours + @ageOffsetHours, @ageGravity) DESC, Id DESC
+        OFFSET @skip ROWS FETCH NEXT @take ROWS ONLY
+        """;
+
+    private SqlParameter[] RankedFeedPageParameters(int callerId, int pageNumber, int pageSize)
+    {
+        return
+        [
+            new SqlParameter("@callerId", callerId),
+            new SqlParameter("@accepted", nameof(FriendshipStatus.Accepted)),
+            new SqlParameter("@friendWeight", FeedRanking.FriendWeight),
+            new SqlParameter("@mutualFriendWeight", FeedRanking.MutualFriendWeight),
+            new SqlParameter("@otherUserWeight", FeedRanking.OtherUserWeight),
+            new SqlParameter("@ageOffsetHours", FeedRanking.AgeOffsetHours),
+            new SqlParameter("@ageGravity", FeedRanking.AgeGravity),
+            new SqlParameter("@minutesPerHour", Constants.MinutesPerHour),
+            new SqlParameter("@now", SqlDbType.DateTime2) { Value = DateTime.UtcNow },
+            new SqlParameter("@skip", (pageNumber - Constants.FirstPageNumber) * pageSize),
+            new SqlParameter("@take", pageSize)
+        ];
     }
 
     // Counted in SQL as subqueries of the post query, so a page of posts costs one query, not one per post.

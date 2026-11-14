@@ -70,7 +70,7 @@ public class PostService : BaseService
         return response;
     }
     
-    public async Task<ListResponse<StandardPostDisplayDto>> GetFeedAsync(int userId, int? pageNumber, int? pageSize)
+    public async Task<ListResponse<StandardPostDisplayDto>> GetFeedAsync(int userId, int pageNumber, int pageSize)
     {
         var response = new ListResponse<StandardPostDisplayDto>();
 

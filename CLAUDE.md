@@ -32,7 +32,7 @@ No linter or formatter is configured.
 
 ### Config prerequisites
 
-`appsettings.json`, `appsettings.Development.json` and `appsettings.Testing.json` are all **gitignored**, live in `backend/aspnetproject/` (next to `aspnetproject.csproj`), and the repo has no example template. A fresh clone will not run until they exist. The settings they need: `ConnectionStrings:DefaultConnection`, `Jwt:{Key,AccessTokenMinutes,RefreshTokenDays}`, `EmailConfiguration:*` (including `Enabled`, which defaults to true), `PasswordConfiguration:ResetTokenMinutes`, `CleanupConfiguration:{RefreshTokens,SoftDeletedUsers,OldLogs}`, `Cors:AllowedOrigins`. Optional, with defaults in `ImageStorageConfiguration`: `ImageStorage:{UploadFolder,MaxFileSizeBytes,MaxImagesPerPost}` (default folder `Uploads/` under the project, gitignored). Never print or commit their values.
+`appsettings.json`, `appsettings.Development.json` and `appsettings.Testing.json` are all **gitignored**, live in `backend/aspnetproject/` (next to `aspnetproject.csproj`), and the repo has no example template. A fresh clone will not run until they exist. The settings they need: `ConnectionStrings:DefaultConnection`, `Jwt:{Key,AccessTokenMinutes,RefreshTokenDays}`, `EmailConfiguration:*` (including `Enabled`, which defaults to true), `PasswordConfiguration:ResetTokenMinutes`, `CleanupConfiguration:{RefreshTokens,SoftDeletedUsers,OldLogs}`, `Cors:AllowedOrigins`. Optional, with defaults in `ImageStorageConfiguration`: `ImageStorage:{UploadFolder,MaxFileSizeBytes,MaxImagesPerPost,MaxImagesPerMessage}` (default folder `Uploads/` under the project, gitignored). Never print or commit their values.
 
 ### Integration tests
 

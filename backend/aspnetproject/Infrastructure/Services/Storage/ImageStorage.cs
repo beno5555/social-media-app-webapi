@@ -39,19 +39,16 @@ public class ImageStorage
 
     public async Task<ApplicationResponse<List<CheckedImage>>> CheckPostImagesAsync(IReadOnlyList<IFormFile> files)
     {
-        var response = new ApplicationResponse<List<CheckedImage>>();
+        int maxImageCount = _configuration.MaxImagesPerPost;
 
-        bool isWithinCountLimit = files.Count <= _configuration.MaxImagesPerPost;
-        if (isWithinCountLimit)
-        {
-            response = await CheckEachAsync(files);
-        }
-        else
-        {
-            response.Fail(ResponseMessages.TooManyPostImages(_configuration.MaxImagesPerPost));
-        }
+        return await CheckWithinCountAsync(files, maxImageCount, ResponseMessages.TooManyPostImages(maxImageCount));
+    }
 
-        return response;
+    public async Task<ApplicationResponse<List<CheckedImage>>> CheckMessageImagesAsync(IReadOnlyList<IFormFile> files)
+    {
+        int maxImageCount = _configuration.MaxImagesPerMessage;
+
+        return await CheckWithinCountAsync(files, maxImageCount, ResponseMessages.TooManyMessageImages(maxImageCount));
     }
 
     /// <summary>Saves checked images and returns their addresses in the same order. On failure, nothing is left behind.</summary>
@@ -90,6 +87,24 @@ public class ImageStorage
     private string ToAddress(string fileName)
     {
         return $"{Constants.ImagesRequestPath}/{fileName}";
+    }
+
+    private async Task<ApplicationResponse<List<CheckedImage>>> CheckWithinCountAsync(
+        IReadOnlyList<IFormFile> files, int maxImageCount, string tooManyImagesMessage)
+    {
+        var response = new ApplicationResponse<List<CheckedImage>>();
+
+        bool isWithinCountLimit = files.Count <= maxImageCount;
+        if (isWithinCountLimit)
+        {
+            response = await CheckEachAsync(files);
+        }
+        else
+        {
+            response.Fail(tooManyImagesMessage);
+        }
+
+        return response;
     }
 
     private async Task<ApplicationResponse<List<CheckedImage>>> CheckEachAsync(IReadOnlyList<IFormFile> files)

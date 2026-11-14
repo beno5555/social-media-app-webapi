@@ -1,19 +1,28 @@
 ﻿using aspnetproject.Data.Models;
+using aspnetproject.Infrastructure.Dtos.Images;
 using aspnetproject.Infrastructure.Dtos.Messages;
 using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Infrastructure.Dtos.WebsocketsTransfer;
 
 namespace aspnetproject.Infrastructure.Mappers;
 
-public static class MessageMapper 
+public static class MessageMapper
 {
-    public static Message ToEntity(int senderId, int receiverId, CreateMessageDto createMessageDto)
+    public static Message ToEntity(
+        int senderId,
+        int receiverId,
+        CreateMessageDto createMessageDto,
+        IReadOnlyList<string> imageAddresses
+        )
     {
         return new Message
         {
             SenderUserId = senderId,
             ReceiverUserId = receiverId,
-            MessageContent = createMessageDto.Content
+            MessageContent = createMessageDto.Content ?? string.Empty,
+            Images = imageAddresses
+                .Select((address, index) => new MessageImage { Address = address, OrderIndex = index })
+                .ToList()
         };
     }
 
@@ -23,7 +32,8 @@ public static class MessageMapper
         {
             Id = message.Id,
             Content = message.MessageContent,
-            
+            Images = ToImageDtos(message),
+
             Sender = new MinimalUserDto
             {
                 Id = message.SenderUserId,
@@ -46,6 +56,7 @@ public static class MessageMapper
             Id = message.Id,
             Content = message.MessageContent,
             SentAt = message.CreatedAt,
+            Images = ToImageDtos(message)
         };
     }
 
@@ -55,6 +66,7 @@ public static class MessageMapper
         {
             Id = message.Id,
             Content = message.MessageContent,
+            Images = ToImageDtos(message),
             SentAt = message.CreatedAt,
             Sender = new MinimalUserDto
             {
@@ -71,5 +83,18 @@ public static class MessageMapper
             Id = message.Id,
             Content = message.MessageContent,
         };
+    }
+
+    private static List<ImageDto> ToImageDtos(Message message)
+    {
+        return message.Images
+            .OrderBy(image => image.OrderIndex)
+            .Select(image => new ImageDto
+            {
+                Id = image.Id,
+                Address = image.Address,
+                OrderIndex = image.OrderIndex
+            })
+            .ToList();
     }
 }

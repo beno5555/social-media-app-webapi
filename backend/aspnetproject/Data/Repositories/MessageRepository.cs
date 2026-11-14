@@ -21,6 +21,7 @@ public class MessageRepository : BaseEntityRepository<Message>
         await AddAsync(messageToAdd);
         return (await _dbSet
             .Include(message => message.SenderUser)
+            .Include(message => message.Images)
             .FirstOrDefaultAsync(message => message.Id == messageToAdd.Id))!;
     }
 
@@ -28,7 +29,8 @@ public class MessageRepository : BaseEntityRepository<Message>
     {
         var query = _dbSet
             .Include(message => message.SenderUser)
-            .Include(message => message.ReceiverUser);
+            .Include(message => message.ReceiverUser)
+            .Include(message => message.Images);
 
         return track ? query : query.AsNoTracking();
     }
@@ -46,6 +48,16 @@ public class MessageRepository : BaseEntityRepository<Message>
             pageSize,
             orderBy: query => query.OrderByDescending(message => message.CreatedAt),
             ignoreQueryFilters: true);
+    }
+
+    public async Task<List<string>> GetConversationImageAddressesAsync(int userA, int userB)
+    {
+        return await _dbSet
+            .Where(message => (message.SenderUserId == userA && message.ReceiverUserId == userB) ||
+                              (message.SenderUserId == userB && message.ReceiverUserId == userA))
+            .SelectMany(message => message.Images)
+            .Select(image => image.Address)
+            .ToListAsync();
     }
 
     public async Task DeleteConversationAsync(int userA, int userB)

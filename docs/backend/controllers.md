@@ -68,12 +68,13 @@ Route: `api/posts`. Inherits `BaseController`. `[Authorize]` at controller level
 
 **Images.** `ImageStorage` (`Infrastructure/Services/Storage`) owns all file handling, and nothing else touches the disk:
 
-- **Checks, all before anything is saved.** At most `MaxImagesPerPost` files (`TooManyPostImages`), each at most `MaxFileSizeBytes` (`ImageTooLarge`), and each a JPEG, PNG or WebP judged by its leading bytes, never by its name or declared content type (`ImageFormatNotAccepted`). If any file fails, the request is refused with `400` and no post or file is stored. If saving a file or the post fails unexpectedly, the files already written are deleted before the exception reaches `GlobalExceptionHandler`.
+- **Checks, all before anything is saved.** At most `MaxImagesPerPost` files on a post (`TooManyPostImages`) or `MaxImagesPerMessage` on a message (`TooManyMessageImages`), each at most `MaxFileSizeBytes` (`ImageTooLarge`), and each a JPEG, PNG or WebP judged by its leading bytes, never by its name or declared content type (`ImageFormatNotAccepted`). If any file fails, the request is refused with `400` and no post, message or file is stored. If saving a file or the post or message fails unexpectedly, the files already written are deleted before the exception reaches `GlobalExceptionHandler`.
 - **Names and addresses.** Files are saved as `{guid}{extension}`, with the extension taken from the detected format; the client's file name is never used. The stored and returned address is relative: `/api/images/{name}`, so only `/api` and `/hubs` cross the proxy (ADR 0001).
 - **Serving.** `UseImageStorage` (`Extensions/ImageStorageExtensions.cs`) serves the upload folder as static files at `/api/images`, before routing, CORS and the rate limiter. Anyone can fetch an image, signed in or not, because an image tag cannot send the in-memory access token (ADR 0004). Responses carry `X-Content-Type-Options: nosniff`.
-- **Configuration** (`ImageStorageConfiguration`, section `ImageStorage`, every key optional): `UploadFolder` (default `Uploads`, relative to the content root, gitignored), `MaxFileSizeBytes` (default 5 MB), `MaxImagesPerPost` (default 10).
-- **Request size.** The server's default request limit (30 MB) is smaller than ten 5 MB photos, so `PostUploadRequestSizeFilter` raises the body and multipart limits of `POST api/posts` to `MaxFileSizeBytes × MaxImagesPerPost` plus 1 MB for the text fields.
-- **Not yet built:** removing a photo, deleting a post's files with the post (a deleted post's `PostImages` rows cascade, its files stay on disk), photos on messages.
+- **Configuration** (`ImageStorageConfiguration`, section `ImageStorage`, every key optional): `UploadFolder` (default `Uploads`, relative to the content root, gitignored), `MaxFileSizeBytes` (default 5 MB), `MaxImagesPerPost` (default 10), `MaxImagesPerMessage` (default 5).
+- **Request size.** The server's default request limit (30 MB) is smaller than ten 5 MB photos, so `PostUploadRequestSizeFilter` raises the body and multipart limits of `POST api/posts` to `MaxFileSizeBytes × MaxImagesPerPost` plus 1 MB for the text fields (`Constants.MultipartTextAllowanceBytes`). `MessageUploadRequestSizeFilter` sets the limits of `POST api/messages/{receiverId}` the same way from `MaxImagesPerMessage` (with the defaults that is 26 MB, a little below the server default, and still fits five photos at the size limit). Both derive from `ImageUploadRequestSizeFilter`.
+- **Not yet built:** removing a photo, deleting a post's files with the post (a deleted post's `PostImages` rows cascade, its files stay on disk).
+- **File removal** is best effort and runs after the database change; a file that cannot be removed is logged by the storage. Message files go when a message is deleted, when a friendship is removed (which deletes the conversation) and when the purge of soft-deleted users deletes messages (`background-jobs.md`).
 
 **Ownership checks** (`Update`) remain a scoped comparison in the service (`post.UserId == userId`) rather than a separate authorization step. **Delete now also accepts admins**: `DeletePostAsync(callerId, isAdmin, id)` allows the post owner *or* a caller with the `Administrator` role, sourced from `BaseController.IsAdministrator()`.
 
@@ -146,7 +147,7 @@ Route: `api/friendships`. Inherits `BaseController`. `[Authorize]` at controller
 - `SendRequest` — several distinct failure meanings (addressee not found / self-request / already friends / pending exists) collapse to `BadRequest`.
 - `RespondToRequest` — collapses to `BadRequest` similarly.
 
-Removing a relationship also deletes the pair's message history (`MessageRepository.DeleteConversationAsync`) before deleting the `Friendship` row.
+Removing a relationship also deletes the pair's message history (`MessageRepository.DeleteConversationAsync`) before deleting the `Friendship` row. The conversation's photo addresses are read first, and the files are deleted after both rows are gone.
 
 ### `MessageController`
 
@@ -156,18 +157,20 @@ No `GetMessage(id)` action — a single message isn't fetched by id from the cli
 
 | Method | Route                                                  | Notes                                                                                                                                                    |
 |--------|--------------------------------------------------------|----------------------------------------------------------------------------------------------------------------------------------------------------------|
-| POST   | `api/messages/{receiverId}`                            | Send a message. Body: `CreateMessageDto`. Response: `SentMessageDto`. Pushes `ReceiveMessage` (payload `PushMessageDto`) to the receiver's SignalR group |
+| POST   | `api/messages/{receiverId}`                            | Send a message. Body: `CreateMessageDto` as `multipart/form-data`. Response: `SentMessageDto`. Pushes `ReceiveMessage` (payload `PushMessageDto`) to the receiver's SignalR group |
 | GET    | `api/messages/conversation/{otherUserId}`              | Paginated (`PageQuery`), `ListResponse<StandardMessageDto>`. Also marks the caller's unread incoming messages in that conversation as read               |
 | GET    | `api/messages/friends/conversation`                    | Caller's friends with an existing conversation (chat list); `ListResponse<ConversationFriendDto>`                                                        |
 | GET    | `api/messages/friends/no-conversation`                 | Caller's friends with no conversation yet; `ListResponse<DisplayFriendDto>`                                                                              |
 | GET    | `api/messages/conversations/unread`                    | `{ UnreadCount: int }` — distinct-sender count of unread messages, via `GetUnreadConversationsCount`                                                     |
 | PUT    | `api/messages/conversation/{otherUserId}/mark-as-read` | Mark the conversation as read. No content                                                                                                                |
 | PUT    | `api/messages/{id}`                                    | Edit own message, sender-scoped, allowed while the message is younger than `Constants.EditMessageWindow` (20 minutes). Pushes `MessageEdited` to the receiver |
-| DELETE | `api/messages/{id}`                                    | Delete own message, sender-scoped. Not time-limited                                                                                                      |
+| DELETE | `api/messages/{id}`                                    | Delete own message, sender-scoped. Not time-limited. Removes the message's photo rows (cascade) and then its files                                       |
 
 **`ValidFriendship` check** (`MessageService`) gates `SendMessage`: rejects self-messaging, nonexistent receiver, and non-friends, collapsing to one `ApplicationResponse.Fail` → `BadRequest`, same oracle-avoidance reasoning as elsewhere.
 
-**Repository note:** `GetConversationFriendsAsync` uses raw SQL (`SqlQueryRaw<T>`) — grouped latest-message-per-partner via `CROSS APPLY`, plus explicit `IsDeleted`/`IsDeactivated` bit-cast columns since raw SQL bypasses the `User` query filter entirely. Projection type (`ConversationFriendProjection`) is flat; reshaped into `ConversationFriendDto` in the mapper.
+**Sending with photos.** `POST api/messages/{receiverId}` takes `multipart/form-data` (`CreateMessageDto`): `Content` (optional text) and `Images` (zero to `MaxImagesPerMessage` files, default 5, in display order). A JSON body gets `415`. `MessageService.CheckNewMessageAsync` runs, in order, the friendship check, the text-or-photo check (`ResponseMessages.MessageTextOrImageRequired`; whitespace-only text counts as no text, though with photos it is stored as sent, as for posts) and `ImageStorage.CheckMessageImagesAsync`. Any failure is `400` with nothing saved, and one bad file refuses the whole message. The same storage, checks, naming and serving apply as for post photos (see **Images** under `PostController`); message photos are protected by their unguessable name only. `SentMessageDto`, the `ReceiveMessage` push (`PushMessageDto`) and the conversation history (`StandardMessageDto`) each carry `Images`, a list of `ImageDto` in upload order. Editing stays a JSON, text-only request; the photos of a sent message cannot be changed.
+
+**Repository note:** `GetConversationFriendsAsync` uses raw SQL (`SqlQueryRaw<T>`) — grouped latest-message-per-partner via `CROSS APPLY`, plus explicit `IsDeleted`/`IsDeactivated` bit-cast columns since raw SQL bypasses the `User` query filter entirely. A subquery counts the last message's `MessageImages` rows into `LastMessageImageCount`, so the chat list can show something for a photo with no text. Projection type (`ConversationFriendProjection`) is flat; reshaped into `ConversationFriendDto` in the mapper.
 
 ### `AuthController`
 

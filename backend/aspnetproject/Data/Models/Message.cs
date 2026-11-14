@@ -17,6 +17,8 @@ public class Message : BaseEntity
     public int   ReceiverUserId { get; set; }
     public User? ReceiverUser   { get; set; }
 
+    public ICollection<MessageImage> Images { get; set; } = new List<MessageImage>();
+
     [NotMapped]
     public bool IsEdited => LastUpdatedAt is not null; 
 }

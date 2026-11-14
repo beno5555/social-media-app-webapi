@@ -16,20 +16,32 @@ Decisions are under "Images" in `.scratch/documented-backend-features/spec.md`.
 
 **Blocked by:** 01 (Real-time tests connect a real SignalR client), 02 (A post can be created with photos)
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Difficulty:** tricky: the live push and the raw-SQL conversation list both change, and file cleanup reaches three delete paths.
 
-- [ ] A message with text and photos, with photos only, and with text only is each accepted between friends
-- [ ] A message with neither text nor photos is refused
-- [ ] A wrong-format file, an oversized photo and more than 5 photos are each refused, and then no message is saved and no file is stored
-- [ ] The sender's response lists the message's photos in upload order
-- [ ] The receiver's connected client gets `ReceiveMessage` with the photos, and their addresses serve the files
-- [ ] The conversation history returns each message's photos
-- [ ] The conversation list entry gives the image count of the last message
-- [ ] Sending to a non-friend, to oneself or to an unknown user is refused as before
-- [ ] Deleting a message removes its photo rows and files
-- [ ] Removing a friendship removes the files of the conversation it deletes
-- [ ] The purge of soft-deleted users removes the files of the messages it deletes, verified by a manual run recorded on this ticket
-- [ ] The request size limit on sending fits five photos at the size limit
-- [ ] `docs/backend/controllers.md`, `docs/backend/data.md`, `docs/backend/signalr.md` and `README.md` describe photos in messages
+- [x] A message with text and photos, with photos only, and with text only is each accepted between friends
+- [x] A message with neither text nor photos is refused
+- [x] A wrong-format file, an oversized photo and more than 5 photos are each refused, and then no message is saved and no file is stored
+- [x] The sender's response lists the message's photos in upload order
+- [x] The receiver's connected client gets `ReceiveMessage` with the photos, and their addresses serve the files
+- [x] The conversation history returns each message's photos
+- [x] The conversation list entry gives the image count of the last message
+- [x] Sending to a non-friend, to oneself or to an unknown user is refused as before
+- [x] Deleting a message removes its photo rows and files
+- [x] Removing a friendship removes the files of the conversation it deletes
+- [x] The purge of soft-deleted users removes the files of the messages it deletes, verified by a manual run recorded on this ticket
+- [x] The request size limit on sending fits five photos at the size limit
+- [x] `docs/backend/controllers.md`, `docs/backend/data.md`, `docs/backend/signalr.md` and `README.md` describe photos in messages
+
+## Comments
+
+**Purge path: verified by reading and one manual run, no integration test.** Reading: `UserRepository.DeleteUsersMessagesAsync` reads the image addresses of the messages it is about to delete, the `MessageImages` rows cascade with their messages, and `SoftDeleteCleanupResult.MessageImageAddresses` carries the addresses out of each batch. `SoftDeletedUsersCleanupService.RunCycleAsync` then calls `ImageStorage.DeleteAsync` on them after each batch, best effort.
+
+Manual run: a throwaway xUnit test (deleted afterwards) against the seeded test database ran the real `SoftDeletedUsersCleanupService.RunCycleAsync` once.
+- alice sent bob a message with 2 photos. Before: 2 files on disk, 2 `MessageImages` rows.
+- bob was soft-deleted with `AccountDeletedAt` 2000-01-01, past any retention window, then the cycle ran.
+- After: bob hard-deleted, 0 `MessageImages` rows, 0 files on disk, and both addresses return 404.
+- Log row: "Removed 2 soft deleted users past retention. (Messages: 6, Message images: 2, Friendships: 2, Posts: 2, Likes: 1)".
+
+**Empty request.** A multipart body with no parts at all is refused by the framework before the action runs (`400`, "Failed to read the request form"), so the "neither text nor photos" tests send an empty and a whitespace-only `Content`, which reach `MessageTextOrImageRequired`.

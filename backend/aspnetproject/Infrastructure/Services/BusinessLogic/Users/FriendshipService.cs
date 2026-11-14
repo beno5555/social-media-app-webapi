@@ -7,6 +7,7 @@ using aspnetproject.Infrastructure.Dtos.Friendships;
 using aspnetproject.Infrastructure.Mappers;
 using aspnetproject.Infrastructure.Services.BusinessLogic.Base;
 using aspnetproject.Infrastructure.Services.Logging;
+using aspnetproject.Infrastructure.Services.Storage;
 
 namespace aspnetproject.Infrastructure.Services.BusinessLogic.Users;
 
@@ -15,17 +16,20 @@ public class FriendshipService : BaseService
     private readonly FriendshipRepository _friendshipRepository;
     private readonly MessageRepository    _messageRepository;
     private readonly UserRepository       _userRepository;
+    private readonly ImageStorage         _imageStorage;
 
     public FriendshipService(
         FriendshipRepository friendshipRepository,
         MessageRepository messageRepository,
         UserRepository userRepository,
+        ImageStorage imageStorage,
         DatabaseLogger dbLogger
         ) : base(dbLogger)
     {
         _friendshipRepository = friendshipRepository;
         _messageRepository = messageRepository;
         _userRepository = userRepository;
+        _imageStorage = imageStorage;
     }
 
     public async Task<ApplicationResponse<MinimalFriendshipDto>> SendRequest(int requesterId, int addresseeId)
@@ -247,9 +251,13 @@ public class FriendshipService : BaseService
 
             if (friendship is not null)
             {
+                // Read before the rows go; the database cascades the image rows with their messages.
+                var imageAddresses = await _messageRepository.GetConversationImageAddressesAsync(userId, friendId);
+
                 await _messageRepository.DeleteConversationAsync(userId, friendId);
                 await _friendshipRepository.DeleteAsync(friendship);
-            
+                await _imageStorage.DeleteAsync(imageAddresses);
+
                 response.Ok(ResponseMessages.RelationshipRemoved);
                 await LogResultAsync(response.Succeeded, nameof(RemoveRelationshipAsync), nameof(Friendship), null, friendship.Id);
             }

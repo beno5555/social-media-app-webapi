@@ -77,24 +77,24 @@ public class ModerationService : BaseService
     }
 
     // The two queue reads write no Log row: a successful read never does.
-    public async Task<ListResponse<PostSnapshotDto>> GetFlaggedPostsAsync(ModerationQueueQuery queueQuery)
+    public async Task<ListResponse<PostSnapshotDto>> GetFlaggedPostsAsync(PageQuery pageQuery)
     {
         var response = new ListResponse<PostSnapshotDto>();
 
-        var posts     = await _postRepository.GetFlaggedAsync(queueQuery.PageNumber, queueQuery.PageSize);
-        var snapshots = posts.Select(ModerationMapper.ToPostSnapshot).ToList();
+        var posts     = await _postRepository.GetFlaggedAsync(pageQuery.PageNumber, pageQuery.PageSize);
+        var snapshots = posts.Select(SnapshotMapper.ToPostSnapshot).ToList();
 
         response.Ok(snapshots, ResponseMessages.ModerationQueueRetrieved);
 
         return response;
     }
 
-    public async Task<ListResponse<CommentSnapshotDto>> GetFlaggedCommentsAsync(ModerationQueueQuery queueQuery)
+    public async Task<ListResponse<CommentSnapshotDto>> GetFlaggedCommentsAsync(PageQuery pageQuery)
     {
         var response = new ListResponse<CommentSnapshotDto>();
 
-        var comments  = await _commentRepository.GetFlaggedAsync(queueQuery.PageNumber, queueQuery.PageSize);
-        var snapshots = comments.Select(ModerationMapper.ToCommentSnapshot).ToList();
+        var comments  = await _commentRepository.GetFlaggedAsync(pageQuery.PageNumber, pageQuery.PageSize);
+        var snapshots = comments.Select(SnapshotMapper.ToCommentSnapshot).ToList();
 
         response.Ok(snapshots, ResponseMessages.ModerationQueueRetrieved);
 

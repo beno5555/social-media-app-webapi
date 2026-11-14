@@ -59,10 +59,12 @@ public class CommentRepository : BaseEntityRepository<Comment>
         return await Page(query, pageNumber, pageSize).ToListAsync();
     }
 
-    // The moderation queue: every flagged comment, oldest first. Id breaks ties between comments written in the same millisecond.
+    // The moderation queue: every flagged comment with its post, oldest first.
+    // Id breaks ties between comments written in the same millisecond.
     public async Task<List<Comment>> GetFlaggedAsync(int pageNumber, int pageSize)
     {
         var query = Query(track: false)
+            .Include(comment => comment.Post)
             .Where(comment => comment.ModerationStatus == ModerationStatus.Flagged)
             .OrderBy(comment => comment.CreatedAt)
             .ThenBy(comment => comment.Id);

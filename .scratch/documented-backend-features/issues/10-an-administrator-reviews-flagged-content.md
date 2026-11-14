@@ -2,7 +2,7 @@
 
 **What to build:** An administrator opens a queue of the posts and comments that are marked `FLAGGED` and sees enough of each to decide, then approves or hides it with the moderation endpoints from ticket 09.
 
-`GET /api/admin/moderation-queue` is administrator-only and paged. It returns flagged content of one type per call, posts or comments, chosen by a query parameter, oldest first. Reading one type per call avoids paging across two tables.
+`GET /api/admin/moderation-queue/posts` and `GET /api/admin/moderation-queue/comments` are administrator-only and paged. Each returns the flagged content of one type, oldest first. One route per type avoids paging across two tables. (Changed by the owner on 2026-11-15: this ticket first asked for one route with a query parameter. A comment's snapshot also carries its post's title.)
 
 Each row carries a snapshot of the content:
 

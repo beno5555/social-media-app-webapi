@@ -392,19 +392,30 @@ public class AdminControllerTests : IAsyncLifetime
         Assert.Equal(1, log.UserId);
     }
 
-    // ---------- GET /admin/moderation-queue ----------
+    // ---------- GET /admin/moderation-queue/posts and /comments ----------
     // Content is flagged through the admin endpoint at the start of each test, so the seed stays all visible.
     // Seeded posts by creation time, oldest first: 12 (06:00), 11 (07:00), 9 / 10 / 13 (08:00, by id), 6 / 7 / 8 (09:00, by id),
     // then 1 to 5, which are created when the seed runs. Post 9 is charlie's (4), "Charlie Busy Post".
     // Seeded comments by creation time: 6 (08:30, diana (5) on post 9), then 1 to 5, created when the seed runs;
     // comment 1 is alice's (2) on post 2, comment 2 is bob's (3) on post 2, comment 5 has no author.
 
-    private async Task<List<T>> GetQueueAsync<T>(string query)
+    private const string FlaggedPostsRoute    = "api/admin/moderation-queue/posts";
+    private const string FlaggedCommentsRoute = "api/admin/moderation-queue/comments";
+
+    private async Task<List<PostSnapshotDto>> GetFlaggedPostsAsync(string query = "")
     {
-        var response = await _client.GetAsync($"api/admin/moderation-queue?{query}");
+        var response = await _client.GetAsync($"{FlaggedPostsRoute}?{query}");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        return await ResponseReader.ReadListAsync<T>(response);
+        return await ResponseReader.ReadListAsync<PostSnapshotDto>(response);
+    }
+
+    private async Task<List<CommentSnapshotDto>> GetFlaggedCommentsAsync(string query = "")
+    {
+        var response = await _client.GetAsync($"{FlaggedCommentsRoute}?{query}");
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+
+        return await ResponseReader.ReadListAsync<CommentSnapshotDto>(response);
     }
 
     private async Task FlagPostsAsync(params int[] postIds)
@@ -426,23 +437,23 @@ public class AdminControllerTests : IAsyncLifetime
     }
 
     [Theory]
-    [InlineData("type=post")]
-    [InlineData("type=comment")]
-    public async Task GetModerationQueue_WithoutToken_ReturnsUnauthorized(string query)
+    [InlineData(FlaggedPostsRoute)]
+    [InlineData(FlaggedCommentsRoute)]
+    public async Task GetModerationQueue_WithoutToken_ReturnsUnauthorized(string route)
     {
-        var response = await _client.GetAsync($"api/admin/moderation-queue?{query}");
+        var response = await _client.GetAsync(route);
 
         Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
     }
 
     [Theory]
-    [InlineData("type=post")]
-    [InlineData("type=comment")]
-    public async Task GetModerationQueue_AsOrdinaryUser_ReturnsForbidden(string query)
+    [InlineData(FlaggedPostsRoute)]
+    [InlineData(FlaggedCommentsRoute)]
+    public async Task GetModerationQueue_AsOrdinaryUser_ReturnsForbidden(string route)
     {
         await SignInAsync("alice");
 
-        var response = await _client.GetAsync($"api/admin/moderation-queue?{query}");
+        var response = await _client.GetAsync(route);
 
         Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
     }
@@ -453,7 +464,7 @@ public class AdminControllerTests : IAsyncLifetime
         await SignInAsync("sandro_beno");
         await FlagPostsAsync(6, 9, 11, 12);
 
-        var posts = await GetQueueAsync<PostSnapshotDto>("type=post");
+        var posts = await GetFlaggedPostsAsync();
 
         Assert.Equal([12, 11, 9, 6], posts.Select(post => post.Id));
     }
@@ -464,16 +475,17 @@ public class AdminControllerTests : IAsyncLifetime
         await SignInAsync("sandro_beno");
         await FlagPostsAsync(9);
 
-        var posts = await GetQueueAsync<PostSnapshotDto>("type=post");
+        var posts = await GetFlaggedPostsAsync();
 
         var post = Assert.Single(posts);
         Assert.Equal(9, post.Id);
         Assert.Equal("Charlie Busy Post", post.Title);
-        Assert.Equal("Liked and commented.", post.Text);
+        Assert.Equal("Liked and commented.", post.PostContent);
         Assert.Equal(4, post.Author.Id);
         Assert.Equal("charlie", post.Author.Username);
         Assert.Equal(new DateTime(2026, 9, 6, 8, 0, 0), post.UploadedAt);
         Assert.Empty(post.Images);
+        Assert.False(post.IsHidden);
     }
 
     [Fact]
@@ -485,7 +497,7 @@ public class AdminControllerTests : IAsyncLifetime
         await SignInAsync("sandro_beno");
         await FlagPostsAsync(newPostId);
 
-        var posts = await GetQueueAsync<PostSnapshotDto>("type=post");
+        var posts = await GetFlaggedPostsAsync();
 
         var post = Assert.Single(posts);
         Assert.Equal([0, 1], post.Images.Select(image => image.OrderIndex));
@@ -498,7 +510,7 @@ public class AdminControllerTests : IAsyncLifetime
         await SignInAsync("sandro_beno");
         await FlagCommentsAsync(2, 6, 1);
 
-        var comments = await GetQueueAsync<CommentSnapshotDto>("type=comment");
+        var comments = await GetFlaggedCommentsAsync();
 
         Assert.Equal([6, 1, 2], comments.Select(comment => comment.Id));
     }
@@ -509,15 +521,17 @@ public class AdminControllerTests : IAsyncLifetime
         await SignInAsync("sandro_beno");
         await FlagCommentsAsync(6);
 
-        var comments = await GetQueueAsync<CommentSnapshotDto>("type=comment");
+        var comments = await GetFlaggedCommentsAsync();
 
         var comment = Assert.Single(comments);
         Assert.Equal(6, comment.Id);
-        Assert.Equal("Diana comments on Charlie's busy post.", comment.Text);
+        Assert.Equal("Diana comments on Charlie's busy post.", comment.Content);
         Assert.Equal(5, comment.Author.Id);
         Assert.Equal("diana", comment.Author.Username);
         Assert.Equal(9, comment.PostId);
+        Assert.Equal("Charlie Busy Post", comment.PostTitle);
         Assert.Equal(new DateTime(2026, 9, 6, 8, 30, 0), comment.UploadedAt);
+        Assert.False(comment.IsHidden);
     }
 
     [Fact]
@@ -527,8 +541,8 @@ public class AdminControllerTests : IAsyncLifetime
         await FlagPostsAsync(9);
         await FlagCommentsAsync(6);
 
-        var posts    = await GetQueueAsync<PostSnapshotDto>("type=post");
-        var comments = await GetQueueAsync<CommentSnapshotDto>("type=comment");
+        var posts    = await GetFlaggedPostsAsync();
+        var comments = await GetFlaggedCommentsAsync();
 
         Assert.Equal([9], posts.Select(post => post.Id));
         Assert.Equal([6], comments.Select(comment => comment.Id));
@@ -539,8 +553,8 @@ public class AdminControllerTests : IAsyncLifetime
     {
         await SignInAsync("sandro_beno");
 
-        var posts    = await GetQueueAsync<PostSnapshotDto>("type=post");
-        var comments = await GetQueueAsync<CommentSnapshotDto>("type=comment");
+        var posts    = await GetFlaggedPostsAsync();
+        var comments = await GetFlaggedCommentsAsync();
 
         Assert.Empty(posts);
         Assert.Empty(comments);
@@ -555,8 +569,8 @@ public class AdminControllerTests : IAsyncLifetime
         await SetPostStatusAsync(10, "Hidden");
         await SetCommentStatusAsync(1, "Hidden");
 
-        var posts    = await GetQueueAsync<PostSnapshotDto>("type=post");
-        var comments = await GetQueueAsync<CommentSnapshotDto>("type=comment");
+        var posts    = await GetFlaggedPostsAsync();
+        var comments = await GetFlaggedCommentsAsync();
 
         Assert.Equal([9], posts.Select(post => post.Id));
         Assert.Equal([6], comments.Select(comment => comment.Id));
@@ -572,7 +586,7 @@ public class AdminControllerTests : IAsyncLifetime
 
         await SetPostStatusAsync(9, decision);
 
-        var posts = await GetQueueAsync<PostSnapshotDto>("type=post");
+        var posts = await GetFlaggedPostsAsync();
         Assert.Equal([10], posts.Select(post => post.Id));
     }
 
@@ -586,7 +600,7 @@ public class AdminControllerTests : IAsyncLifetime
 
         await SetCommentStatusAsync(6, decision);
 
-        var comments = await GetQueueAsync<CommentSnapshotDto>("type=comment");
+        var comments = await GetFlaggedCommentsAsync();
         Assert.Equal([1], comments.Select(comment => comment.Id));
     }
 
@@ -596,7 +610,7 @@ public class AdminControllerTests : IAsyncLifetime
         await SignInAsync("sandro_beno");
         await FlagCommentsAsync(5);
 
-        var comments = await GetQueueAsync<CommentSnapshotDto>("type=comment");
+        var comments = await GetFlaggedCommentsAsync();
 
         var comment = Assert.Single(comments);
         Assert.Null(comment.Author.Id);
@@ -609,8 +623,8 @@ public class AdminControllerTests : IAsyncLifetime
         await SignInAsync("sandro_beno");
         await FlagPostsAsync(6, 9, 11, 12);
 
-        var firstPage  = await GetQueueAsync<PostSnapshotDto>("type=post&pageNumber=1&pageSize=3");
-        var secondPage = await GetQueueAsync<PostSnapshotDto>("type=post&pageNumber=2&pageSize=3");
+        var firstPage  = await GetFlaggedPostsAsync("pageNumber=1&pageSize=3");
+        var secondPage = await GetFlaggedPostsAsync("pageNumber=2&pageSize=3");
 
         Assert.Equal([12, 11, 9], firstPage.Select(post => post.Id));
         Assert.Equal([6], secondPage.Select(post => post.Id));
@@ -622,21 +636,21 @@ public class AdminControllerTests : IAsyncLifetime
         await SignInAsync("sandro_beno");
         await FlagCommentsAsync(1, 2, 6);
 
-        var secondPage = await GetQueueAsync<CommentSnapshotDto>("type=comment&pageNumber=2&pageSize=2");
+        var secondPage = await GetFlaggedCommentsAsync("pageNumber=2&pageSize=2");
 
         Assert.Equal([2], secondPage.Select(comment => comment.Id));
     }
 
     [Theory]
-    [InlineData("")]
-    [InlineData("type=user")]
-    [InlineData("type=0")]
-    [InlineData("type=3")]
-    public async Task GetModerationQueue_WithMissingOrUnknownType_ReturnsValidationProblem(string query)
+    [InlineData(FlaggedPostsRoute, "pageNumber=0")]
+    [InlineData(FlaggedPostsRoute, "pageSize=0")]
+    [InlineData(FlaggedCommentsRoute, "pageNumber=0")]
+    [InlineData(FlaggedCommentsRoute, "pageSize=0")]
+    public async Task GetModerationQueue_WithInvalidPaging_ReturnsValidationProblem(string route, string query)
     {
         await SignInAsync("sandro_beno");
 
-        var response = await _client.GetAsync($"api/admin/moderation-queue?{query}");
+        var response = await _client.GetAsync($"{route}?{query}");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var body = await response.Content.ReadAsStringAsync();
@@ -653,8 +667,8 @@ public class AdminControllerTests : IAsyncLifetime
 
         await GetAccountsAsync();
         await GetAccountsAsync("state=Deactivated&username=erin");
-        await GetQueueAsync<PostSnapshotDto>("type=post");
-        await GetQueueAsync<CommentSnapshotDto>("type=comment");
+        await GetFlaggedPostsAsync();
+        await GetFlaggedCommentsAsync();
         await GetLogsAsync("succeeded=false");
         var logsAfter = await GetLogsAsync();
 

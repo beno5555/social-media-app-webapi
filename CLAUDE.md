@@ -74,6 +74,7 @@ Follow the project skill `.claude/skills/webcity-conventions` (it overrides the 
 
 ## Agent workflow
 
+- **Sync first:** cloud sessions push to `origin` too, so the local clone can be behind. At the start of every session, before you read tickets or the roadmap or change anything, run `git fetch` and then `git pull --ff-only` on `master`. If the pull is not a fast-forward, stop and tell the owner instead of merging or rebasing.
 - **Skills:** Matt Pocock's skills in `.claude/skills/` are linked from `~/.claude/skills/` by Windows junctions (`webcity-conventions` is not). Never remove one with `rm -rf` (it can delete the repo copy); read `docs/agents/skills.md` before touching either folder.
 - **Issue tracker:** issues and specs live as local markdown files under `.scratch/<feature>/`. See `docs/agents/issue-tracker.md`.
 - **Domain docs:** single-context, one `GLOSSARY.md` and `docs/adr/` at the repo root, created lazily. See `docs/agents/domain.md`.

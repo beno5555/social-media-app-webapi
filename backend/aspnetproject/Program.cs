@@ -17,7 +17,7 @@ public partial class Program
                 options.UseSqlServer(connectionString);
             });
 
-            builder.Services.AddControllers();
+            builder.Services.AddControllers().AddUtcTimeJson();
             builder.Services.AddHttpContextAccessor();
             
             builder.Services.AddSwaggerConfiguration();

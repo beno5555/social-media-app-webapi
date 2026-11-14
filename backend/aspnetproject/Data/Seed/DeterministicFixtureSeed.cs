@@ -19,6 +19,7 @@ public static class DeterministicFixtureSeed
         SeedComments(modelBuilder);
         SeedMessages(modelBuilder);
         SeedRefreshTokens(modelBuilder);
+        SeedPostLikes(modelBuilder);
     }
 
     private static void SeedUsers(ModelBuilder modelBuilder)
@@ -200,6 +201,26 @@ public static class DeterministicFixtureSeed
             CreatedAt = createdAt,
             ExpiresAt = expiresAt,
             RevokedAt = revokedAt
+        };
+    }
+
+    private static void SeedPostLikes(ModelBuilder modelBuilder)
+    {
+        modelBuilder.Entity<PostLike>().HasData(
+            PostLike(1, 2, 2, SeedNow.AddMinutes(-15)),
+            PostLike(2, 2, 4, SeedNow.AddMinutes(-14)),
+            PostLike(3, 2, 6, SeedNow.AddMinutes(-13)),
+            PostLike(4, 1, 3, SeedNow.AddMinutes(-12)));
+    }
+
+    private static PostLike PostLike(int id, int postId, int userId, DateTime createdAt)
+    {
+        return new PostLike
+        {
+            Id = id,
+            PostId = postId,
+            UserId = userId,
+            CreatedAt = createdAt
         };
     }
 }

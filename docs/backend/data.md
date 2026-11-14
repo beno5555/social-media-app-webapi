@@ -46,6 +46,7 @@ Extends `BaseRepository<T>`. Adds:
 | Post         | UserId, PostTitle, PostContent (empty when the post has only photos), Images (`PostImage`)                                                                                                                                                                                                      |
 | PostImage    | PostId, Address (relative, `/api/images/{name}`, max `Constants.ImageAddressMaxLength` = 200), OrderIndex (follows upload order, from 0). The file itself lives in the upload folder, owned by `ImageStorage`                                                                                     |
 | Comment      | CommenterUserId (nullable), PostId, CommentContent                                                                                                                                                                                                                                              |
+| PostLike     | PostId, UserId, CreatedAt (when the like was given). Table `PostLikes`; `(PostId, UserId)` is a unique index, so a user likes a post at most once                                                                                                                                                |
 | Friendship   | RequesterUserId, AddresseeUserId, FriendshipStatus (enum: Pending/Accepted/Declined, stored as string), SentAt — now inherits `BaseEntity` (has its own `Id`; `(RequesterUserId, AddresseeUserId)` is a unique index, not the PK)                                                               |
 | Message      | SenderUserId, ReceiverUserId, MessageContent, Seen, SeenAt (nullable), computed `IsEdited => LastUpdatedAt is not null`                                                                                                                                                                         |
 | Log          | AuthorizedRequest, UserId (nullable), Succeeded, Action, Details (nullable, max `Constants.LogDetailsMaxLength` = 1000), EntityName (nullable, max 50), EntityId (nullable)                                                                                                                     |
@@ -89,8 +90,10 @@ SQL Server disallows multiple cascade paths, so most user-referencing FKs are no
 - `Comment.CommenterUserId` → `SetNull`, nullable — the one FK that tolerates a "deleted account" comment author, since displaying an orphaned comment is a real UX case; other resources don't have an equivalent display need.
 - `Post → Comment` → `Cascade` (deleting a post deletes its comments).
 - `Post → PostImage` → `Cascade`. The rows go with the post; the image files on disk do not yet.
+- `Post → PostLike` → `Cascade` (deleting a post deletes its likes).
+- `PostLike.UserId` → `NoAction`, and the relationship is optional although the column is not nullable. Likes already cascade from `Post`, and a post points at a user, so a cascade from `User` would be a second path. The purge job deletes the likes a user gave itself. Optional, like `Post`'s link to `User`, so a like by a deactivated or soft-deleted user stays readable while the global query filter hides that user (the liker list shows a placeholder name).
 - `RefreshToken.UserId` → `Cascade`.
 - `UserRole` → `Cascade` on both `UserId` and `RoleId`.
 - `Log.UserId` → `SetNull`, nullable (logs outlive the user they were about).
 
-See `background-jobs.md` for how the soft-deleted-user purge job walks these dependencies in order (messages → friendships → posts → user).
+See `background-jobs.md` for how the soft-deleted-user purge job walks these dependencies in order (messages → friendships → posts → likes given → user).

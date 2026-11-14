@@ -65,13 +65,13 @@ Purges `User` rows with `AccountDeletedAt` older than the retention cutoff, and 
 
 Each cycle (`UserRepository.DeleteSoftDeletedUsersBatchAsync`):
 1. Selects up to `BatchSize` candidate user ids (`IgnoreQueryFilters()` — the global filter would otherwise hide the very rows being purged; `Take` + `Select` id list, not a direct delete, since dependents must go first).
-2. Deletes that batch's messages, then friendships, then posts — each via its own internal batch-and-loop (`NestedBatchSize`) against `ExecuteDeleteAsync`, since `ExecuteDeleteAsync` can't be combined with `.Select()` projection and combining with `.Take()` directly is EF-version/translation-dependent, so the reliable form is: select a capped id batch, then a second `ExecuteDeleteAsync` filtered by that id set.
+2. Deletes that batch's messages, then friendships, then posts (their likes cascade), then the likes the users gave on other posts (`PostLike.UserId` does not cascade, see `data.md`) — each via its own internal batch-and-loop (`NestedBatchSize`) against `ExecuteDeleteAsync`, since `ExecuteDeleteAsync` can't be combined with `.Select()` projection and combining with `.Take()` directly is EF-version/translation-dependent, so the reliable form is: select a capped id batch, then a second `ExecuteDeleteAsync` filtered by that id set.
 3. Deletes the user batch itself (`IgnoreQueryFilters()` again).
 4. Repeats until a batch of users comes back empty.
 
-Result accumulation: `SoftDeleteCleanupResult` (Users/Posts/Messages/Friendships deleted counts) with an `operator +` for combining per-batch results into a cycle total, logged once at the end if anything was deleted.
+Result accumulation: `SoftDeleteCleanupResult` (Users/Posts/Messages/Friendships/Likes deleted counts) with an `operator +` for combining per-batch results into a cycle total, logged once at the end if anything was deleted.
 
-**Why `Comment.CommenterUserId` isn't touched here**: it's the one nullable, `SetNull` FK to `User` (see `data.md`) — a comment from a purged user just shows an orphaned/anonymized author, no explicit cleanup step needed. Everything else (messages, friendships, posts) has no such "show it anyway" case, hence the explicit pre-delete.
+**Why `Comment.CommenterUserId` isn't touched here**: it's the one nullable, `SetNull` FK to `User` (see `data.md`) — a comment from a purged user just shows an orphaned/anonymized author, no explicit cleanup step needed. Everything else (messages, friendships, posts, likes given) has no such "show it anyway" case, hence the explicit pre-delete. The like step has no integration test, because the job is removed from the test host.
 
 ---
 

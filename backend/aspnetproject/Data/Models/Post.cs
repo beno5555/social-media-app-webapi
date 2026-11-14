@@ -10,4 +10,5 @@ public class Post : BaseEntity
     
     public ICollection<Comment>   Comments { get; set; } = new List<Comment>();
     public ICollection<PostImage> Images   { get; set; } = new List<PostImage>();
+    public ICollection<PostLike>  Likes    { get; set; } = new List<PostLike>();
 }

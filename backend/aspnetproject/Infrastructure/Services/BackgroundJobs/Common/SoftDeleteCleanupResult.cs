@@ -6,6 +6,7 @@ public class SoftDeleteCleanupResult
     public int PostsDeletedCount       { get; set; }
     public int MessagesDeletedCount    { get; set; }
     public int FriendshipsDeletedCount { get; set; }
+    public int LikesDeletedCount       { get; set; }
 
     public static SoftDeleteCleanupResult operator +(SoftDeleteCleanupResult totalResult, SoftDeleteCleanupResult batchResult)
     {
@@ -14,7 +15,8 @@ public class SoftDeleteCleanupResult
             UsersDeletedCount = totalResult.UsersDeletedCount             + batchResult.UsersDeletedCount,
             PostsDeletedCount = totalResult.PostsDeletedCount             + batchResult.PostsDeletedCount,
             MessagesDeletedCount = totalResult.MessagesDeletedCount       + batchResult.MessagesDeletedCount,
-            FriendshipsDeletedCount = totalResult.FriendshipsDeletedCount + batchResult.FriendshipsDeletedCount
+            FriendshipsDeletedCount = totalResult.FriendshipsDeletedCount + batchResult.FriendshipsDeletedCount,
+            LikesDeletedCount = totalResult.LikesDeletedCount             + batchResult.LikesDeletedCount
         };
     }
     

@@ -149,6 +149,64 @@ public class MessageHubTests : IAsyncLifetime
         await bob.AssertNoEventAsync(HubEvents.MessageEdited);
     }
 
+    // ---------- POST /posts/{postId}/likes → PostLiked ----------
+    // Post 2 is bob's (3). alice (2), charlie (4) and erin (6) already like it; diana (5) does not.
+
+    [Fact]
+    public async Task LikePost_BySomeoneElse_DeliversPostLikedToAuthor()
+    {
+        await using var bob = await HubTestClient.ConnectAsync(_factory, "bob");
+        await LoginAsync("diana");
+
+        var response = await _client.PostAsync("api/posts/2/likes", null);
+        var pushed   = await bob.WaitForEventAsync<PostLikedDto>(HubEvents.PostLiked);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Equal(2, pushed.PostId);
+        Assert.Equal(5, pushed.LikedBy.Id); // diana
+        Assert.Equal("diana", pushed.LikedBy.Username);
+        Assert.Equal(4, pushed.LikeCount);
+    }
+
+    [Fact]
+    public async Task LikePost_BySomeoneElse_DeliversNothingToLikerOrThirdUser()
+    {
+        await using var bob   = await HubTestClient.ConnectAsync(_factory, "bob");
+        await using var alice = await HubTestClient.ConnectAsync(_factory, "alice");
+        await using var diana = await HubTestClient.ConnectAsync(_factory, "diana");
+        await LoginAsync("diana");
+
+        await _client.PostAsync("api/posts/2/likes", null);
+        await bob.WaitForEventAsync<PostLikedDto>(HubEvents.PostLiked);
+
+        await alice.AssertNoEventAsync(HubEvents.PostLiked);
+        await diana.AssertNoEventAsync(HubEvents.PostLiked);
+    }
+
+    [Fact]
+    public async Task LikePost_OwnPost_DeliversNothing()
+    {
+        await using var bob = await HubTestClient.ConnectAsync(_factory, "bob");
+        await LoginAsync("bob");
+
+        var response = await _client.PostAsync("api/posts/2/likes", null);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        await bob.AssertNoEventAsync(HubEvents.PostLiked);
+    }
+
+    [Fact]
+    public async Task LikePost_RefusedSecondLike_DeliversNothing()
+    {
+        await using var bob = await HubTestClient.ConnectAsync(_factory, "bob");
+        await LoginAsync("alice");
+
+        var response = await _client.PostAsync("api/posts/2/likes", null); // alice already likes it
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+        await bob.AssertNoEventAsync(HubEvents.PostLiked);
+    }
+
     // ---------- SendTyping (hub method) → UserTyping ----------
     // alice (2) and bob (3) are accepted friends. charlie (4) has only a pending request to alice.
 
@@ -211,6 +269,12 @@ public class MessageHubTests : IAsyncLifetime
         var logIdsAfter = await GetLogIdsAsync();
 
         Assert.Equal(logIdsBefore, logIdsAfter);
+    }
+
+    private async Task LoginAsync(string username)
+    {
+        var token = await AuthTestHelper.LoginAsync(_client, username, TestDataSeeder.SharedPlaintextPassword);
+        AuthTestHelper.AttachToken(_client, token);
     }
 
     // Page size 100 holds every seeded row plus the ones the sign-ins above wrote.

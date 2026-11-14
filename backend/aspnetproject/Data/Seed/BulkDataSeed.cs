@@ -34,6 +34,10 @@ public class BulkDataSeeder
         var messages = GenerateMessages(friendships);
         _db.Messages.AddRange(messages);
 
+        // Generated last, so the data above stays the same as before likes existed.
+        var likes = GenerateLikes(users, posts);
+        _db.PostLikes.AddRange(likes);
+
         await _db.SaveChangesAsync();
     }
 
@@ -198,5 +202,35 @@ public class BulkDataSeeder
         }
 
         return messages;
+    }
+
+    private List<PostLike> GenerateLikes(List<User> users, List<Post> posts)
+    {
+        var likes = new List<PostLike>();
+        var faker = new Faker();
+
+        foreach (var post in posts)
+        {
+            var likeCount = _rng.Next(0, 8); // 0-7 likes per post
+            var likerIds  = new HashSet<int>(); // a user likes a post at most once
+
+            for (var i = 0; i < likeCount; i++)
+            {
+                var  liker      = users[_rng.Next(users.Count)];
+                bool isNewLiker = likerIds.Add(liker.Id);
+
+                if (isNewLiker)
+                {
+                    likes.Add(new PostLike
+                    {
+                        PostId = post.Id,
+                        UserId = liker.Id,
+                        CreatedAt = faker.Date.Between(post.CreatedAt, DateTime.UtcNow)
+                    });
+                }
+            }
+        }
+
+        return likes;
     }
 }

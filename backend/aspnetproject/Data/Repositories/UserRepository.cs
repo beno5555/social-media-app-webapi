@@ -278,6 +278,7 @@ public class UserRepository : BaseEntityRepository<User>
             result.MessagesDeletedCount += await DeleteUsersMessagesAsync(userIds, config.NestedBatchSize, cancellationToken);
             result.FriendshipsDeletedCount += await DeleteUsersFriendshipsAsync(userIds, config.NestedBatchSize, cancellationToken);
             result.PostsDeletedCount += await DeleteUsersPostsAsync(userIds, config.NestedBatchSize, cancellationToken);
+            result.LikesDeletedCount += await DeleteUsersLikesAsync(userIds, config.NestedBatchSize, cancellationToken);
             
             result.UsersDeletedCount = await _dbSet
                 .IgnoreQueryFilters()
@@ -336,6 +337,31 @@ public class UserRepository : BaseEntityRepository<User>
         return totalDeleted;
     }
     
+    // The likes the users gave. Likes on their posts went with the posts (cascade); the user key cannot cascade too.
+    private async Task<int> DeleteUsersLikesAsync(List<int> userIds, int batchSize, CancellationToken cancellationToken)
+    {
+        int totalDeleted     = 0;
+        int deletedThisBatch = 0;
+
+        do
+        {
+            var likeIds = await _dbContext.PostLikes
+                .Where(like => userIds.Contains(like.UserId))
+                .OrderBy(like => like.Id)
+                .Take(batchSize)
+                .Select(like => like.Id)
+                .ToListAsync(cancellationToken);
+
+            deletedThisBatch = await _dbContext.PostLikes
+                .Where(like => likeIds.Contains(like.Id))
+                .ExecuteDeleteAsync(cancellationToken);
+
+            totalDeleted += deletedThisBatch;
+        } while (deletedThisBatch > 0);
+
+        return totalDeleted;
+    }
+
     private async Task<int> DeleteUsersFriendshipsAsync(List<int> userIds, int batchSize, CancellationToken cancellationToken)
     {
         int totalDeleted     = 0;

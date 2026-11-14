@@ -16,20 +16,20 @@ Decisions are under "Likes" in `.scratch/documented-backend-features/spec.md`.
 
 **Blocked by:** 01 (Real-time tests connect a real SignalR client), 02 (A post can be created with photos)
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Difficulty:** tricky: a live push with a precise target, and counts added to every post read without a query per post.
 
-- [ ] A user likes a post; a second like by the same user is refused
-- [ ] A user unlikes a post they liked; unliking a post they have not liked is refused
+- [x] A user likes a post; a second like by the same user is refused
+- [x] A user unlikes a post they liked; unliking a post they have not liked is refused
 - [ ] Liking, unliking or listing likes of an unknown post is not found
-- [ ] The list of users who liked a post is paged and readable by a guest
-- [ ] Every post read returns the post's like count and comment count
-- [ ] "Liked by caller" is true for a signed-in caller who liked the post, including on reads a guest may call, and false for a guest
-- [ ] Post lists get their counts without a query per post
-- [ ] A like pushes `PostLiked` to the author's connected client with the post, the user who liked and the new count, and to no other connected user
-- [ ] Liking one's own post pushes nothing
-- [ ] Deleting a post deletes its likes, and the purge of soft-deleted users deletes the likes those users gave
-- [ ] Seed data gains likes without changing any existing seeded id
-- [ ] Each new action has its own rate-limit policy
-- [ ] `docs/backend/controllers.md`, `docs/backend/data.md`, `docs/backend/signalr.md` and `README.md` describe likes and the `PostLiked` event
+- [x] The list of users who liked a post is paged and readable by a guest
+- [x] Every post read returns the post's like count and comment count
+- [x] "Liked by caller" is true for a signed-in caller who liked the post, including on reads a guest may call, and false for a guest
+- [x] Post lists get their counts without a query per post
+- [x] A like pushes `PostLiked` to the author's connected client with the post, the user who liked and the new count, and to no other connected user
+- [x] Liking one's own post pushes nothing
+- [x] Deleting a post deletes its likes, and the purge of soft-deleted users deletes the likes those users gave
+- [x] Seed data gains likes without changing any existing seeded id
+- [x] Each new action has its own rate-limit policy
+- [x] `docs/backend/controllers.md`, `docs/backend/data.md`, `docs/backend/signalr.md` and `README.md` describe likes and the `PostLiked` event

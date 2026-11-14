@@ -24,6 +24,7 @@ public static class ApplicationServicesExtensions
         services.AddScoped<FriendshipRepository>();
         services.AddScoped<MessageRepository>();
         services.AddScoped<PostRepository>();
+        services.AddScoped<PostLikeRepository>();
         services.AddScoped<UserRepository>();
         services.AddScoped<RoleRepository>();
         services.AddScoped<UserRoleRepository>();
@@ -39,6 +40,7 @@ public static class ApplicationServicesExtensions
         services.AddScoped<FriendshipService>();
         services.AddScoped<MessageService>();
         services.AddScoped<PostService>();
+        services.AddScoped<PostLikeService>();
         services.AddScoped<PresenceService>();
         services.AddScoped<TypingService>();
         services.AddScoped<LogService>();

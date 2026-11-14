@@ -48,7 +48,7 @@ Dates are the day a step should finish.
    - By Fri 20: n8n, gaps G and H with the six workflows.
 3. [ ] **Any time, in parallel: the open backend tickets.** Readiness 06, 08 and 09, and openapi-document 01. Ticket 08 bites as soon as sign-in exists, 09 as soon as a date is shown, and the document promises per-user limits (06) and Swagger. Message-editing 01 (the 20-minute edit window) was done on 2026-11-14.
 4. [ ] **Mon 16: shell and auth.** Lazy-loaded feature areas, the HTTP interceptor with automatic refresh, session restore, route guards for signed-in users and administrators, and the pages: register, sign in, password reset, account reactivation.
-   - Backend alongside: **images** and **likes** (gaps A and B). Images ticket 02 (photos on a new post) is done and awaiting review. They change the post and message contracts, so they land before the pages that use them.
+   - Backend alongside: **images** and **likes** (gaps A and B). Images ticket 02 (photos on a new post) is done and awaiting review. Likes ticket 05 was done on 2026-11-14. They change the post and message contracts, so they land before the pages that use them.
 5. [ ] **Tue 17: feed, posts and comments.** Feed with pagination, create a post with photos, edit and delete, like, comment, edit and delete a comment, report a post or comment.
    - Backend alongside: **feed ranking** (gap C).
 6. [ ] **Wed 18: profile, friends and search.** Profile page (bio, posts, friends), edit profile, user search, friend requests (send, accept, decline, remove; the three lists), account settings (deactivate, delete, digest opt-out), the guest view.
@@ -89,7 +89,7 @@ If time runs short, these are finished last, in this order from the end: the wee
 Checked against the code on 2026-11-14. Everything not listed here already exists (auth, users, accounts, posts and comments as text, friendships, text chat with seen and unread, presence, rate limiting, cleanup jobs, integration tests). Gaps A to F are specified in `.scratch/documented-backend-features/spec.md`; G and H wait for the n8n spec.
 
 - **A. Images.** No upload exists anywhere. Needed: storage on disk with format and size checks, static serving, `PostImage` and `MessageImage`, `POST /api/posts` and `POST /api/messages/{receiverId}` as `multipart/form-data`, `DELETE /api/posts/{postId}/images/{imageId}`, image URLs in the post and message DTOs and in the `ReceiveMessage` push.
-- **B. Likes.** `PostLike`, the three `/api/posts/{postId}/likes` endpoints, the `PostLiked` push to the author, and a like count and "liked by me" on the post DTOs.
+- **B. Likes.** `PostLike`, the three `/api/posts/{postId}/likes` endpoints, the `PostLiked` push to the author, and a like count and "liked by me" on the post DTOs. Done on 2026-11-14 (ticket 05).
 - **C. Feed ranking.** The feed today is friends' posts only, newest first. Needed: friends' and other users' posts, ranked by connection (friends, then users with mutual friends), activity (likes and comments) and age.
 - **D. Hub.** `SendTyping` from the client and the `UserTyping` push. Done on 2026-11-14.
 - **E. Admin reads.** `GET /api/admin/logs` (`LogService` exists but is empty and nothing calls it), `GET /api/admin/statistics`, and a list of accounts in any state, which the document does not list but restoring a deactivated account needs.

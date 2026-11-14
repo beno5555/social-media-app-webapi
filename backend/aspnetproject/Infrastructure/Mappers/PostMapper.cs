@@ -1,4 +1,5 @@
 ﻿using aspnetproject.Data.Models;
+using aspnetproject.Data.Repositories.Dtos;
 using aspnetproject.Infrastructure.Dtos.Comments;
 using aspnetproject.Infrastructure.Dtos.Images;
 using aspnetproject.Infrastructure.Dtos.Posts;
@@ -21,8 +22,10 @@ public static class PostMapper
         };
     }
 
-    public static FullPostDisplayDto ToFullDisplay(Post post)
+    public static FullPostDisplayDto ToFullDisplay(PostWithStatsProjection postWithStats)
     {
+        var post = postWithStats.Post;
+
         return new FullPostDisplayDto
         {
             Id = post.Id,
@@ -37,7 +40,11 @@ public static class PostMapper
             PostContent = post.PostContent,
             UploadedAt = post.CreatedAt,
             Images = ToImageDtos(post),
-            
+
+            LikeCount = postWithStats.LikeCount,
+            CommentCount = postWithStats.CommentCount,
+            LikedByCaller = postWithStats.LikedByCaller,
+
             Comments = post.Comments.Select(comment => new StandardCommentDto
             {
                 Id =  comment.Id,
@@ -52,8 +59,10 @@ public static class PostMapper
         };
     }
     
-    public static StandardPostDisplayDto ToStandardDisplay(Post post)
+    public static StandardPostDisplayDto ToStandardDisplay(PostWithStatsProjection postWithStats)
     {
+        var post = postWithStats.Post;
+
         return new StandardPostDisplayDto
         {
             Id = post.Id,
@@ -68,7 +77,17 @@ public static class PostMapper
             PostContent = post.PostContent,
             UploadedAt = post.CreatedAt,
             Images = ToImageDtos(post),
+
+            LikeCount = postWithStats.LikeCount,
+            CommentCount = postWithStats.CommentCount,
+            LikedByCaller = postWithStats.LikedByCaller
         };
+    }
+
+    // A post that was just created has no likes or comments yet.
+    public static StandardPostDisplayDto ToNewPostDisplay(Post post)
+    {
+        return ToStandardDisplay(new PostWithStatsProjection { Post = post });
     }
     
     public static MinimalPostDisplayDto ToMinimalDisplay(Post post)

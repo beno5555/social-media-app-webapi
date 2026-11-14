@@ -12,7 +12,7 @@ SignalR (not raw WebSockets) — automatic transport fallback, simpler API than 
 
 - Mostly push. The one client-called method is `SendTyping` (see Typing). The hub holds no logic: all validation stays in the relevant controller/service (`MessageController`/`MessageService`, `CommentController`/`CommentService`, `TypingService`), not the hub.
 - One SignalR group per `userId` (one-on-one messaging only — no conversation/group table). Connection added to its group in `OnConnectedAsync`; SignalR removes it from all groups automatically on disconnect.
-- `IHubContext<MessageHub>` is injected directly into `MessageService` **and now also `CommentService`** — both treat "mutate + notify" as one atomic unit per service method.
+- `IHubContext<MessageHub>` is injected directly into `MessageService`, `CommentService` and `PostLikeService`, which treat "mutate + notify" as one atomic unit per service method.
 - `MessageHub` now also depends on `UserConnectionTracker` and `PresenceService` to track and broadcast online/offline state, and on `TypingService` for `SendTyping` (left out of the excerpt below):
 
 ```csharp
@@ -89,6 +89,7 @@ Policy name: `OriginPolicy` (`CorsExtensions.AddCorsPolicies`), applied globally
 | `MessageEditedDto` | Edit push (`MessageEdited`) | Id, Content |
 | `NotifyCommentDto` | Live comment push (`ReceiveComment`) | Id, AuthorUsername, Content |
 | `UserTypingDto` | Typing signal (`UserTyping`) | UserId (the sender) |
+| `PostLikedDto` | Like push (`PostLiked`) | PostId, LikedBy (`MinimalUserDto`: Id, Username), LikeCount (the post's count after the like) |
 
 ## Hub events (server → client push)
 
@@ -98,6 +99,7 @@ Policy name: `OriginPolicy` (`CorsExtensions.AddCorsPolicies`), applied globally
 | `MessageSeen` | Conversation marked read (last unread message from the other user, seen) | `{ SeenBy, SeenAt }` | Sender's group |
 | `MessageEdited` | Message edit persists successfully | `MessageEditedDto` | Receiver's group only (the editor gets the edited message in the HTTP response) |
 | `ReceiveComment` | A comment is added to a post, by someone other than the post's author | `NotifyCommentDto` | Post author's group |
+| `PostLiked` | A post is liked by someone other than its author. A refused like (already liked) pushes nothing; an unlike pushes nothing | `PostLikedDto` | Post author's group only |
 | `UserOnline` | A user's first connection opens | `{ UserId }` | Each accepted friend's group |
 | `UserOffline` | A user's last connection closes | `{ UserId, LastActiveAt }` | Each accepted friend's group |
 | `UserTyping` | An accepted friend calls `SendTyping` for this user | `UserTypingDto` | Receiver's group only |

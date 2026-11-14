@@ -226,7 +226,21 @@ public static class TestDataSeeder
 
             await db.SaveChangesAsync();
         });
-        
+
+        // Fixed past times that rise with the id, so the newest-first order of likers is known
+        // and likes written while a test runs are always the newest.
+        await InsertWithIdentityAsync(db, "PostLikes", async () =>
+        {
+            db.PostLikes.AddRange(
+                new PostLike { Id = 1, PostId = 2, UserId = 2, CreatedAt = new DateTime(2026, 9, 6, 10, 0, 0, DateTimeKind.Utc) },
+                new PostLike { Id = 2, PostId = 2, UserId = 4, CreatedAt = new DateTime(2026, 9, 6, 10, 1, 0, DateTimeKind.Utc) },
+                new PostLike { Id = 3, PostId = 2, UserId = 6, CreatedAt = new DateTime(2026, 9, 6, 10, 2, 0, DateTimeKind.Utc) },
+                new PostLike { Id = 4, PostId = 1, UserId = 3, CreatedAt = new DateTime(2026, 9, 6, 10, 3, 0, DateTimeKind.Utc) }
+            );
+
+            await db.SaveChangesAsync();
+        });
+
         // Fixed times in the past, so rows written while a test runs are always newer than these.
         await InsertWithIdentityAsync(db, "Logs", async () =>
         {
@@ -272,6 +286,7 @@ public static class TestDataSeeder
         await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Posts', RESEED, 5)");
         await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Messages', RESEED, 5)");
         await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Comments', RESEED, 5)");
+        await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('PostLikes', RESEED, 4)");
         await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Logs', RESEED, 5)");
     }
 

@@ -56,7 +56,7 @@ public class PostController : BaseController
     public async Task<ActionResult<ListResponse<StandardPostDisplayDto>>> GetOwnPosts([FromQuery] PageQuery query)
     {
         int userId   = GetUserId();
-        var response = await _postService.GetByUserIdAsync(userId, query.PageNumber, query.PageSize);
+        var response = await _postService.GetByUserIdAsync(userId, userId, query.PageNumber, query.PageSize);
 
         if (response.Succeeded)
         {
@@ -72,7 +72,8 @@ public class PostController : BaseController
     [EnableRateLimiting(RateLimitConfig.Policies.ReadPosts)]
     public async Task<ActionResult<ApplicationResponse<FullPostDisplayDto>>> GetPostById(int id)
     {
-        var response = await _postService.GetPostByIdAsync(id);
+        var callerId = GetOptionalUserId();
+        var response = await _postService.GetPostByIdAsync(id, callerId);
 
         if (response.Succeeded)
         {
@@ -88,7 +89,8 @@ public class PostController : BaseController
     [EnableRateLimiting(RateLimitConfig.Policies.ReadPosts)]
     public async Task<ActionResult<ListResponse<StandardPostDisplayDto>>> GetPostsByUser(int userId, [FromQuery] PageQuery                                                                query)
     {
-        var response = await _postService.GetByUserIdAsync(userId, query.PageNumber, query.PageSize);
+        var callerId = GetOptionalUserId();
+        var response = await _postService.GetByUserIdAsync(userId, callerId, query.PageNumber, query.PageSize);
 
         if (response.Succeeded)
         {

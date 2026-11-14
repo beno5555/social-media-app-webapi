@@ -1,0 +1,132 @@
+using aspnetproject.Common.Domain;
+using aspnetproject.Common.ProjectConstants;
+using aspnetproject.Data.Models;
+using aspnetproject.Data.Repositories;
+using aspnetproject.Hubs;
+using aspnetproject.Infrastructure.Dtos.Users;
+using aspnetproject.Infrastructure.Mappers;
+using aspnetproject.Infrastructure.Services.BusinessLogic.Base;
+using aspnetproject.Infrastructure.Services.Logging;
+using Microsoft.AspNetCore.SignalR;
+
+namespace aspnetproject.Infrastructure.Services.BusinessLogic.Content;
+
+public class PostLikeService : BaseService
+{
+    private readonly PostLikeRepository      _postLikeRepository;
+    private readonly PostRepository          _postRepository;
+    private readonly IHubContext<MessageHub> _hubContext;
+
+    public PostLikeService(
+        PostLikeRepository postLikeRepository,
+        PostRepository postRepository,
+        IHubContext<MessageHub> hubContext,
+        DatabaseLogger dbLogger
+        ) : base(dbLogger)
+    {
+        _postLikeRepository = postLikeRepository;
+        _postRepository = postRepository;
+        _hubContext = hubContext;
+    }
+
+    public async Task<ApplicationResponse> LikePostAsync(int userId, int postId)
+    {
+        var response = new ApplicationResponse();
+
+        var post = await _postRepository.GetByIdAsync(postId);
+
+        if (post is not null)
+        {
+            bool notLikedYet = !await _postLikeRepository.HasUserLikedPostAsync(postId, userId);
+
+            if (notLikedYet)
+            {
+                var like      = PostLikeMapper.ToEntity(postId, userId);
+                var addedLike = await _postLikeRepository.AddLikeAsync(like);
+
+                response.Ok(ResponseMessages.PostLiked);
+                await LogResultAsync(response.Succeeded, nameof(LikePostAsync), nameof(PostLike), null, addedLike.Id);
+                await NotifyAuthorAsync(post, addedLike);
+            }
+            else
+            {
+                response.Fail(ResponseMessages.PostAlreadyLiked);
+                await LogResultAsync(response.Succeeded, nameof(LikePostAsync), nameof(PostLike), $"Could not like post {postId}. {response.Message}", null);
+            }
+        }
+        else
+        {
+            response.Fail(ResponseMessages.PostNotFound);
+            await LogResultAsync(response.Succeeded, nameof(LikePostAsync), nameof(PostLike), $"Could not like post {postId}. {response.Message}", null);
+        }
+
+        return response;
+    }
+
+    public async Task<ApplicationResponse> UnlikePostAsync(int userId, int postId)
+    {
+        var response = new ApplicationResponse();
+
+        bool postExists = await _postRepository.ExistsByIdAsync(postId);
+
+        if (postExists)
+        {
+            int  removedCount = await _postLikeRepository.DeleteLikeAsync(postId, userId);
+            bool wasLiked     = removedCount > 0;
+
+            if (wasLiked)
+            {
+                response.Ok(ResponseMessages.PostUnliked);
+                await LogResultAsync(response.Succeeded, nameof(UnlikePostAsync), nameof(PostLike), $"Unliked post {postId}", null);
+            }
+            else
+            {
+                response.Fail(ResponseMessages.PostNotLiked);
+                await LogResultAsync(response.Succeeded, nameof(UnlikePostAsync), nameof(PostLike), $"Could not unlike post {postId}. {response.Message}", null);
+            }
+        }
+        else
+        {
+            response.Fail(ResponseMessages.PostNotFound);
+            await LogResultAsync(response.Succeeded, nameof(UnlikePostAsync), nameof(PostLike), $"Could not unlike post {postId}. {response.Message}", null);
+        }
+
+        return response;
+    }
+
+    public async Task<ListResponse<MinimalUserDto>> GetLikersAsync(int postId, int? pageNumber, int? pageSize)
+    {
+        var response = new ListResponse<MinimalUserDto>();
+
+        bool postExists = await _postRepository.ExistsByIdAsync(postId);
+
+        if (postExists)
+        {
+            var likes  = await _postLikeRepository.GetByPostIdAsync(postId, pageNumber, pageSize);
+            var likers = likes.Select(PostLikeMapper.ToLikerDisplay).ToList();
+
+            response.Ok(likers, ResponseMessages.PostLikesRetrieved);
+        }
+        else
+        {
+            response.Fail(ResponseMessages.PostNotFound);
+            await LogResultAsync(response.Succeeded, nameof(GetLikersAsync), nameof(PostLike), $"Could not retrieve likes of post {postId}. {response.Message}", null);
+        }
+
+        return response;
+    }
+
+    // The author is told about likes by other users only. The count is read after the like is saved, so it includes it.
+    private async Task NotifyAuthorAsync(Post post, PostLike like)
+    {
+        bool likedBySomeoneElse = like.UserId != post.UserId;
+
+        if (likedBySomeoneElse)
+        {
+            int likeCount    = await _postLikeRepository.CountByPostIdAsync(post.Id);
+            var notification = PostLikeMapper.ToNotification(like, likeCount);
+
+            await _hubContext.Clients.Group(post.UserId.ToString()).SendAsync("PostLiked", notification);
+        }
+    }
+}

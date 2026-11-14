@@ -15,4 +15,10 @@ public class StandardPostDisplayDto
 
     // In upload order.
     public List<ImageDto> Images { get; set; } = [];
+
+    public int  LikeCount    { get; set; }
+    public int  CommentCount { get; set; }
+
+    // False for a guest.
+    public bool LikedByCaller { get; set; }
 }

@@ -49,6 +49,12 @@ public static class RateLimitConfig
         public const string RemoveFriend         = "RemoveFriend";
         #endregion
 
+        #region Likes
+        public const string LikePost      = "LikePost";
+        public const string UnlikePost    = "UnlikePost";
+        public const string ReadPostLikes = "ReadPostLikes";
+        #endregion
+
         #region Messages
         public const string SendMessage            = "SendMessage";
         public const string ReadMessages           = "ReadMessages";
@@ -160,6 +166,17 @@ public static class RateLimitConfig
 
             options.AddPolicy(Policies.RemoveFriend, httpContext =>
                 PerUserSlidingWindow(httpContext, 30, TimeSpan.FromHours(1)));
+            #endregion
+
+            #region Likes
+            options.AddPolicy(Policies.LikePost, httpContext =>
+                PerUserSlidingWindow(httpContext, 60, TimeSpan.FromMinutes(10)));
+
+            options.AddPolicy(Policies.UnlikePost, httpContext =>
+                PerUserSlidingWindow(httpContext, 60, TimeSpan.FromMinutes(10)));
+
+            options.AddPolicy(Policies.ReadPostLikes, httpContext =>
+                PerUserSlidingWindow(httpContext, 120, TimeSpan.FromMinutes(1)));
             #endregion
 
             #region Messages 

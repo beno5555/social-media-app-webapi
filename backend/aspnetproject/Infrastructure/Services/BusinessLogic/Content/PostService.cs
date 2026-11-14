@@ -42,7 +42,7 @@ public class PostService : BaseService
         if (newPostCheck.Succeeded)
         {
             var addedPost   = await AddPostWithImagesAsync(userId, createPostDto, newPostCheck.Data!);
-            var postDisplay = PostMapper.ToStandardDisplay(addedPost);
+            var postDisplay = PostMapper.ToNewPostDisplay(addedPost);
             response.Ok(postDisplay, ResponseMessages.PostUploaded);
         }
         else
@@ -54,11 +54,12 @@ public class PostService : BaseService
         return response;
     }
 
-    public async Task<ApplicationResponse<FullPostDisplayDto>> GetPostByIdAsync(int id)
+    // callerId is null for a guest.
+    public async Task<ApplicationResponse<FullPostDisplayDto>> GetPostByIdAsync(int id, int? callerId)
     {
         var response = new ApplicationResponse<FullPostDisplayDto>();
 
-        var post = await _postRepository.GetPostByIdAsync(id);
+        var post = await _postRepository.GetPostByIdAsync(id, callerId);
         if (post is not null)
         {
             var postDisplay = PostMapper.ToFullDisplay(post);
@@ -82,7 +83,7 @@ public class PostService : BaseService
             friend.RequesterUserId == userId ? friend.AddresseeUserId : friend.RequesterUserId)
             .ToList();
 
-        var posts    = await _postRepository.GetFeedAsync(friendIds, pageNumber, pageSize);
+        var posts    = await _postRepository.GetFeedAsync(friendIds, userId, pageNumber, pageSize);
         var postDtos = posts.Select(PostMapper.ToStandardDisplay).ToList();
 
         response.Ok(postDtos, ResponseMessages.Feed);
@@ -90,7 +91,8 @@ public class PostService : BaseService
         return response;
     }
     
-    public async Task<ListResponse<StandardPostDisplayDto>> GetByUserIdAsync(int userId, int? pageNumber, int? pageSize)
+    // callerId is null for a guest.
+    public async Task<ListResponse<StandardPostDisplayDto>> GetByUserIdAsync(int userId, int? callerId, int? pageNumber, int? pageSize)
     {
         var response = new ListResponse<StandardPostDisplayDto>();
 
@@ -98,7 +100,7 @@ public class PostService : BaseService
 
         if (userExists)
         {
-            var posts    = await _postRepository.GetByUserIdAsync(userId, pageNumber, pageSize);
+            var posts    = await _postRepository.GetByUserIdAsync(userId, callerId, pageNumber, pageSize);
             var postDtos = posts.Select(PostMapper.ToStandardDisplay).ToList();
             
             response.Ok(postDtos, ResponseMessages.UserPostsRetrieved);
@@ -116,9 +118,10 @@ public class PostService : BaseService
     {
         var response = new ApplicationResponse<FullPostDisplayDto>();
 
-        var post = await _postRepository.GetPostByIdAsync(id);
-        if (post is not null)
+        var postWithStats = await _postRepository.GetPostByIdAsync(id, userId);
+        if (postWithStats is not null)
         {
+            var  post            = postWithStats.Post;
             bool belongsToCaller = post.UserId == userId;
             if (belongsToCaller)
             {
@@ -127,8 +130,8 @@ public class PostService : BaseService
                 post.LastUpdatedAt = DateTime.UtcNow;
 
                 await _postRepository.SaveChangesAsync();
-                
-                var postDisplayDto = PostMapper.ToFullDisplay(post);
+
+                var postDisplayDto = PostMapper.ToFullDisplay(postWithStats);
                 response.Ok(postDisplayDto, ResponseMessages.PostUpdated);
                 await LogResultAsync(response.Succeeded, nameof(UpdatePost), nameof(Post), null, id);
             }

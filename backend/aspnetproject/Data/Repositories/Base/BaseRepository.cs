@@ -21,6 +21,17 @@ public class BaseRepository<T> where T : class
         Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
         bool ignoreQueryFilters = false)
     {
+        return await BuildWhereQuery(predicate, pageNumber, pageSize, orderBy, ignoreQueryFilters).ToListAsync();
+    }
+
+    // The filtered, ordered and paged query behind GetWhereAsync, for callers that project it before reading.
+    protected IQueryable<T> BuildWhereQuery(
+        Expression<Func<T, bool>>? predicate,
+        int? pageNumber = null,
+        int? pageSize = null,
+        Func<IQueryable<T>, IOrderedQueryable<T>>? orderBy = null,
+        bool ignoreQueryFilters = false)
+    {
         var query = Query();
         
         if (ignoreQueryFilters)
@@ -45,7 +56,7 @@ public class BaseRepository<T> where T : class
                 .Take(pageSize.Value);
         }
 
-        return await query.ToListAsync();
+        return query;
     }
 
     public async Task<List<T>> GetAllAsync(int? pageNumber, int? pageSize)

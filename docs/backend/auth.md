@@ -48,7 +48,7 @@ The body of `request-password-reset` (`ForgotPasswordDto`) is `Email` plus an op
 
 ### Roles
 
-- Seeded via `RoleConfiguration.HasData`: `User` (Id 1), `Administrator` (Id 2). A user row (`UserConfiguration`, Id 1, `sandro_beno`) is also seeded with both roles (`UserRoleConfiguration`, `UserId = 1`). `DeterministicFixtureSeed` additionally seeds fixture users (Id 2 onward), friendships, posts, comments, messages and refresh tokens through `HasData`, so they are part of the migrations; the integration tests depend on them.
+- Seeded via `RoleConfiguration.HasData`: `User` (Id 1), `Administrator` (Id 2). A user row (`UserConfiguration`, Id 1, `sandro_beno`) is also seeded with both roles (`UserRoleConfiguration`, `UserId = 1`). `DeterministicFixtureSeed` additionally seeds fixture users (Id 2 onward), friendships, posts, comments, post likes, messages and refresh tokens through `HasData`, so they are part of the migrations; the integration tests depend on them.
 - `AccountManagementController` exposes `Administrator`-only assign/unassign endpoints (`PUT api/accounts/{id}/assign-administrator`, `PUT api/accounts/{id}/remove-administrator`).
 - `BaseController.IsAdministrator()` checks `User.IsInRole(nameof(RoleName.Administrator))`; used by `PostController`/`CommentController` to let an admin delete any post/comment, and by `AccountManagementController`/`AccountActivationController` for admin-vs-self routes.
 - No self-registration path grants roles — a new user has none until an admin assigns one.

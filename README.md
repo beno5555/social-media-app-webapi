@@ -9,8 +9,9 @@ For the earlier, API-only state of this repository and the history behind it, se
 ## Features
 
 - Register and log in; JWT access tokens plus rotating refresh tokens; password reset via an emailed token
-- Create, view, update and delete posts, with up to 10 photos (JPEG, PNG or WebP, checked by content) per post; a friends-only feed
+- Create, view, update and delete posts, with up to 10 photos (JPEG, PNG or WebP, checked by content) per post; a friends-only feed. Every post read carries its like count, comment count and whether the caller liked it
 - Comment on posts and edit own comments; delete a comment as its author, as the post's author, or as an administrator; live `ReceiveComment` push to the post's author
+- Like and unlike posts, once per user per post; list a post's likers, newest first; live `PostLiked` push to the post's author
 - Send, accept, decline and remove friend requests; view friends, pending and sent requests; search users by username
 - Send, edit and delete messages between friends; live push (`ReceiveMessage`, `MessageEdited`, `MessageSeen`) over SignalR; paginated conversations and read receipts. A message can be edited for 20 minutes after it is sent, and the receiver sees the edit live
 - Presence: `UserOnline` / `UserOffline` broadcast to friends when a user's first connection opens or last connection closes
@@ -19,7 +20,7 @@ For the earlier, API-only state of this repository and the history behind it, se
 - Roles (`User`, `Administrator`): an administrator can create, update, deactivate, reactivate and soft-delete other users' accounts, delete any post or comment, and assign or remove the `Administrator` role
 - Admin reads (`api/admin`): an administrator reads the `Logs` table page by page, newest first, filtered by user, authorized or not, succeeded or not, entity, action and date range, and lists accounts in any state (active, deactivated, soft-deleted), filtered by state and username
 - Deactivate own account; reactivate it through an emailed activation token
-- Soft-delete own account; a background job later purges soft-deleted accounts and their messages, friendships and posts once a retention window has passed
+- Soft-delete own account; a background job later purges soft-deleted accounts and their messages, friendships, posts and likes once a retention window has passed
 - Outcome logging of service calls to the `Logs` table, plus a file log for unhandled exceptions
 - Rate limiting: a named policy on every endpoint except logout, and a global limiter over everything
 
@@ -30,7 +31,7 @@ For the earlier, API-only state of this repository and the history behind it, se
 - ASP.NET Core Web API (C#), target framework `net10.0`
 - Entity Framework Core (SQL Server, code-first migrations)
 - JWT bearer authentication
-- SignalR (real-time push: messages, comments, presence, typing)
+- SignalR (real-time push: messages, comments, likes, presence, typing)
 - ASP.NET Core rate limiting middleware
 - MailKit (SMTP email delivery)
 - Swashbuckle and `Microsoft.AspNetCore.OpenApi` (Swagger UI and OpenAPI, Development only)
@@ -96,7 +97,7 @@ CLAUDE.md
     /Base
         BaseController.cs
     /Content
-        CommentController.cs, MessageController.cs, PostController.cs
+        CommentController.cs, MessageController.cs, PostController.cs, PostLikeController.cs
     /Filters
         PostUploadRequestSizeFilter.cs
     /Users
@@ -109,14 +110,14 @@ CLAUDE.md
         ...
     /Models
         BaseEntity.cs
-        Comment.cs, Friendship.cs, Log.cs, Message.cs, Post.cs, PostImage.cs,
+        Comment.cs, Friendship.cs, Log.cs, Message.cs, Post.cs, PostImage.cs, PostLike.cs,
         RefreshToken.cs, Role.cs, User.cs, UserRole.cs
     /Repositories
         /Base
             BaseRepository.cs
             BaseEntityRepository.cs
         /Dtos
-            ConversationFriendProjection.cs
+            ConversationFriendProjection.cs, PostWithStatsProjection.cs
         UserRepository.cs
         ...
     /Seed
@@ -190,7 +191,7 @@ Dependencies point one way: **Controllers / Hubs → Services → Repositories �
 
 **Controllers**: thin. They delegate to services and map `ApplicationResponse` outcomes to HTTP status codes. All routes are under `api/` (for example `api/posts`, `api/auth`).
 
-**Hubs**: the SignalR transport, a tier of its own beside the controllers. One hub, `MessageHub` at `hubs/messages`, carries messages, comment notifications, presence and typing signals. Its one client-called method, `SendTyping`, hands the call to a service; the hub itself does no validation.
+**Hubs**: the SignalR transport, a tier of its own beside the controllers. One hub, `MessageHub` at `hubs/messages`, carries messages, comment and like notifications, presence and typing signals. Its one client-called method, `SendTyping`, hands the call to a service; the hub itself does no validation.
 
 **Background jobs**: three hosted services built on `PeriodicHostedService` clean up refresh tokens, soft-deleted users and old log rows.
 

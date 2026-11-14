@@ -415,6 +415,66 @@ namespace aspnetproject.Migrations
                     b.ToTable("PostImages", (string)null);
                 });
 
+            modelBuilder.Entity("aspnetproject.Data.Models.PostLike", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<DateTime?>("LastUpdatedAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int>("PostId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("UserId")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("UserId");
+
+                    b.HasIndex("PostId", "UserId")
+                        .IsUnique();
+
+                    b.ToTable("PostLikes", (string)null);
+
+                    b.HasData(
+                        new
+                        {
+                            Id = 1,
+                            CreatedAt = new DateTime(2026, 9, 6, 11, 45, 0, 0, DateTimeKind.Utc),
+                            PostId = 2,
+                            UserId = 2
+                        },
+                        new
+                        {
+                            Id = 2,
+                            CreatedAt = new DateTime(2026, 9, 6, 11, 46, 0, 0, DateTimeKind.Utc),
+                            PostId = 2,
+                            UserId = 4
+                        },
+                        new
+                        {
+                            Id = 3,
+                            CreatedAt = new DateTime(2026, 9, 6, 11, 47, 0, 0, DateTimeKind.Utc),
+                            PostId = 2,
+                            UserId = 6
+                        },
+                        new
+                        {
+                            Id = 4,
+                            CreatedAt = new DateTime(2026, 9, 6, 11, 48, 0, 0, DateTimeKind.Utc),
+                            PostId = 1,
+                            UserId = 3
+                        });
+                });
+
             modelBuilder.Entity("aspnetproject.Data.Models.RefreshToken", b =>
                 {
                     b.Property<int>("Id")
@@ -800,6 +860,24 @@ namespace aspnetproject.Migrations
                     b.Navigation("Post");
                 });
 
+            modelBuilder.Entity("aspnetproject.Data.Models.PostLike", b =>
+                {
+                    b.HasOne("aspnetproject.Data.Models.Post", "Post")
+                        .WithMany("Likes")
+                        .HasForeignKey("PostId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.HasOne("aspnetproject.Data.Models.User", "User")
+                        .WithMany()
+                        .HasForeignKey("UserId")
+                        .OnDelete(DeleteBehavior.NoAction);
+
+                    b.Navigation("Post");
+
+                    b.Navigation("User");
+                });
+
             modelBuilder.Entity("aspnetproject.Data.Models.RefreshToken", b =>
                 {
                     b.HasOne("aspnetproject.Data.Models.User", "User")
@@ -833,6 +911,8 @@ namespace aspnetproject.Migrations
                     b.Navigation("Comments");
 
                     b.Navigation("Images");
+
+                    b.Navigation("Likes");
                 });
 
             modelBuilder.Entity("aspnetproject.Data.Models.Role", b =>

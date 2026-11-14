@@ -64,6 +64,8 @@ Route: `api/posts`. Inherits `BaseController`. `[Authorize]` at controller level
 
 **Creating a post with photos.** `POST api/posts` takes `multipart/form-data` (`CreatePostDto`): `PostTitle` (required), `PostContent` (optional) and `Images` (zero or more files, in display order). A post needs a title and either text or at least one photo (`ResponseMessages.TextOrImageRequired`). A JSON body gets `415`. The response is `201` with the standard post shape. Every post read (`{id}`, `feed`, `mine`, `user/{userId}`) carries `Images`: a list of `ImageDto` (`Id`, `Address`, `OrderIndex`) in upload order. Editing stays text-only (`PUT` keeps its JSON body).
 
+**Like and comment counts.** Every post read (`{id}`, `feed`, `mine`, `user/{userId}`) also carries `LikeCount`, `CommentCount` and `LikedByCaller`. `{id}` and `user/{userId}` stay anonymous: a signed-in caller gets their own `LikedByCaller` (`BaseController.GetOptionalUserId()`), and a guest always gets `false`. `PostRepository` counts in SQL through the `WithStats` projection (`PostWithStatsProjection`), as subqueries of the post query, so a page of posts costs one query, not one per post. A post that was just created returns zeros and `false` (`PostMapper.ToNewPostDisplay`).
+
 **Images.** `ImageStorage` (`Infrastructure/Services/Storage`) owns all file handling, and nothing else touches the disk:
 
 - **Checks, all before anything is saved.** At most `MaxImagesPerPost` files (`TooManyPostImages`), each at most `MaxFileSizeBytes` (`ImageTooLarge`), and each a JPEG, PNG or WebP judged by its leading bytes, never by its name or declared content type (`ImageFormatNotAccepted`). If any file fails, the request is refused with `400` and no post or file is stored. If saving a file or the post fails unexpectedly, the files already written are deleted before the exception reaches `GlobalExceptionHandler`.
@@ -77,7 +79,22 @@ Route: `api/posts`. Inherits `BaseController`. `[Authorize]` at controller level
 
 **Visibility model, and the inconsistency it creates:** `feed`/`mine` are friends-gated; `GetById`/`GetPostsByUser` are fully public. Mirrors real platforms where the home feed is curated but profile pages are public — but "who can see a post" still depends on which endpoint is hit, not a single rule on the `Post` resource.
 
-Deleting a post runs inside a transaction: comments are deleted first (`CommentRepository.DeletePostCommentsAsync`), then the post (`DeleteWithoutChangeTrackingAsync`), avoiding change-tracker/FK ordering issues.
+Deleting a post runs inside a transaction: comments are deleted first (`CommentRepository.DeletePostCommentsAsync`), then the post (`DeleteWithoutChangeTrackingAsync`), avoiding change-tracker/FK ordering issues. The post's likes go with it through the database cascade.
+
+### `PostLikeController`
+
+Route: `api/posts/{postId}/likes`. Inherits `BaseController`. `[Authorize]` at controller level, `[AllowAnonymous]` on the read. Rate-limit policies: `LikePost`, `UnlikePost`, `ReadPostLikes`, all per user.
+
+| Method | Route                      | Auth      | Notes                                         |
+|--------|----------------------------|-----------|-----------------------------------------------|
+| POST   | `api/posts/{postId}/likes` | Required  | Like as the caller. `200`, or `400`           |
+| DELETE | `api/posts/{postId}/likes` | Required  | Remove the caller's like. `200`, or `404`     |
+| GET    | `api/posts/{postId}/likes` | Anonymous | Paginated likers, newest first. `200`, or `404` |
+
+- **Like** (`PostLikeService.LikePostAsync`): a user likes a post at most once. An unknown post (`PostNotFound`) and a second like (`PostAlreadyLiked`) both get `400`, because one status covers two meanings. Any post can be liked, the caller's own included, and so can the post of a deactivated or deleted account, because such posts are still readable. On success the post's author gets a `PostLiked` push, unless they liked their own post (see `signalr.md`).
+- **Unlike**: an unknown post (`PostNotFound`) or a post the caller has not liked (`PostNotLiked`) gets `404`. A user can like the post again after unliking it.
+- **Likers**: a `ListResponse<MinimalUserDto>`, newest like first (ties by like id, newest first), paged by `PageQuery`. A liker whose account is deactivated or deleted shows the placeholder username from `UsernameMapper`. An unknown post gets `404`; a post with no likes gets `200` and an empty list.
+- A simultaneous double like from one user hits the unique index on (`PostId`, `UserId`), and the losing request gets `409` with the generic envelope from `GlobalExceptionHandler` instead of `PostAlreadyLiked`; the data stays correct.
 
 ### `CommentController`
 

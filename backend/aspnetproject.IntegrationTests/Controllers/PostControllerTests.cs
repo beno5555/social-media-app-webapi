@@ -415,6 +415,130 @@ public class PostControllerTests : IAsyncLifetime
         AssertBobsPhotosInOrder(posts.Single(post => post.Title == BobsPhotoPostTitle).Images);
     }
 
+    // ---------- like and comment counts on every post read ----------
+    // Post 1 (alice's): 1 like (bob), 2 comments (one orphaned).
+    // Post 2 (bob's):   3 likes (alice, charlie, erin_deactivated), 3 comments.
+    // Posts 3–5 have no likes and no comments.
+
+    [Fact]
+    public async Task GetById_AsGuest_ReturnsCountsAndNotLikedByCaller()
+    {
+        var post = await ReadDataAsync<FullPostDisplayDto>(await _client.GetAsync("api/posts/2"));
+
+        Assert.Equal(3, post.LikeCount);
+        Assert.Equal(3, post.CommentCount);
+        Assert.False(post.LikedByCaller);
+    }
+
+    [Fact]
+    public async Task GetById_AsUserWhoLikedIt_ReturnsLikedByCaller()
+    {
+        await LoginAsync("alice");
+
+        var post = await ReadDataAsync<FullPostDisplayDto>(await _client.GetAsync("api/posts/2"));
+
+        Assert.True(post.LikedByCaller);
+    }
+
+    [Fact]
+    public async Task GetById_AsUserWhoHasNotLikedIt_ReturnsNotLikedByCaller()
+    {
+        await LoginAsync("bob");
+
+        var post = await ReadDataAsync<FullPostDisplayDto>(await _client.GetAsync("api/posts/2"));
+
+        Assert.False(post.LikedByCaller);
+    }
+
+    [Fact]
+    public async Task GetById_AfterCallerLikes_CountsTheNewLike()
+    {
+        await LoginAsync("diana");
+        await _client.PostAsync("api/posts/2/likes", null);
+
+        var post = await ReadDataAsync<FullPostDisplayDto>(await _client.GetAsync("api/posts/2"));
+
+        Assert.Equal(4, post.LikeCount);
+        Assert.True(post.LikedByCaller);
+    }
+
+    [Fact]
+    public async Task GetPostsByUser_AsGuest_ReturnsCountsAndNotLikedByCaller()
+    {
+        var posts = await ReadListAsync(await _client.GetAsync("api/posts/user/3"));
+
+        var post = posts.Single(post => post.Id == 2);
+        Assert.Equal(3, post.LikeCount);
+        Assert.Equal(3, post.CommentCount);
+        Assert.False(post.LikedByCaller);
+    }
+
+    [Fact]
+    public async Task GetPostsByUser_AsUserWhoLikedIt_ReturnsLikedByCaller()
+    {
+        await LoginAsync("alice");
+
+        var posts = await ReadListAsync(await _client.GetAsync("api/posts/user/3"));
+
+        Assert.True(posts.Single(post => post.Id == 2).LikedByCaller);
+    }
+
+    [Fact]
+    public async Task GetFeed_ReturnsCountsAndLikedByCaller()
+    {
+        await LoginAsync("alice");
+
+        var posts = await ReadListAsync(await _client.GetAsync("api/posts/feed"));
+
+        var post = posts.Single(post => post.Id == 2);
+        Assert.Equal(3, post.LikeCount);
+        Assert.Equal(3, post.CommentCount);
+        Assert.True(post.LikedByCaller);
+    }
+
+    [Fact]
+    public async Task GetMine_OwnPostLikedByOthers_ReturnsCountsAndNotLikedByCaller()
+    {
+        await LoginAsync("alice");
+
+        var posts = await ReadListAsync(await _client.GetAsync("api/posts/mine"));
+
+        var post = posts.Single(post => post.Id == 1);
+        Assert.Equal(1, post.LikeCount);
+        Assert.Equal(2, post.CommentCount);
+        Assert.False(post.LikedByCaller);
+    }
+
+    [Fact]
+    public async Task Create_NewPost_ReturnsZeroCountsAndNotLikedByCaller()
+    {
+        await LoginAsync("diana");
+
+        var post = await ReadDataAsync<StandardPostDisplayDto>(
+            await _client.PostAsync("api/posts", PostForm.Create("Diana's New Post", "Fresh content")));
+
+        Assert.Equal(0, post.LikeCount);
+        Assert.Equal(0, post.CommentCount);
+        Assert.False(post.LikedByCaller);
+    }
+
+    [Fact]
+    public async Task Update_OwnPost_ReturnsCountsAndLikedByCaller()
+    {
+        await LoginAsync("bob");
+        await _client.PostAsync("api/posts/2/likes", null); // bob likes his own post
+
+        var post = await ReadDataAsync<FullPostDisplayDto>(await _client.PutAsJsonAsync("api/posts/2", new
+        {
+            Title = "Bob Post Updated",
+            Content = "Updated content"
+        }));
+
+        Assert.Equal(4, post.LikeCount);
+        Assert.Equal(3, post.CommentCount);
+        Assert.True(post.LikedByCaller);
+    }
+
     // ---------- PUT /posts/{id} ----------
 
     [Fact]
@@ -481,6 +605,18 @@ public class PostControllerTests : IAsyncLifetime
     }
 
     // ---------- DELETE /posts/{id} ----------
+
+    [Fact]
+    public async Task Delete_LikedPost_RemovesPostAndItsLikes()
+    {
+        await LoginAsync("bob");
+
+        var deleteResponse = await _client.DeleteAsync("api/posts/2"); // Bob Post, liked by 3 users
+        var likesResponse  = await _client.GetAsync("api/posts/2/likes");
+
+        Assert.Equal(HttpStatusCode.OK, deleteResponse.StatusCode);
+        Assert.Equal(HttpStatusCode.NotFound, likesResponse.StatusCode);
+    }
 
     [Fact]
     public async Task Delete_OwnPost_RemovesPostAndItsComments()

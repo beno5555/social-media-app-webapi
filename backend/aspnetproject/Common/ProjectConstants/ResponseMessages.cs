@@ -42,6 +42,9 @@ public static class ResponseMessages
 
     private const string Activate = "Activate";
     private const string Activated = "Activated";
+
+    private const string Liked   = "Liked";
+    private const string Unliked = "Unliked";
     
     #endregion
     
@@ -151,6 +154,16 @@ public static class ResponseMessages
     
     #endregion
     
+    #region Likes
+
+    public const string PostLiked          = $"Post {Liked} {Successfully}";
+    public const string PostUnliked        = $"Post {Unliked} {Successfully}";
+    public const string PostLikesRetrieved = $"Post Likes {Retrieved} {Successfully}";
+    public const string PostAlreadyLiked   = "You already like this post";
+    public const string PostNotLiked       = "You have not liked this post";
+
+    #endregion
+
     #region Messages
     
     public const string MessageSent     = $"Message {Sent} {Successfully}";

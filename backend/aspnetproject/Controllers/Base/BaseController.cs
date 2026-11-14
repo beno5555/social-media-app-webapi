@@ -12,6 +12,14 @@ public abstract class BaseController : ControllerBase
         var userIdRaw = User.FindFirst(ClaimTypes.NameIdentifier)!.Value;
         return int.Parse(userIdRaw);
     }
+
+    // For actions a guest may also call: the caller's id when signed in, null for a guest.
+    protected int? GetOptionalUserId()
+    {
+        var userIdRaw = User.FindFirst(ClaimTypes.NameIdentifier)?.Value;
+        return userIdRaw is null ? null : int.Parse(userIdRaw);
+    }
+
     protected string GetUsername()
     {
         var username = User.FindFirst(ClaimTypes.Name)!.Value;

@@ -3,9 +3,11 @@ using aspnetproject.Common.ProjectConstants.Enums;
 using aspnetproject.Controllers.Base;
 using aspnetproject.Extensions;
 using aspnetproject.Infrastructure.Dtos.DatabaseLogs;
+using aspnetproject.Infrastructure.Dtos.Moderation;
 using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Infrastructure.Queries;
 using aspnetproject.Infrastructure.Services.BusinessLogic;
+using aspnetproject.Infrastructure.Services.BusinessLogic.Content;
 using aspnetproject.Infrastructure.Services.BusinessLogic.Users;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -17,13 +19,15 @@ namespace aspnetproject.Controllers.Admin;
 [Authorize(Roles = nameof(RoleName.Administrator))]
 public class AdminController : BaseController
 {
-    private readonly LogService  _logService;
-    private readonly UserService _userService;
+    private readonly LogService        _logService;
+    private readonly UserService       _userService;
+    private readonly ModerationService _moderationService;
 
-    public AdminController(LogService logService, UserService userService)
+    public AdminController(LogService logService, UserService userService, ModerationService moderationService)
     {
-        _logService  = logService;
-        _userService = userService;
+        _logService        = logService;
+        _userService       = userService;
+        _moderationService = moderationService;
     }
 
     [HttpGet]
@@ -55,5 +59,35 @@ public class AdminController : BaseController
         }
 
         return BadRequest(response);
+    }
+
+    [HttpPut]
+    [Route("posts/{id:int}/moderation")]
+    [EnableRateLimiting(RateLimitConfig.Policies.AdminModeratePost)]
+    public async Task<ActionResult<ApplicationResponse>> SetPostStatus(int id, [FromBody] SetModerationStatusDto setModerationStatusDto)
+    {
+        var response = await _moderationService.SetPostStatusAsync(id, setModerationStatusDto.Status!.Value);
+
+        if (response.Succeeded)
+        {
+            return Ok(response);
+        }
+
+        return NotFound(response);
+    }
+
+    [HttpPut]
+    [Route("comments/{id:int}/moderation")]
+    [EnableRateLimiting(RateLimitConfig.Policies.AdminModerateComment)]
+    public async Task<ActionResult<ApplicationResponse>> SetCommentStatus(int id, [FromBody] SetModerationStatusDto setModerationStatusDto)
+    {
+        var response = await _moderationService.SetCommentStatusAsync(id, setModerationStatusDto.Status!.Value);
+
+        if (response.Succeeded)
+        {
+            return Ok(response);
+        }
+
+        return NotFound(response);
     }
 }

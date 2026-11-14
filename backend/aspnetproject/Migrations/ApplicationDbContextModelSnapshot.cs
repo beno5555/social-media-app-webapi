@@ -44,6 +44,13 @@ namespace aspnetproject.Migrations
                     b.Property<DateTime?>("LastUpdatedAt")
                         .HasColumnType("datetime2(3)");
 
+                    b.Property<string>("ModerationStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasDefaultValue("Visible");
+
                     b.Property<int>("PostId")
                         .HasColumnType("int");
 
@@ -62,6 +69,7 @@ namespace aspnetproject.Migrations
                             CommentContent = "Alice comments on Bob's post.",
                             CommenterUserId = 2,
                             CreatedAt = new DateTime(2026, 9, 6, 11, 31, 0, 0, DateTimeKind.Utc),
+                            ModerationStatus = "Visible",
                             PostId = 2
                         },
                         new
@@ -70,6 +78,7 @@ namespace aspnetproject.Migrations
                             CommentContent = "Bob comments on his own post.",
                             CommenterUserId = 3,
                             CreatedAt = new DateTime(2026, 9, 6, 11, 32, 0, 0, DateTimeKind.Utc),
+                            ModerationStatus = "Visible",
                             PostId = 2
                         },
                         new
@@ -78,6 +87,7 @@ namespace aspnetproject.Migrations
                             CommentContent = "Charlie comments on Bob's post.",
                             CommenterUserId = 4,
                             CreatedAt = new DateTime(2026, 9, 6, 11, 33, 0, 0, DateTimeKind.Utc),
+                            ModerationStatus = "Visible",
                             PostId = 2
                         },
                         new
@@ -86,6 +96,7 @@ namespace aspnetproject.Migrations
                             CommentContent = "Bob comments on Alice's post.",
                             CommenterUserId = 3,
                             CreatedAt = new DateTime(2026, 9, 6, 11, 34, 0, 0, DateTimeKind.Utc),
+                            ModerationStatus = "Visible",
                             PostId = 1
                         },
                         new
@@ -93,6 +104,7 @@ namespace aspnetproject.Migrations
                             Id = 5,
                             CommentContent = "Orphaned comment with no active author.",
                             CreatedAt = new DateTime(2026, 9, 6, 11, 35, 0, 0, DateTimeKind.Utc),
+                            ModerationStatus = "Visible",
                             PostId = 1
                         });
                 });
@@ -353,6 +365,13 @@ namespace aspnetproject.Migrations
                     b.Property<DateTime?>("LastUpdatedAt")
                         .HasColumnType("datetime2(3)");
 
+                    b.Property<string>("ModerationStatus")
+                        .IsRequired()
+                        .ValueGeneratedOnAdd()
+                        .HasMaxLength(30)
+                        .HasColumnType("nvarchar(30)")
+                        .HasDefaultValue("Visible");
+
                     b.Property<string>("PostContent")
                         .IsRequired()
                         .HasMaxLength(3000)
@@ -377,6 +396,7 @@ namespace aspnetproject.Migrations
                         {
                             Id = 1,
                             CreatedAt = new DateTime(2026, 9, 6, 11, 26, 0, 0, DateTimeKind.Utc),
+                            ModerationStatus = "Visible",
                             PostContent = "Alice owns this post.",
                             PostTitle = "Alice Post",
                             UserId = 2
@@ -385,6 +405,7 @@ namespace aspnetproject.Migrations
                         {
                             Id = 2,
                             CreatedAt = new DateTime(2026, 9, 6, 11, 27, 0, 0, DateTimeKind.Utc),
+                            ModerationStatus = "Visible",
                             PostContent = "Bob's post should appear in Alice's feed.",
                             PostTitle = "Bob Post",
                             UserId = 3
@@ -393,6 +414,7 @@ namespace aspnetproject.Migrations
                         {
                             Id = 3,
                             CreatedAt = new DateTime(2026, 9, 6, 11, 28, 0, 0, DateTimeKind.Utc),
+                            ModerationStatus = "Visible",
                             PostContent = "Charlie's public post should not appear in Alice's friend feed.",
                             PostTitle = "Charlie Post",
                             UserId = 4
@@ -401,6 +423,7 @@ namespace aspnetproject.Migrations
                         {
                             Id = 4,
                             CreatedAt = new DateTime(2026, 9, 6, 11, 29, 0, 0, DateTimeKind.Utc),
+                            ModerationStatus = "Visible",
                             PostContent = "Post owned by a deactivated user.",
                             PostTitle = "Erin Deactivated Post",
                             UserId = 6
@@ -409,6 +432,7 @@ namespace aspnetproject.Migrations
                         {
                             Id = 5,
                             CreatedAt = new DateTime(2026, 9, 6, 11, 30, 0, 0, DateTimeKind.Utc),
+                            ModerationStatus = "Visible",
                             PostContent = "Post owned by a soft-deleted user.",
                             PostTitle = "Frank Deleted Post",
                             UserId = 7

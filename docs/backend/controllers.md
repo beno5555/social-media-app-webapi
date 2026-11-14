@@ -63,14 +63,14 @@ Route: `api/posts`. Inherits `BaseController`. `[Authorize]` at controller level
 
 `GetOwnPosts` (`/mine`) and `GetPostsByUser` (`/user/{userId}`) both call `PostService.GetByUserIdAsync`, which returns the posts newest first (ties by post id, newest first), so paging is deterministic.
 
-**The ranked feed.** `GET api/posts/feed` (`PostService.GetFeedAsync` → `PostRepository.GetFeedAsync`) returns posts by friends and by other users, highest score first. Candidates are every post the caller did not write whose author is neither deactivated nor soft-deleted, so a user with no friends still gets a feed. The score is
+**The ranked feed.** `GET api/posts/feed` (`PostService.GetFeedAsync` → `PostRepository.GetFeedAsync`) returns posts by friends and by other users, highest score first. Candidates are every post the caller did not write whose author is neither deactivated nor soft-deleted and that the caller may read (a hidden post only for an administrator; see **Moderation visibility**), so a user with no friends still gets a feed. The score is
 
 ```
 score = (connection weight + likes + comments) / (age in hours + AgeOffsetHours) ^ AgeGravity
 ```
 
 - **Connection weight**, checked in this order: `FriendWeight` when the author is an accepted friend of the caller, `MutualFriendWeight` when the author has an accepted friend who is also the caller's friend, `OtherUserWeight` for anyone else. A weight counts as that many likes or comments. Pending and declined requests count as no connection. A shared friend counts even if their account is deactivated or soft-deleted, as in `FriendshipRepository.GetFriendshipsAsync`.
-- **Activity:** the post's like count plus its comment count, all comments included.
+- **Activity:** the post's like count plus its comment count, counting only the comments the caller may read.
 - **Age:** minute boundaries crossed from `CreatedAt` to the request time (`DATEDIFF(MINUTE, …)`, so 10:00:59 to 10:01:00 counts as one minute), divided by 60. A post dated in the future counts as zero hours old. `AgeOffsetHours` keeps a new post from dividing by zero, and a higher `AgeGravity` makes posts sink faster. Every weight is above zero, so even a post with no activity sinks as it ages.
 - **Order:** highest score first, ties broken by newest post id, so equal scores keep their order on every request.
 - **Two queries.** One raw SQL query (`PostRepository.RankedFeedPageSql`) scores every candidate, orders, pages, and returns only the page's post ids. Its CTEs each name one input: `CallerFriends`, `FriendsOfCallerFriends`, then `CandidatePosts` with `ConnectionWeight`, `Activity` and `AgeHours`. The SQL is raw because the LINQ version was unreadable, and it is not composable (SQL Server cannot wrap a CTE in a subquery), so it pages itself. A second query loads those posts with their images and stats, and the ids' order is restored in memory. All posts are never loaded. Raw SQL skips the global `User` filter, so the query checks the author's account state by hand.
@@ -79,7 +79,7 @@ score = (connection weight + likes + comments) / (age in hours + AgeOffsetHours)
 
 **Creating a post with photos.** `POST api/posts` takes `multipart/form-data` (`CreatePostDto`): `PostTitle` (required), `PostContent` (optional) and `Images` (zero or more files, in display order). A post needs a title and either text or at least one photo (`ResponseMessages.TextOrImageRequired`). A JSON body gets `415`. The response is `201` with the standard post shape. Every post read (`{id}`, `feed`, `mine`, `user/{userId}`) carries `Images`: a list of `ImageDto` (`Id`, `Address`, `OrderIndex`) in upload order. Editing stays text-only (`PUT` keeps its JSON body).
 
-**Like and comment counts.** Every post read (`{id}`, `feed`, `mine`, `user/{userId}`) also carries `LikeCount`, `CommentCount` and `LikedByCaller`. `{id}` and `user/{userId}` stay anonymous: a signed-in caller gets their own `LikedByCaller` (`BaseController.GetOptionalUserId()`), and a guest always gets `false`. `PostRepository` counts in SQL through the `WithStats` projection (`PostWithStatsProjection`), as subqueries of the post query, so a page of posts costs one query, not one per post. A post that was just created returns zeros and `false` (`PostMapper.ToNewPostDisplay`).
+**Like and comment counts.** Every post read (`{id}`, `feed`, `mine`, `user/{userId}`) also carries `LikeCount`, `CommentCount` and `LikedByCaller`. `{id}` and `user/{userId}` stay anonymous: a signed-in caller gets their own `LikedByCaller` (`BaseController.GetOptionalUserId()`), and a guest always gets `false`. `PostRepository` counts in SQL through the `WithStats` projection (`PostWithStatsProjection`), as subqueries of the post query, so a page of posts costs one query, not one per post. `CommentCount` counts only the comments the caller may read (see **Moderation visibility**). A post that was just created returns zeros and `false` (`PostMapper.ToNewPostDisplay`).
 
 **Images.** `ImageStorage` (`Infrastructure/Services/Storage`) owns all file handling, and nothing else touches the disk:
 
@@ -93,7 +93,17 @@ score = (connection weight + likes + comments) / (age in hours + AgeOffsetHours)
 
 **Ownership checks** (`Update`) remain a scoped comparison in the service (`post.UserId == userId`) rather than a separate authorization step. **Delete now also accepts admins**: `DeletePostAsync(callerId, isAdmin, id)` allows the post owner *or* a caller with the `Administrator` role, sourced from `BaseController.IsAdministrator()`.
 
-**Visibility model.** Every post is readable by everyone: `GetById` and `GetPostsByUser` are public, `feed` shows any other user's post to a signed-in caller, and `mine` returns the caller's own. Friendship changes only a post's rank in the feed, never whether it can be seen.
+**Visibility model.** Every post that is not hidden by moderation is readable by everyone: `GetById` and `GetPostsByUser` are public, `feed` shows any other user's post to a signed-in caller, and `mine` returns the caller's own. Friendship changes only a post's rank in the feed, never whether it can be seen.
+
+**Moderation visibility.** Posts and comments carry a moderation status: `Visible`, `Flagged` or `Hidden`, set by an administrator through `AdminController`. Hidden content is readable only by its author and by administrators; for everyone else, a guest included, it does not exist:
+
+- It is left out of `user/{userId}`, of a post's comments (`api/comments/post/{postId}` and the comments inside `GET api/posts/{id}`), and of `CommentCount`. The feed never holds the caller's own posts, so hidden posts appear in it only for an administrator.
+- Read by id (`api/posts/{id}`, `api/comments/{id}`) it gets `404` with `PostNotFound` or `CommentNotFound`. A comment on a hidden post reads as the post does, so it cannot reveal the post.
+- Liking, unliking, listing likers, commenting on, listing comments of, editing and deleting hidden content all answer as they do for an id that does not exist. So a user who liked a post before it was hidden cannot unlike it, and a post author cannot delete someone else's hidden comment on their post.
+- The author still reads, edits and deletes their own hidden content, and editing does not change the status.
+- `Flagged` reads exactly as `Visible`. Ordinary shapes carry only `IsHidden` (on `StandardPostDisplayDto`, `FullPostDisplayDto`, `StandardCommentDto`, `FullCommentDto`), which is true only when the caller is the author or an administrator, because no one else receives hidden content. No ordinary shape carries the status itself.
+
+The rule lives in one place, `Data/Repositories/Visibility/ModerationVisibility.cs`, as expressions EF translates to SQL. Every post and comment read in `PostRepository` and `CommentRepository` takes the caller's id (null for a guest) and `IsAdministrator()`. The raw feed SQL is the exception: it cannot compose an expression, so it repeats the rule by hand.
 
 Deleting a post runs inside a transaction: comments are deleted first (`CommentRepository.DeletePostCommentsAsync`), then the post (`DeleteWithoutChangeTrackingAsync`), avoiding change-tracker/FK ordering issues. The post's likes go with it through the database cascade.
 
@@ -107,7 +117,7 @@ Route: `api/posts/{postId}/likes`. Inherits `BaseController`. `[Authorize]` at c
 | DELETE | `api/posts/{postId}/likes` | Required  | Remove the caller's like. `200`, or `404`     |
 | GET    | `api/posts/{postId}/likes` | Anonymous | Paginated likers, newest first. `200`, or `404` |
 
-- **Like** (`PostLikeService.LikePostAsync`): a user likes a post at most once. A repeated like also gets `200` and `PostLiked`, but adds no row and sends no push, so the client never sees a failure for a like that is already there. An unknown post gets `404` (`PostNotFound`). Any post can be liked, the caller's own included, and so can the post of a deactivated or deleted account, because such posts are still readable. On success the post's author gets a `PostLiked` push, unless they liked their own post (see `signalr.md`).
+- **Like** (`PostLikeService.LikePostAsync`): a user likes a post at most once. A repeated like also gets `200` and `PostLiked`, but adds no row and sends no push, so the client never sees a failure for a like that is already there. An unknown post gets `404` (`PostNotFound`). Any post can be liked, the caller's own included, and so can the post of a deactivated or deleted account, because such posts are still readable. A hidden post the caller may not read gets `404` on all three routes (see **Moderation visibility**). On success the post's author gets a `PostLiked` push, unless they liked their own post (see `signalr.md`).
 - **Unlike**: an unknown post (`PostNotFound`) or a post the caller has not liked (`PostNotLiked`) gets `404`. A user can like the post again after unliking it.
 - **Likers**: a `ListResponse<MinimalUserDto>`, newest like first (ties by like id, newest first), paged by `PageQuery`. A liker whose account is deactivated or deleted shows the placeholder username from `UsernameMapper`. An unknown post gets `404`; a post with no likes gets `200` and an empty list.
 - **Logging.** Only failures (an unknown post, an unlike of a post not liked) write a `Log` row. A successful like or unlike does not, because both happen often and the `PostLike` row is the record.
@@ -128,7 +138,9 @@ Route: `api/comments`. Inherits `BaseController`. Same `[Authorize]`-at-controll
 
 Note the create/read route naming is inconsistent: creating posts a comment under `api/comments/posts/{postId}` (plural `posts`), while listing a post's comments reads from `api/comments/post/{postId}` (singular `post`) — not a typo to "fix" without checking client code depends on it.
 
-**Delete permission is three-way**: `belongsToCaller || isPostAuthor || isAdmin` — a post author can remove any comment on their own post, not just the comment's author.
+**Delete permission is three-way**: `belongsToCaller || isPostAuthor || isAdmin` — a post author can remove any comment on their own post, not just the comment's author, except a hidden one they did not write.
+
+**Moderation**: every comment read applies the visibility rule under `PostController` (**Moderation visibility**). `mine` keeps the caller's hidden comments, marked `IsHidden`, but leaves out comments on another user's hidden post.
 
 **Live notification**: creating a comment pushes a `ReceiveComment` SignalR event (payload: `NotifyCommentDto` — Id, AuthorUsername, Content) to the post author's group, unless the commenter is the post author themselves. See `signalr.md`.
 
@@ -251,12 +263,16 @@ See `auth.md` for the full activation/deactivation flow and email notifications.
 
 ### `AdminController`
 
-Route: `api/admin`. Inherits `BaseController`. The whole controller is `[Authorize(Roles = nameof(RoleName.Administrator))]`: a guest gets `401`, any other signed-in caller `403`. Later tickets add statistics and moderation to it.
+Route: `api/admin`. Inherits `BaseController`. The whole controller is `[Authorize(Roles = nameof(RoleName.Administrator))]`: a guest gets `401`, any other signed-in caller `403`. Later tickets add statistics and the moderation queue to it.
 
-| Method | Route             | Notes                                                                                                                       |
-|--------|-------------------|-----------------------------------------------------------------------------------------------------------------------------|
-| GET    | `api/admin/logs`  | `Log` rows, newest first, `LogQueryDto`, `ListResponse<LogDisplayDto>`. Policy `AdminReadLogs` (120/minute)                  |
-| GET    | `api/admin/users` | Accounts in any state, oldest account first, `AccountListQuery`, `ListResponse<AdminUserDto>`. Policy `AdminListAccounts` (120/minute) |
+| Method | Route                                | Notes                                                                                                                       |
+|--------|--------------------------------------|-----------------------------------------------------------------------------------------------------------------------------|
+| GET    | `api/admin/logs`                     | `Log` rows, newest first, `LogQueryDto`, `ListResponse<LogDisplayDto>`. Policy `AdminReadLogs` (120/minute)                  |
+| GET    | `api/admin/users`                    | Accounts in any state, oldest account first, `AccountListQuery`, `ListResponse<AdminUserDto>`. Policy `AdminListAccounts` (120/minute) |
+| PUT    | `api/admin/posts/{id}/moderation`    | Set a post's moderation status, `SetModerationStatusDto`. `200`, or `404` (`PostNotFound`). Policy `AdminModeratePost` (60 per 10 minutes) |
+| PUT    | `api/admin/comments/{id}/moderation` | Set a comment's moderation status, `SetModerationStatusDto`. `200`, or `404` (`CommentNotFound`). Policy `AdminModerateComment` (60 per 10 minutes) |
+
+**Moderation status** (`ModerationService`): the body is `{ "status": "Visible" | "Flagged" | "Hidden" }`, read case-insensitively. A missing or unknown status (`"Deleted"`, or any number such as `3` or `"3"`; `ModerationStatusJsonConverter` accepts names only) gets `400` with the framework's validation `ProblemDetails`. Any status can be set from any other, so setting `Visible` restores hidden content to every read. Each change writes a `Log` row (`ModerationService.SetPostStatusAsync` / `SetCommentStatusAsync`, entity `Post` / `Comment`) whose details name the old and new status; an unknown id writes a failed row. What each status means to readers is under **Moderation visibility** in `PostController`.
 
 **Log filters** (`LogQueryDto : PageQuery`, all optional, combined with AND): `userId`, `authorizedRequest`, `succeeded`, `entityName` (exact), `entityId`, `action` (matches any part, so `action=PostService` finds every `PostService` method), and `from` / `to` (both inclusive, UTC). A `from` later than `to` is refused by `LogQueryDto.Validate` with `400` and the framework's validation `ProblemDetails` (`ResponseMessages.InvalidDateRange`), like any other query-shape error. Rows written in the same millisecond are ordered by id, newest first, so paging is deterministic. `LogService` reads through `LogRepository.SearchLogsAsync`, not the `DbContext`.
 

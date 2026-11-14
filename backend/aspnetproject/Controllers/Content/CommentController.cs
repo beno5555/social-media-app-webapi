@@ -27,7 +27,7 @@ public class CommentController : BaseController
     public async Task<ActionResult<ApplicationResponse<FullCommentDto>>> CreateComment([FromRoute] int postId, [FromBody] CreateCommentDto createCommentDto)
     {
         var userId   = GetUserId();
-        var response = await _commentService.AddCommentAsync(userId, postId, createCommentDto);
+        var response = await _commentService.AddCommentAsync(userId, IsAdministrator(), postId, createCommentDto);
 
         if (response.Succeeded)
         {
@@ -43,7 +43,7 @@ public class CommentController : BaseController
     public async Task<ActionResult<ListResponse<StandardCommentDto>>> GetOwnComments([FromQuery] PageQuery query)
     {
         var userId   = GetUserId();
-        var response = await _commentService.GetByUserAsync(userId, query.PageNumber, query.PageSize);
+        var response = await _commentService.GetByUserAsync(userId, IsAdministrator(), query.PageNumber, query.PageSize);
 
         if (response.Succeeded)
         {
@@ -59,7 +59,7 @@ public class CommentController : BaseController
     [EnableRateLimiting(RateLimitConfig.Policies.GetCommentsByPost)]
     public async Task<ActionResult<ListResponse<StandardCommentDto>>> GetByPost(int postId, [FromQuery] PageQuery query)
     {
-        var response = await _commentService.GetByPostAsync(postId, query.PageNumber, query.PageSize);
+        var response = await _commentService.GetByPostAsync(postId, GetOptionalUserId(), IsAdministrator(), query.PageNumber, query.PageSize);
 
         if (response.Succeeded)
         {
@@ -75,7 +75,7 @@ public class CommentController : BaseController
     [EnableRateLimiting(RateLimitConfig.Policies.GetCommentById)]
     public async Task<ActionResult<ApplicationResponse<FullCommentDto>>> GetById(int id)
     {
-        var response = await _commentService.GetCommentByIdAsync(id);
+        var response = await _commentService.GetCommentByIdAsync(id, GetOptionalUserId(), IsAdministrator());
 
         if (response.Succeeded)
         {
@@ -91,7 +91,7 @@ public class CommentController : BaseController
     public async Task<ActionResult<ApplicationResponse<FullCommentDto>>> EditComment(int id, [FromBody] EditCommentDto editCommentDto)
     {
         var userId   = GetUserId();
-        var response = await _commentService.EditCommentAsync(userId, id, editCommentDto);
+        var response = await _commentService.EditCommentAsync(userId, IsAdministrator(), id, editCommentDto);
 
         if (response.Succeeded)
         {

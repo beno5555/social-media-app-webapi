@@ -41,6 +41,7 @@ public static class PostMapper
             LikeCount = postWithStats.LikeCount,
             CommentCount = postWithStats.CommentCount,
             LikedByCaller = postWithStats.LikedByCaller,
+            IsHidden = post.IsHidden,
 
             Comments = post.Comments.Select(comment => new StandardCommentDto
             {
@@ -51,7 +52,8 @@ public static class PostMapper
                     Username =  UsernameMapper.ResolveUsername(comment.CommenterUser, comment.CommenterUserId)
                 },
                 Content = comment.CommentContent,
-                UploadedAt = comment.CreatedAt
+                UploadedAt = comment.CreatedAt,
+                IsHidden = comment.IsHidden
             }).ToList()
         };
     }
@@ -77,7 +79,8 @@ public static class PostMapper
 
             LikeCount = postWithStats.LikeCount,
             CommentCount = postWithStats.CommentCount,
-            LikedByCaller = postWithStats.LikedByCaller
+            LikedByCaller = postWithStats.LikedByCaller,
+            IsHidden = post.IsHidden
         };
     }
 

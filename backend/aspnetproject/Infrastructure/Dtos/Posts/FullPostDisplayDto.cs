@@ -23,5 +23,8 @@ public class FullPostDisplayDto
     // False for a guest.
     public bool LikedByCaller { get; set; }
 
+    // True only for the author or an administrator: nobody else is ever sent hidden content.
+    public bool IsHidden { get; set; }
+
     public List<StandardCommentDto> Comments { get; set; } = [];
 }

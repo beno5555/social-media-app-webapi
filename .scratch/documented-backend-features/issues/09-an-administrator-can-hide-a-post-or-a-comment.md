@@ -18,22 +18,22 @@ Decisions are under "Reports and moderation" in `.scratch/documented-backend-fea
 
 **Blocked by:** 05 (A post can be liked), 08 (The feed ranks friends' and other users' posts)
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Difficulty:** tricky: a visibility rule across every read with three kinds of caller, where one missed read leaks hidden content.
 
-- [ ] Existing posts and comments are `VISIBLE` after the migration, and new ones start `VISIBLE`
-- [ ] An administrator sets a post's and a comment's status to any of the three values; an unknown id is not found
-- [ ] An ordinary user and a guest are refused on both moderation endpoints
-- [ ] A hidden post is absent from the feed and from its author's post list for another user and for a guest, and is not found by id
-- [ ] Another user cannot like or comment on a hidden post, and its likes and comments read as not found
-- [ ] A hidden comment is absent from the post's comment list and from the comments inside the full post for another user, and is not found by id
-- [ ] A post's comment count leaves out hidden comments
-- [ ] The author still gets their own hidden post or comment, in lists and by id, with the hidden flag true
-- [ ] The author can delete their hidden content, and editing it leaves it hidden
-- [ ] An administrator still gets hidden content, with the hidden flag true
-- [ ] Flagged content is returned to everyone with the hidden flag false, and nothing in an ordinary shape reveals that it is flagged
-- [ ] Setting hidden content back to `VISIBLE` returns it to every read
-- [ ] Each visibility case is tested from three callers: another user, the author and an administrator
-- [ ] A status change writes a `Log` row, and each endpoint has its own rate-limit policy
-- [ ] `docs/backend/controllers.md`, `docs/backend/data.md` and `README.md` describe moderation status and the visibility rule
+- [x] Existing posts and comments are `VISIBLE` after the migration, and new ones start `VISIBLE`
+- [x] An administrator sets a post's and a comment's status to any of the three values; an unknown id is not found
+- [x] An ordinary user and a guest are refused on both moderation endpoints
+- [x] A hidden post is absent from the feed and from its author's post list for another user and for a guest, and is not found by id
+- [x] Another user cannot like or comment on a hidden post, and its likes and comments read as not found
+- [x] A hidden comment is absent from the post's comment list and from the comments inside the full post for another user, and is not found by id
+- [x] A post's comment count leaves out hidden comments
+- [x] The author still gets their own hidden post or comment, in lists and by id, with the hidden flag true
+- [x] The author can delete their hidden content, and editing it leaves it hidden
+- [x] An administrator still gets hidden content, with the hidden flag true
+- [x] Flagged content is returned to everyone with the hidden flag false, and nothing in an ordinary shape reveals that it is flagged
+- [x] Setting hidden content back to `VISIBLE` returns it to every read
+- [x] Each visibility case is tested from three callers: another user, the author and an administrator
+- [x] A status change writes a `Log` row, and each endpoint has its own rate-limit policy
+- [x] `docs/backend/controllers.md`, `docs/backend/data.md` and `README.md` describe moderation status and the visibility rule

@@ -5,6 +5,7 @@ using aspnetproject.Common.ProjectConstants.Enums;
 using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories.Base;
 using aspnetproject.Data.Repositories.Dtos;
+using aspnetproject.Data.Repositories.Visibility;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 
@@ -26,41 +27,67 @@ public class PostRepository : BaseEntityRepository<Post>
             .FirstOrDefaultAsync(postFromDb => postFromDb.Id == post.Id))!;
     }
 
-    // The post is tracked, so a caller may change it and save.
-    public async Task<PostWithStatsProjection?> GetPostByIdAsync(int id, int? callerId)
+    // The post is tracked, so a caller may change it and save. Only the comments the caller may read are loaded.
+    // callerId is null for a guest.
+    public async Task<PostWithStatsProjection?> GetPostByIdAsync(int id, int? callerId, bool isAdmin)
     {
+        var commentReadableFilter = ModerationVisibility.CommentReadableBy(callerId, isAdmin);
+
         return await _dbSet.Include(post => post.User)
             .Include(post => post.Images)
-            .Include(post => post.Comments)
+            .Include(post => post.Comments.AsQueryable().Where(commentReadableFilter))
                 .ThenInclude(comment => comment.CommenterUser)
             .AsSplitQuery()
             .Where(post => post.Id == id)
-            .Select(WithStats(callerId))
+            .Where(ModerationVisibility.PostReadableBy(callerId, isAdmin))
+            .Select(WithStats(callerId, isAdmin))
             .FirstOrDefaultAsync();
     }
 
-    public async Task<List<PostWithStatsProjection>> GetByUserIdAsync(int userId, int? callerId, int? pageNumber = null, int? pageSize = null)
+    // The post alone, tracked, if it exists and the caller may read it.
+    public async Task<Post?> GetReadablePostAsync(int id, int? callerId, bool isAdmin)
+    {
+        return await _dbSet
+            .Where(post => post.Id == id)
+            .Where(ModerationVisibility.PostReadableBy(callerId, isAdmin))
+            .FirstOrDefaultAsync();
+    }
+
+    public async Task<bool> IsReadableAsync(int id, int? callerId, bool isAdmin)
+    {
+        return await _dbSet
+            .Where(post => post.Id == id)
+            .AnyAsync(ModerationVisibility.PostReadableBy(callerId, isAdmin));
+    }
+
+    public async Task<List<PostWithStatsProjection>> GetByUserIdAsync(int userId, int? callerId, bool isAdmin, int? pageNumber = null, int? pageSize = null)
     {
         // Newest first. Id breaks ties between posts written in the same millisecond, so paging is deterministic.
-        return await BuildWhereQuery(p => p.UserId == userId, pageNumber, pageSize,
-                query => query.OrderByDescending(post => post.CreatedAt).ThenByDescending(post => post.Id))
-            .Select(WithStats(callerId))
+        var query = Query()
+            .Where(post => post.UserId == userId)
+            .Where(ModerationVisibility.PostReadableBy(callerId, isAdmin))
+            .OrderByDescending(post => post.CreatedAt)
+            .ThenByDescending(post => post.Id);
+
+        return await Page(query, pageNumber, pageSize)
+            .Select(WithStats(callerId, isAdmin))
             .ToListAsync();
     }
 
     /// <summary>
     /// Ranks every post the caller did not write by the <see cref="FeedRanking"/> score, highest first.
     /// One query ranks and pages, returning only the page's ids; a second loads those posts with their stats.
+    /// Candidates are the posts the caller may read, so an administrator's feed includes hidden posts.
     /// </summary>
-    public async Task<List<PostWithStatsProjection>> GetFeedAsync(int callerId, int pageNumber, int pageSize)
+    public async Task<List<PostWithStatsProjection>> GetFeedAsync(int callerId, bool isAdmin, int pageNumber, int pageSize)
     {
         var pageIds = await _dbContext.Database
-            .SqlQueryRaw<int>(RankedFeedPageSql, RankedFeedPageParameters(callerId, pageNumber, pageSize))
+            .SqlQueryRaw<int>(RankedFeedPageSql, RankedFeedPageParameters(callerId, isAdmin, pageNumber, pageSize))
             .ToListAsync();
 
         var posts = await Query(track: false)
             .Where(post => pageIds.Contains(post.Id))
-            .Select(WithStats(callerId))
+            .Select(WithStats(callerId, isAdmin))
             .ToListAsync();
 
         // The second query returns the posts in no set order, so the ranked order of the ids is put back.
@@ -78,6 +105,8 @@ public class PostRepository : BaseEntityRepository<Post>
 
     // The score formula is described on FeedRanking. Each CTE names one input of it, and the final SELECT
     // combines them. Raw SQL skips the global User filter, so the author's account state is checked by hand.
+    // The moderation rule of ModerationVisibility is repeated by hand: a hidden post is a candidate only for an
+    // administrator (the author never gets their own posts), and a hidden comment adds activity only for a caller who may read it.
     // A shared friend counts even if their own account is deactivated or soft-deleted.
     // SQL Server cannot wrap a CTE in a subquery, so EF cannot compose this query: it pages itself.
     private const string RankedFeedPageSql = """
@@ -102,7 +131,9 @@ public class PostRepository : BaseEntityRepository<Post>
                     ELSE @otherUserWeight
                 END AS ConnectionWeight,
                 (SELECT COUNT(*) FROM PostLikes l WHERE l.PostId = p.Id)
-                    + (SELECT COUNT(*) FROM Comments c WHERE c.PostId = p.Id) AS Activity,
+                    + (SELECT COUNT(*) FROM Comments c
+                       WHERE c.PostId = p.Id
+                         AND (c.ModerationStatus <> @hidden OR @isAdmin = 1 OR c.CommenterUserId = @callerId)) AS Activity,
                 CASE
                     WHEN p.CreatedAt > @now THEN 0
                     ELSE DATEDIFF(MINUTE, p.CreatedAt, @now) / @minutesPerHour
@@ -110,6 +141,7 @@ public class PostRepository : BaseEntityRepository<Post>
             FROM Posts p
             JOIN Users author ON author.Id = p.UserId
             WHERE p.UserId <> @callerId
+              AND (p.ModerationStatus <> @hidden OR @isAdmin = 1)
               AND author.AccountDeactivatedAt IS NULL
               AND author.AccountDeletedAt IS NULL
         )
@@ -119,12 +151,14 @@ public class PostRepository : BaseEntityRepository<Post>
         OFFSET @skip ROWS FETCH NEXT @take ROWS ONLY
         """;
 
-    private SqlParameter[] RankedFeedPageParameters(int callerId, int pageNumber, int pageSize)
+    private SqlParameter[] RankedFeedPageParameters(int callerId, bool isAdmin, int pageNumber, int pageSize)
     {
         return
         [
             new SqlParameter("@callerId", callerId),
             new SqlParameter("@accepted", nameof(FriendshipStatus.Accepted)),
+            new SqlParameter("@hidden", nameof(ModerationStatus.Hidden)),
+            new SqlParameter("@isAdmin", isAdmin),
             new SqlParameter("@friendWeight", FeedRanking.FriendWeight),
             new SqlParameter("@mutualFriendWeight", FeedRanking.MutualFriendWeight),
             new SqlParameter("@otherUserWeight", FeedRanking.OtherUserWeight),
@@ -138,14 +172,16 @@ public class PostRepository : BaseEntityRepository<Post>
     }
 
     // Counted in SQL as subqueries of the post query, so a page of posts costs one query, not one per post.
-    // A guest (no caller id) never liked anything.
-    private Expression<Func<Post, PostWithStatsProjection>> WithStats(int? callerId)
+    // A guest (no caller id) never liked anything. Only the comments the caller may read are counted.
+    private Expression<Func<Post, PostWithStatsProjection>> WithStats(int? callerId, bool isAdmin)
     {
+        var commentReadableFilter = ModerationVisibility.CommentReadableBy(callerId, isAdmin);
+
         return post => new PostWithStatsProjection
         {
             Post          = post,
             LikeCount     = post.Likes.Count(),
-            CommentCount  = post.Comments.Count(),
+            CommentCount  = post.Comments.AsQueryable().Count(commentReadableFilter),
             LikedByCaller = callerId != null && post.Likes.Any(like => like.UserId == callerId)
         };
     }

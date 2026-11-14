@@ -240,9 +240,9 @@ app.UseImageStorage();
 app.UseRouting();
 
 app.UseCors("OriginPolicy");
-app.UseRateLimiter();
 
 app.UseAuthentication();
+app.UseRateLimiter();
 app.UseAuthorization();
 app.MapControllers();
 
@@ -269,7 +269,7 @@ app.Run();
 - **Authorization.** `[Authorize]` is set per controller, with `[AllowAnonymous]` on public actions. `BaseController` provides `GetUserId()`, `GetUsername()` and `IsAdministrator()`. `AuthController` is the exception: every action is public, so it has no `[Authorize]` and does not inherit `BaseController`. Ownership checks are made in services.
 - **One storage class for files.** `ImageStorage` checks uploads by their leading bytes, names them itself, saves, deletes and turns a stored file into its relative address under `/api/images`. Nothing else touches the disk, so moving images to cloud storage changes that one class. An upload with any bad file stores nothing.
 - **Pagination.** List endpoints bind `PageQuery` from the query string: `PageNumber` defaults to 1, and `PageSize` defaults to 10 and is validated to 1–100.
-- **Rate limiting.** Sliding-window policies, designed as per-IP before login and per-user after, with a global limiter as a backstop. Today every limit counts by IP, because the limiter runs before authentication (see `docs/backend/auth.md`).
+- **Rate limiting.** Sliding-window policies, per-IP before login and per-user after, with a per-user global limiter as a backstop. The limiter runs between authentication and authorization, so it sees the signed-in user; a request without a valid token counts against its IP (see `docs/backend/auth.md`).
 
 ---
 

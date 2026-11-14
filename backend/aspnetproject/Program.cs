@@ -53,9 +53,11 @@ public partial class Program
             app.UseRouting();
             
             app.UseCors("OriginPolicy");
-            app.UseRateLimiter();
 
+            // The rate limiter sits between them: it needs the caller read from the access token to count per user,
+            // and must still reject over-limit requests before authorization runs.
             app.UseAuthentication();
+            app.UseRateLimiter();
             app.UseAuthorization();
             app.MapControllers();
 

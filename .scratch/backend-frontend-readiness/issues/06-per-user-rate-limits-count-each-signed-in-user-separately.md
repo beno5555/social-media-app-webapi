@@ -8,13 +8,13 @@ Out of scope: behind a reverse proxy the backend sees the proxy's IP rather than
 
 **Deferred:** not scheduled until deployment work begins.
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Difficulty:** tricky: middleware order is an auth boundary, and the test must exhaust one user's budget without the shared test IP or the global limiter masking the result.
 
-- [ ] Rate limiting runs after authentication and before authorization
-- [ ] An integration test, written failing first, exhausts a per-user policy as one user and then shows a second user from the same IP is still allowed
-- [ ] A request with a missing or expired access token still falls back to its IP partition
-- [ ] Anonymous policies remain per-IP; limits and windows are unchanged
-- [ ] Every doc that ticket 05 marked as "currently per-IP, see ticket 06" (auth doc, README, project instructions) now describes per-user partitioning, with the pointer to this ticket removed
-- [ ] The full integration suite passes when run twice in a row
+- [x] Rate limiting runs after authentication and before authorization
+- [x] An integration test, written failing first, exhausts a per-user policy as one user and then shows a second user from the same IP is still allowed
+- [x] A request with a missing or expired access token still falls back to its IP partition
+- [x] Anonymous policies remain per-IP; limits and windows are unchanged
+- [x] Every doc that ticket 05 marked as "currently per-IP, see ticket 06" (auth doc, README, project instructions) now describes per-user partitioning, with the pointer to this ticket removed
+- [x] The full integration suite passes when run twice in a row

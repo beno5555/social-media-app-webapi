@@ -200,6 +200,25 @@ No `GetMessage(id)` action — a single message isn't fetched by id from the cli
 
 **Repository note:** `GetConversationFriendsAsync` uses raw SQL (`SqlQueryRaw<T>`) — grouped latest-message-per-partner via `CROSS APPLY`, plus explicit `IsDeleted`/`IsDeactivated` bit-cast columns since raw SQL bypasses the `User` query filter entirely. A subquery counts the last message's `MessageImages` rows into `LastMessageImageCount`, so the chat list can show something for a photo with no text. Projection type (`ConversationFriendProjection`) is flat; reshaped into `ConversationFriendDto` in the mapper.
 
+### `ReportController`
+
+Route: `api/reports`. Inherits `BaseController`. `[Authorize]` on the controller, so a guest gets `401` on both actions; the list is also `[Authorize(Roles = nameof(RoleName.Administrator))]`, so any other signed-in caller gets `403` there. Deciding a report (`PUT api/reports/{id}`) comes with ticket 12.
+
+| Method | Route          | Notes                                                                                                                                                      |
+|--------|----------------|------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| POST   | `api/reports`  | Report a post, a comment or a user, `CreateReportDto`. `200` with `StandardReportDto` (`ReportCreated`), or `400`. Policy `CreateReport` (20/hour per user) |
+| GET    | `api/reports`  | Administrator only. Reports, newest first, `ReportListQuery`, `ListResponse<AdminReportDto>` (`ReportsRetrieved`). Policy `AdminReadReports` (120/minute) |
+
+**Making a report** (`ReportService.CreateReportAsync`): the body is `{ "targetType": "Post" | "Comment" | "User", "targetId": int, "reason": string }`. A missing or unknown target type (names only, case-insensitive; `ReportTargetTypeJsonConverter` refuses numbers), a missing target id, or a reason that is empty, whitespace or longer than `Constants.ReportReasonMaxLength` (500) gets `400` with the framework's validation `ProblemDetails`. The other refusals are all `400` with the envelope, because their meanings differ and none deserves its own status code:
+
+- the target must exist and be readable by the caller, so a hidden post or comment, or a visible comment on a hidden post, reads as missing (`PostNotFound` / `CommentNotFound`; see **Moderation visibility** under `PostController`). A deactivated or soft-deleted user is missing too (`UserNotFound`);
+- the caller cannot report themselves (`CannotReportOneself`) or their own post or comment (`CannotReportOwnContent`), hidden or not;
+- a caller with a pending report on the same target is refused (`ReportAlreadyPending`). Once that report is decided they may report the target again, and a different user may report it at any time. The filtered unique index on `Reports` (see `data.md`) enforces the same rule in the database.
+
+The response is `200`, not `201`: no endpoint reads one report back, so there is no location to point at. Each attempt writes a `Log` row (`ReportService.CreateReportAsync`, entity `Report`).
+
+**The list** (`ReportService.GetReportsAsync`; `ReportListQuery : PageQuery`): `status` (`Pending` when absent, `Resolved` or `Rejected`) and `targetType` (every type when absent), combined with AND. Rows written in the same millisecond are ordered by id, so paging is deterministic. Each `AdminReportDto` carries the reporter and the reviewer (`MinimalUserDto`, with the placeholder name for a deactivated or deleted account; `reviewedBy` is null until the report is decided, and has a null id once the purge removed the reviewer), the reason, the status, `createdAt` and `reviewedAt`, and a snapshot of the target: `post` (`PostSnapshotDto`: id, title, text, photos, author, upload time, `isHidden`), `comment` (`CommentSnapshotDto`: id, text, author, post id, upload time, `isHidden`) or `user` (`UserSnapshotDto`: id, real username, bio, whatever the account's state). A target has no foreign key, so `ReportService` loads the page's targets afterwards, one query per target type, with query filters ignored (an administrator reviews hidden content too). A target that finds no row was deleted, and its row has `targetMissing: true` and no snapshot. Reports are not removed with their target. `PostSnapshotDto` and `CommentSnapshotDto` live in `Infrastructure/Dtos/Moderation` and are built by `SnapshotMapper`, for the moderation queue (ticket 10) to reuse. Like the other administrator reads, the list writes no `Log` row.
+
 ### `AuthController`
 
 Route: `api/auth`. `[ApiController]` directly (not `BaseController` — no authenticated user context needed for any action here). See `auth.md` for the full flow (register/login/refresh/logout/password-reset) and for the two failure shapes any controller can return.

@@ -53,6 +53,18 @@ public class PostRepository : BaseEntityRepository<Post>
             .FirstOrDefaultAsync();
     }
 
+    // For an administrator's review: hidden posts included, and authors in any account state, so the mapper can name that state.
+    public async Task<List<Post>> GetSnapshotsByIdsAsync(IReadOnlyCollection<int> ids)
+    {
+        return await _dbSet
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Include(post => post.User)
+            .Include(post => post.Images)
+            .Where(post => ids.Contains(post.Id))
+            .ToListAsync();
+    }
+
     public async Task<bool> IsReadableAsync(int id, int? callerId, bool isAdmin)
     {
         return await _dbSet

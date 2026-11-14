@@ -21,6 +21,9 @@ public static class Constants
 
     public const int ModerationStatusMaxLength = 30;
 
+    public const int ReportEnumMaxLength   = 30;
+    public const int ReportReasonMaxLength = 500;
+
     public const int    BytesPerMegabyte      = 1024 * 1024;
     public const int    ImageAddressMaxLength = 200;
     public const string ImagesRequestPath     = "/api/images";

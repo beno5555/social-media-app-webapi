@@ -186,6 +186,16 @@ public static class ResponseMessages
 
     #endregion
 
+    #region Reports
+
+    public const string ReportCreated          = $"Report {Created} {Successfully}";
+    public const string ReportsRetrieved       = $"Reports {Retrieved} {Successfully}";
+    public const string CannotReportOneself    = "You cannot report yourself";
+    public const string CannotReportOwnContent = "You cannot report your own content";
+    public const string ReportAlreadyPending   = "You already have a pending report on this";
+
+    #endregion
+
     #region Images
 
     public const string ImageFormatNotAccepted = "Only JPEG, PNG and WebP images are accepted";

@@ -339,6 +339,53 @@ public static class TestDataSeeder
             await db.SaveChangesAsync();
         });
 
+        // Fixed past times that rise with the id, so the newest-first order of the report list is known
+        // and reports written while a test runs are always the newest.
+        await InsertWithIdentityAsync(db, "Reports", async () =>
+        {
+            db.Reports.AddRange(
+                new Report
+                {
+                    Id = 1, ReporterUserId = 2, TargetType = ReportTargetType.Post, TargetId = 2, Reason = "Alice reports Bob's post.",
+                    Status = ReportStatus.Pending, CreatedAt = new DateTime(2026, 9, 7, 10, 0, 0, DateTimeKind.Utc)
+                },
+                new Report
+                {
+                    Id = 2, ReporterUserId = 4, TargetType = ReportTargetType.Comment, TargetId = 1, Reason = "Charlie reports Alice's comment.",
+                    Status = ReportStatus.Pending, CreatedAt = new DateTime(2026, 9, 7, 10, 1, 0, DateTimeKind.Utc)
+                },
+                new Report
+                {
+                    Id = 3, ReporterUserId = 3, TargetType = ReportTargetType.User, TargetId = 4, Reason = "Bob reports Charlie.",
+                    Status = ReportStatus.Resolved, ReviewedByUserId = 1,
+                    ReviewedAt = new DateTime(2026, 9, 7, 11, 0, 0, DateTimeKind.Utc),
+                    CreatedAt = new DateTime(2026, 9, 7, 10, 2, 0, DateTimeKind.Utc)
+                },
+                // Post 999 never existed: it stands for a target deleted after it was reported.
+                new Report
+                {
+                    Id = 4, ReporterUserId = 5, TargetType = ReportTargetType.Post, TargetId = 999, Reason = "Diana reports a post that is gone.",
+                    Status = ReportStatus.Pending, CreatedAt = new DateTime(2026, 9, 7, 10, 3, 0, DateTimeKind.Utc)
+                },
+                // Made by frank_deleted, so the purge of soft-deleted users deletes it.
+                new Report
+                {
+                    Id = 5, ReporterUserId = 7, TargetType = ReportTargetType.Post, TargetId = 3, Reason = "Frank reports Charlie's post.",
+                    Status = ReportStatus.Pending, CreatedAt = new DateTime(2026, 9, 7, 10, 4, 0, DateTimeKind.Utc)
+                },
+                // Reviewed by frank_deleted as if he had been an administrator, so the purge clears the reviewer.
+                new Report
+                {
+                    Id = 6, ReporterUserId = 2, TargetType = ReportTargetType.Post, TargetId = 3, Reason = "Alice reports Charlie's post.",
+                    Status = ReportStatus.Rejected, ReviewedByUserId = 7,
+                    ReviewedAt = new DateTime(2026, 9, 7, 11, 5, 0, DateTimeKind.Utc),
+                    CreatedAt = new DateTime(2026, 9, 7, 10, 5, 0, DateTimeKind.Utc)
+                }
+            );
+
+            await db.SaveChangesAsync();
+        });
+
         await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Users', RESEED, 7)");
         await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Friendships', RESEED, 5)");
         await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Posts', RESEED, 13)");
@@ -346,6 +393,7 @@ public static class TestDataSeeder
         await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Comments', RESEED, 6)");
         await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('PostLikes', RESEED, 5)");
         await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Logs', RESEED, 5)");
+        await db.Database.ExecuteSqlRawAsync("DBCC CHECKIDENT ('Reports', RESEED, 6)");
     }
 
     private static async Task InsertWithIdentityAsync(ApplicationDbContext db, string tableName, Func<Task> insertAction)

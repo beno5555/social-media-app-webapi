@@ -31,7 +31,8 @@ public static class ApplicationServicesExtensions
         services.AddScoped<RefreshTokenRepository>();
         services.AddScoped<LogRepository>();
         services.AddScoped<ImageRepository>();
-        
+        services.AddScoped<ReportRepository>();
+
         services.AddScoped<UserService>();
         services.AddScoped<AuthService>();
         services.AddScoped<AccountManagementService>();
@@ -43,6 +44,7 @@ public static class ApplicationServicesExtensions
         services.AddScoped<ModerationService>();
         services.AddScoped<PostService>();
         services.AddScoped<PostLikeService>();
+        services.AddScoped<ReportService>();
         services.AddScoped<PresenceService>();
         services.AddScoped<TypingService>();
         services.AddScoped<LogService>();
@@ -69,10 +71,11 @@ public static class ApplicationServicesExtensions
             .ValidateOnStart();
 
         services.AddHostedService<RefreshTokenCleanupService>();
-        services.AddHostedService<SoftDeletedUsersCleanupService>();
         services.AddHostedService<OldLogsCleanupService>();
 
-        // Also a singleton, so integration tests can run one sweep: their host removes every IHostedService.
+        // Also singletons, so integration tests can run one sweep: their host removes every IHostedService.
+        services.AddSingleton<SoftDeletedUsersCleanupService>();
+        services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<SoftDeletedUsersCleanupService>());
         services.AddSingleton<OrphanImagesCleanupService>();
         services.AddHostedService(serviceProvider => serviceProvider.GetRequiredService<OrphanImagesCleanupService>());
     }

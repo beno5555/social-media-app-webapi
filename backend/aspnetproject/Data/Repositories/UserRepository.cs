@@ -32,6 +32,16 @@ public class UserRepository : BaseEntityRepository<User>
         return await GetSingleByIgnoringQueryFilterAsync(user => user.Id == id);
     }
 
+    // For an administrator's review: accounts in any state, until the purge removes them.
+    public async Task<List<User>> GetByIdsNoFilterAsync(IReadOnlyCollection<int> ids)
+    {
+        return await _dbSet
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Where(user => ids.Contains(user.Id))
+            .ToListAsync();
+    }
+
     public async Task<User?> GetByUniqueIdentifierAsync(string uniqueIdentifier)
     {
         return await _dbSet
@@ -281,7 +291,9 @@ public class UserRepository : BaseEntityRepository<User>
             result.FriendshipsDeletedCount += await DeleteUsersFriendshipsAsync(userIds, config.NestedBatchSize, cancellationToken);
             result.PostsDeletedCount += await DeleteUsersPostsAsync(userIds, config.NestedBatchSize, cancellationToken);
             result.LikesDeletedCount += await DeleteUsersLikesAsync(userIds, config.NestedBatchSize, cancellationToken);
-            
+            result.ReportsDeletedCount += await DeleteUsersReportsAsync(userIds, config.NestedBatchSize, cancellationToken);
+            await ClearUsersReviewsAsync(userIds, config.NestedBatchSize, cancellationToken);
+
             result.UsersDeletedCount = await _dbSet
                 .IgnoreQueryFilters()
                 .Where(user => userIds.Contains(user.Id))
@@ -375,6 +387,51 @@ public class UserRepository : BaseEntityRepository<User>
         } while (deletedThisBatch > 0);
 
         return totalDeleted;
+    }
+
+    // The reports the users made. Both report keys to User are NoAction, so neither this nor the reviewer cleanup below happens on its own.
+    private async Task<int> DeleteUsersReportsAsync(List<int> userIds, int batchSize, CancellationToken cancellationToken)
+    {
+        int totalDeleted     = 0;
+        int deletedThisBatch = 0;
+
+        do
+        {
+            var reportIds = await _dbContext.Reports
+                .Where(report => userIds.Contains(report.ReporterUserId))
+                .OrderBy(report => report.Id)
+                .Take(batchSize)
+                .Select(report => report.Id)
+                .ToListAsync(cancellationToken);
+
+            deletedThisBatch = await _dbContext.Reports
+                .Where(report => reportIds.Contains(report.Id))
+                .ExecuteDeleteAsync(cancellationToken);
+
+            totalDeleted += deletedThisBatch;
+        } while (deletedThisBatch > 0);
+
+        return totalDeleted;
+    }
+
+    // The reports the users decided stay, without a reviewer; ReviewedAt still shows they were decided.
+    private async Task ClearUsersReviewsAsync(List<int> userIds, int batchSize, CancellationToken cancellationToken)
+    {
+        int clearedThisBatch = 0;
+
+        do
+        {
+            var reportIds = await _dbContext.Reports
+                .Where(report => report.ReviewedByUserId != null && userIds.Contains(report.ReviewedByUserId.Value))
+                .OrderBy(report => report.Id)
+                .Take(batchSize)
+                .Select(report => report.Id)
+                .ToListAsync(cancellationToken);
+
+            clearedThisBatch = await _dbContext.Reports
+                .Where(report => reportIds.Contains(report.Id))
+                .ExecuteUpdateAsync(setters => setters.SetProperty(report => report.ReviewedByUserId, (int?)null), cancellationToken);
+        } while (clearedThisBatch > 0);
     }
 
     private async Task<int> DeleteUsersFriendshipsAsync(List<int> userIds, int batchSize, CancellationToken cancellationToken)

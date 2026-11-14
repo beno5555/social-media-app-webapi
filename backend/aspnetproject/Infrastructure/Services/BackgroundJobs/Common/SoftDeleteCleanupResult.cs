@@ -7,6 +7,7 @@ public class SoftDeleteCleanupResult
     public int MessagesDeletedCount    { get; set; }
     public int FriendshipsDeletedCount { get; set; }
     public int LikesDeletedCount       { get; set; }
+    public int ReportsDeletedCount     { get; set; }
 
     // Addresses of the images of the deleted messages. Their rows are gone; the files still have to be removed.
     public List<string> MessageImageAddresses { get; set; } = [];
@@ -20,6 +21,7 @@ public class SoftDeleteCleanupResult
             MessagesDeletedCount = totalResult.MessagesDeletedCount       + batchResult.MessagesDeletedCount,
             FriendshipsDeletedCount = totalResult.FriendshipsDeletedCount + batchResult.FriendshipsDeletedCount,
             LikesDeletedCount = totalResult.LikesDeletedCount             + batchResult.LikesDeletedCount,
+            ReportsDeletedCount = totalResult.ReportsDeletedCount         + batchResult.ReportsDeletedCount,
             MessageImageAddresses = [..totalResult.MessageImageAddresses, ..batchResult.MessageImageAddresses]
         };
     }

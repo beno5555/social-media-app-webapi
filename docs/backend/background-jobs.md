@@ -64,7 +64,7 @@ var job = _factory.Services.GetRequiredService<OrphanImagesCleanupService>();
 await job.RunOnceAsync(CancellationToken.None);
 ```
 
-Then it asserts on what the cycle changed: files in `_factory.UploadFolder`, rows read back through the API, and the job's `Log` rows through `api/admin/logs?action={JobName}`. A failed cycle is logged, not thrown, so a test that expects nothing to happen should also check that the job wrote no `Log` row. Tests live in `aspnetproject.IntegrationTests/BackgroundJobs/`, one class per job (`OrphanImagesCleanupServiceTests`). The other three jobs still have no tests; to add some, register the job the same way.
+Then it asserts on what the cycle changed: files in `_factory.UploadFolder`, rows read back through the API, and the job's `Log` rows through `api/admin/logs?action={JobName}`. A failed cycle is logged, not thrown, so a test that expects nothing to happen should also check that the job wrote no `Log` row. Tests live in `aspnetproject.IntegrationTests/BackgroundJobs/`, one class per job (`OrphanImagesCleanupServiceTests`, `SoftDeletedUsersCleanupServiceTests`). The other two jobs still have no tests; to add some, register the job the same way.
 
 ---
 
@@ -92,15 +92,15 @@ Purges `User` rows with `AccountDeletedAt` older than the retention cutoff, and 
 
 Each cycle (`UserRepository.DeleteSoftDeletedUsersBatchAsync`):
 1. Selects up to `BatchSize` candidate user ids (`IgnoreQueryFilters()` — the global filter would otherwise hide the very rows being purged; `Take` + `Select` id list, not a direct delete, since dependents must go first).
-2. Deletes that batch's messages, then friendships, then posts (their likes cascade), then the likes the users gave on other posts (`PostLike.UserId` does not cascade, see `data.md`) — each via its own internal batch-and-loop (`NestedBatchSize`) against `ExecuteDeleteAsync`, since `ExecuteDeleteAsync` can't be combined with `.Select()` projection and combining with `.Take()` directly is EF-version/translation-dependent, so the reliable form is: select a capped id batch, then a second `ExecuteDeleteAsync` filtered by that id set.
+2. Deletes that batch's messages, then friendships, then posts (their likes cascade), then the likes the users gave on other posts (`PostLike.UserId` does not cascade, see `data.md`), then the reports the users made, and clears `ReviewedByUserId` on the reports they decided (`ExecuteUpdateAsync`; the report stays, and its `ReviewedAt` still shows it was decided). Both `Report` keys to `User` are `NoAction`. Each step runs via its own internal batch-and-loop (`NestedBatchSize`) against `ExecuteDeleteAsync`, since `ExecuteDeleteAsync` can't be combined with `.Select()` projection and combining with `.Take()` directly is EF-version/translation-dependent, so the reliable form is: select a capped id batch, then a second `ExecuteDeleteAsync` filtered by that id set.
 3. Deletes the user batch itself (`IgnoreQueryFilters()` again).
 4. Repeats until a batch of users comes back empty.
 
-**Message photo files.** Before the messages go, each batch reads the addresses of their photos; the `MessageImages` rows cascade with the messages. After each batch, `RunCycleAsync` passes the addresses to `ImageStorage.DeleteAsync`, best effort (a file that cannot be removed is logged to `SystemLogger`). This step has no integration test, because the job is not yet registered for tests (see **Testing a job**); it was verified by one manual run, recorded on ticket 06.
+**Message photo files.** Before the messages go, each batch reads the addresses of their photos; the `MessageImages` rows cascade with the messages. After each batch, `RunCycleAsync` passes the addresses to `ImageStorage.DeleteAsync`, best effort (a file that cannot be removed is logged to `SystemLogger`). This step has no integration test yet; it was verified by one manual run, recorded on ticket 06. The job is now registered for tests (see **Testing a job**), so one can be added.
 
-Result accumulation: `SoftDeleteCleanupResult` (Users/Posts/Messages/Friendships/Likes deleted counts, plus `MessageImageAddresses`) with an `operator +` for combining per-batch results into a cycle total, logged once at the end if anything was deleted.
+Result accumulation: `SoftDeleteCleanupResult` (Users/Posts/Messages/Friendships/Likes/Reports deleted counts, plus `MessageImageAddresses`) with an `operator +` for combining per-batch results into a cycle total, logged once at the end if anything was deleted.
 
-**Why `Comment.CommenterUserId` isn't touched here**: it's the one nullable, `SetNull` FK to `User` (see `data.md`) — a comment from a purged user just shows an orphaned/anonymized author, no explicit cleanup step needed. Everything else (messages, friendships, posts, likes given) has no such "show it anyway" case, hence the explicit pre-delete. The like step has no integration test, because the job is not yet registered for tests (see **Testing a job**).
+**Why `Comment.CommenterUserId` isn't touched here**: it's the one nullable, `SetNull` FK to `User` (see `data.md`) — a comment from a purged user just shows an orphaned/anonymized author, no explicit cleanup step needed. Everything else (messages, friendships, posts, likes given, reports made) has no such "show it anyway" case, hence the explicit pre-delete. The report steps are covered by `SoftDeletedUsersCleanupServiceTests`; the like and message-photo steps still have no test of their own.
 
 ---
 

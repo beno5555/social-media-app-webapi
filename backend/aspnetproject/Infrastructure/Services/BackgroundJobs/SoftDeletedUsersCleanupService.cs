@@ -43,7 +43,7 @@ public class SoftDeletedUsersCleanupService : PeriodicHostedService
         {
             await LogResultAsync(dbLogger, true, nameof(User),
                 $"Removed {totalResult.UsersDeletedCount} soft deleted users past retention. " +
-                $"(Messages: {totalResult.MessagesDeletedCount}, Message images: {totalResult.MessageImageAddresses.Count}, Friendships: {totalResult.FriendshipsDeletedCount}, Posts: {totalResult.PostsDeletedCount}, Likes: {totalResult.LikesDeletedCount})");
+                $"(Messages: {totalResult.MessagesDeletedCount}, Message images: {totalResult.MessageImageAddresses.Count}, Friendships: {totalResult.FriendshipsDeletedCount}, Posts: {totalResult.PostsDeletedCount}, Likes: {totalResult.LikesDeletedCount}, Reports: {totalResult.ReportsDeletedCount})");
         }
     }
 }

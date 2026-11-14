@@ -13,20 +13,20 @@ Decisions are under "Reports and moderation" in `.scratch/documented-backend-fea
 
 **Blocked by:** 09 (An administrator can hide a post or a comment)
 
-**Status:** ready-for-agent
+**Status:** done
 
 **Difficulty:** routine: a new entity with validation and a filtered list on existing patterns; the one trap (delete rules) is spelled out and caught by the suite's migration run.
 
-- [ ] A user reports a post, a comment and another user, each with a reason, and the report is created as pending
-- [ ] A report with no reason, or a reason over the length limit, is refused
-- [ ] A report of an unknown target, or of content hidden from the caller, is not found
-- [ ] A report of oneself, of one's own post or of one's own comment is refused
-- [ ] A second pending report of the same target by the same user is refused; a different user can still report it
-- [ ] A guest cannot report
-- [ ] An administrator gets reports page by page, newest first, pending only unless a status is given
-- [ ] The list can be narrowed by status and by target type
-- [ ] Each row shows the reporter, the reason, the status and a snapshot of the target, and a deleted target is shown as missing
-- [ ] An ordinary user and a guest are refused on the list
-- [ ] The purge of soft-deleted users deletes the reports those users made and clears their reviewer reference
-- [ ] Each new action has its own rate-limit policy
-- [ ] `docs/backend/controllers.md`, `docs/backend/data.md`, `docs/backend/background-jobs.md` and `README.md` describe reports
+- [x] A user reports a post, a comment and another user, each with a reason, and the report is created as pending
+- [x] A report with no reason, or a reason over the length limit, is refused
+- [x] A report of an unknown target, or of content hidden from the caller, is not found
+- [x] A report of oneself, of one's own post or of one's own comment is refused
+- [x] A second pending report of the same target by the same user is refused; a different user can still report it
+- [x] A guest cannot report
+- [x] An administrator gets reports page by page, newest first, pending only unless a status is given
+- [x] The list can be narrowed by status and by target type
+- [x] Each row shows the reporter, the reason, the status and a snapshot of the target, and a deleted target is shown as missing
+- [x] An ordinary user and a guest are refused on the list
+- [x] The purge of soft-deleted users deletes the reports those users made and clears their reviewer reference
+- [x] Each new action has its own rate-limit policy
+- [x] `docs/backend/controllers.md`, `docs/backend/data.md`, `docs/backend/background-jobs.md` and `README.md` describe reports

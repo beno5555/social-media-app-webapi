@@ -38,6 +38,17 @@ public class CommentRepository : BaseEntityRepository<Comment>
             .FirstOrDefaultAsync();
     }
 
+    // For an administrator's review: hidden comments included, and authors in any account state, so the mapper can name that state.
+    public async Task<List<Comment>> GetSnapshotsByIdsAsync(IReadOnlyCollection<int> ids)
+    {
+        return await _dbSet
+            .IgnoreQueryFilters()
+            .AsNoTracking()
+            .Include(comment => comment.CommenterUser)
+            .Where(comment => ids.Contains(comment.Id))
+            .ToListAsync();
+    }
+
     // The caller must already be allowed to read the post; this filters only the comments themselves.
     public async Task<List<Comment>> GetByPostIdAsync(int postId, int? callerId, bool isAdmin, int? pageNumber, int? pageSize)
     {

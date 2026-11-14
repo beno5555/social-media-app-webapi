@@ -22,21 +22,27 @@ public class CustomWebApplicationFactory : WebApplicationFactory<Program>
     private const string UploadFolderSetting      = "ImageStorage:UploadFolder";
     private const string TestUploadFolderRootName = "webcity-test-uploads";
 
+    public const string TestingEnvironment     = "Testing";
+    public const string DevelopmentEnvironment = "Development";
+
     private readonly IReadOnlyDictionary<string, string?> _settingOverrides;
+    private readonly string _environmentName;
 
     // Each host stores uploads in its own temporary folder, removed when the host is disposed.
     public string UploadFolder { get; } =
         Path.Combine(Path.GetTempPath(), TestUploadFolderRootName, Guid.NewGuid().ToString("N"));
 
     // settingOverrides win over the settings file and the suite's defaults, e.g. a lower ImageStorage:MaxFileSizeBytes.
-    public CustomWebApplicationFactory(IReadOnlyDictionary<string, string?>? settingOverrides = null)
+    // environmentName is Testing unless a test needs a Development-only feature, such as the OpenAPI document.
+    public CustomWebApplicationFactory(IReadOnlyDictionary<string, string?>? settingOverrides = null, string environmentName = TestingEnvironment)
     {
         _settingOverrides = settingOverrides ?? new Dictionary<string, string?>();
+        _environmentName = environmentName;
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
-        builder.UseEnvironment("Testing");
+        builder.UseEnvironment(_environmentName);
         builder.UseSetting(ReloadConfigOnChangeSetting, DisabledSettingValue);
 
         builder.ConfigureAppConfiguration((context, config) =>

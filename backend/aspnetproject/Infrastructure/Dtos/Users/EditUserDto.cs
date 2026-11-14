@@ -16,7 +16,7 @@ public class EditUserDto
 
     [ValidAge]
     [Required]
-    [DefaultValue("2000-08-16T10:10:23.546Z")]
+    [UtcDateTimeDefaultValue("2000-08-16T10:10:23.546Z")]
     public DateTime DateOfBirth { get; set; }
 
     [MinLength(Constants.BioMinLength), MaxLength(Constants.BioMaxLength)]

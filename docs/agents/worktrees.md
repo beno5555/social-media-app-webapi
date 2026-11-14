@@ -18,7 +18,7 @@ Pick tickets that touch different files. The ticket's "What to build" names the 
 
 - **Test database.** With `ConnectionStrings__DefaultConnection` unset, `DatabaseFixture` names the local database after the worktree folder (`TestSocialMediaWebApiDb_<name>`, with any character other than a letter or digit turned into `_`), and `CustomWebApplicationFactory` gives the app under test the same connection string. The first run creates and migrates it. The main checkout keeps `TestSocialMediaWebApiDb`. So two suites never wipe each other's data.
 - **Sync.** Skip CLAUDE.md's "pull on `master`" step: `master` is checked out in the main checkout, and the worktree already starts from a fresh `origin/master`.
-- **Skills.** The worktree has its own copy of `.claude/skills/`. Do not edit skills from a worktree; edit them in the main checkout (see `skills.md`).
+- **Skills.** The worktree has its own copy of `.claude/skills/`, separate from the junctions in `~/.claude/skills/` (see `skills.md`). Editing a skill there is fine: the edit is committed on the lane's branch and reaches the shared copy when the branch is merged.
 
 ## Finish a lane
 

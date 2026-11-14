@@ -149,13 +149,26 @@ public class PostControllerTests : IAsyncLifetime
     [Theory]
     [InlineData(0)]
     [InlineData(-1)]
-    public async Task GetFeed_PageNumberBelowOne_ReturnsBadRequest(int pageNumber)
+    [InlineData(Constants.MaxPageNumber + 1)]
+    [InlineData(int.MaxValue)] // at the largest page size, its offset would overflow an int
+    public async Task GetFeed_PageNumberOutOfRange_ReturnsBadRequest(int pageNumber)
     {
         await LoginAsync("alice");
 
-        var response = await _client.GetAsync($"api/posts/feed?pageNumber={pageNumber}");
+        var response = await _client.GetAsync($"api/posts/feed?pageNumber={pageNumber}&pageSize={Constants.MaxPageSize}");
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetFeed_LastAllowedPageNumber_ReturnsEmptyPage()
+    {
+        await LoginAsync("alice");
+
+        var response = await _client.GetAsync($"api/posts/feed?pageNumber={Constants.MaxPageNumber}&pageSize={Constants.MaxPageSize}");
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+        Assert.Empty(await ReadListAsync(response));
     }
 
     // ---------- GET /posts/mine ----------

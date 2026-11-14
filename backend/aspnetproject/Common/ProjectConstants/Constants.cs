@@ -31,8 +31,12 @@ public static class Constants
     public const int UsernameChangeCooldownDays = 20;
     
     public const int FirstPageNumber = 1;
+    public const int MinPageSize     = 1;
     public const int DefaultPageSize = 10;
     public const int MaxPageSize     = 100;
+
+    // Up to this page, the offset (page - 1) * MaxPageSize stays inside an int.
+    public const int MaxPageNumber = int.MaxValue / MaxPageSize;
 
     public const double MinutesPerHour = 60;
 

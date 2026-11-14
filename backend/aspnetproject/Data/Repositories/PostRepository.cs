@@ -119,7 +119,7 @@ public class PostRepository : BaseEntityRepository<Post>
         OFFSET @skip ROWS FETCH NEXT @take ROWS ONLY
         """;
 
-    private static SqlParameter[] RankedFeedPageParameters(int callerId, int pageNumber, int pageSize)
+    private SqlParameter[] RankedFeedPageParameters(int callerId, int pageNumber, int pageSize)
     {
         return
         [
@@ -132,7 +132,7 @@ public class PostRepository : BaseEntityRepository<Post>
             new SqlParameter("@ageGravity", FeedRanking.AgeGravity),
             new SqlParameter("@minutesPerHour", Constants.MinutesPerHour),
             new SqlParameter("@now", SqlDbType.DateTime2) { Value = DateTime.UtcNow },
-            new SqlParameter("@skip", (pageNumber - 1) * pageSize),
+            new SqlParameter("@skip", (pageNumber - Constants.FirstPageNumber) * pageSize),
             new SqlParameter("@take", pageSize)
         ];
     }

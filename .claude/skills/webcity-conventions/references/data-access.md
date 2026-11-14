@@ -95,9 +95,10 @@ public DateTime? LastOnlineAt { get; set; } // null = online
 ```csharp
 public class PageQuery
 {
-    public int PageNumber { get; set; } = 1;
+    [Range(Constants.FirstPageNumber, Constants.MaxPageNumber)]
+    public int PageNumber { get; set; } = Constants.FirstPageNumber;
 
-    [Range(1, Constants.MaxPageSize)]
+    [Range(Constants.MinPageSize, Constants.MaxPageSize)]
     public int PageSize { get; set; } = Constants.DefaultPageSize;
 }
 ```

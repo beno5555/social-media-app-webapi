@@ -29,10 +29,10 @@ In `/Infrastructure/Queries/`:
 ```csharp
 public class PageQuery
 {
-    [Range(Constants.FirstPageNumber, int.MaxValue)]
+    [Range(Constants.FirstPageNumber, Constants.MaxPageNumber)]
     public int PageNumber { get; set; } = Constants.FirstPageNumber;
 
-    [Range(1, Constants.MaxPageSize)]
+    [Range(Constants.MinPageSize, Constants.MaxPageSize)]
     public int PageSize { get; set; } = Constants.DefaultPageSize;
 }
 
@@ -43,7 +43,7 @@ public class SearchUserQuery : PageQuery
 }
 ```
 
-Bound via `[FromQuery]`. Unlike the earlier nullable design, both properties now default and validate (`PageNumber` at least 1 and `PageSize` capped, both via `[Range]`, so a page number below 1 gets `400` instead of a negative SQL offset) — no more unpaginated "return everything" mode reachable from the API surface (internal/background callers still pass `null`/`null` directly to repository methods).
+Bound via `[FromQuery]`. Unlike the earlier nullable design, both properties now default and validate through `[Range]` — no more unpaginated "return everything" mode reachable from the API surface (internal/background callers still pass `null`/`null` directly to repository methods). `MaxPageNumber` keeps the offset `(PageNumber - 1) * PageSize` inside an `int`, so a page number below 1 or above it gets `400`, not a 500 from a negative or overflowing SQL offset.
 
 ---
 
@@ -71,7 +71,7 @@ score = (connection weight + likes + comments) / (age in hours + AgeOffsetHours)
 
 - **Connection weight**, checked in this order: `FriendWeight` when the author is an accepted friend of the caller, `MutualFriendWeight` when the author has an accepted friend who is also the caller's friend, `OtherUserWeight` for anyone else. A weight counts as that many likes or comments. Pending and declined requests count as no connection. A shared friend counts even if their account is deactivated or soft-deleted, as in `FriendshipRepository.GetFriendshipsAsync`.
 - **Activity:** the post's like count plus its comment count, all comments included.
-- **Age:** whole minutes from `CreatedAt` to the request time (`DATEDIFF(MINUTE, …)`), divided by 60. A post dated in the future counts as zero hours old. `AgeOffsetHours` keeps a new post from dividing by zero, and a higher `AgeGravity` makes posts sink faster. Every weight is above zero, so even a post with no activity sinks as it ages.
+- **Age:** minute boundaries crossed from `CreatedAt` to the request time (`DATEDIFF(MINUTE, …)`, so 10:00:59 to 10:01:00 counts as one minute), divided by 60. A post dated in the future counts as zero hours old. `AgeOffsetHours` keeps a new post from dividing by zero, and a higher `AgeGravity` makes posts sink faster. Every weight is above zero, so even a post with no activity sinks as it ages.
 - **Order:** highest score first, ties broken by newest post id, so equal scores keep their order on every request.
 - **Two queries.** One raw SQL query (`PostRepository.RankedFeedPageSql`) scores every candidate, orders, pages, and returns only the page's post ids. Its CTEs each name one input: `CallerFriends`, `FriendsOfCallerFriends`, then `CandidatePosts` with `ConnectionWeight`, `Reactions` and `AgeHours`. The SQL is raw because the LINQ version was unreadable, and it is not composable (SQL Server cannot wrap a CTE in a subquery), so it pages itself. A second query loads those posts with their images and stats, and the ids' order is restored in memory. All posts are never loaded. Raw SQL skips the global `User` filter, so the query checks the author's account state by hand.
 - **Paging** is by page number, like every list. Scores change as time passes and posts gain likes, so a post can repeat or be skipped between two pages loaded minutes apart; that is accepted. Cursor paging and performance at scale are out of scope.

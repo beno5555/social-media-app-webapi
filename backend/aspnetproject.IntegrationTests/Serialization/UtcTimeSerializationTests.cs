@@ -1,11 +1,9 @@
 using System.Globalization;
 using System.Net;
-using System.Net.Http.Json;
 using System.Net.Mime;
 using System.Text;
 using System.Text.Json;
 using aspnetproject.Hubs;
-using aspnetproject.Infrastructure.Dtos.Messages;
 using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Infrastructure.Dtos.WebsocketsTransfer;
 using aspnetproject.IntegrationTests.Fixtures;
@@ -88,7 +86,7 @@ public class UtcTimeSerializationTests : IAsyncLifetime
         await SignInAsync("alice");
         var before = DateTime.UtcNow;
 
-        var response = await _client.PostAsJsonAsync("api/messages/3", new CreateMessageDto { Content = "Sent just now." }); // to bob
+        var response = await _client.PostAsync("api/messages/3", MessageForm.Create("Sent just now.")); // to bob
         var after    = DateTime.UtcNow;
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);

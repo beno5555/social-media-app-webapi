@@ -5,15 +5,21 @@ using aspnetproject.Infrastructure.Dtos.WebsocketsTransfer;
 
 namespace aspnetproject.Infrastructure.Mappers;
 
-public static class MessageMapper 
+public static class MessageMapper
 {
-    public static Message ToEntity(int senderId, int receiverId, CreateMessageDto createMessageDto)
+    public static Message ToEntity(
+        int senderId,
+        int receiverId,
+        CreateMessageDto createMessageDto,
+        IReadOnlyList<string> imageAddresses
+        )
     {
         return new Message
         {
             SenderUserId = senderId,
             ReceiverUserId = receiverId,
-            MessageContent = createMessageDto.Content
+            MessageContent = createMessageDto.Content ?? string.Empty,
+            Images = ImageMapper.ToEntities<MessageImage>(imageAddresses)
         };
     }
 
@@ -23,7 +29,8 @@ public static class MessageMapper
         {
             Id = message.Id,
             Content = message.MessageContent,
-            
+            Images = ImageMapper.ToImageDtos(message.Images),
+
             Sender = new MinimalUserDto
             {
                 Id = message.SenderUserId,
@@ -46,6 +53,7 @@ public static class MessageMapper
             Id = message.Id,
             Content = message.MessageContent,
             SentAt = message.CreatedAt,
+            Images = ImageMapper.ToImageDtos(message.Images)
         };
     }
 
@@ -55,6 +63,7 @@ public static class MessageMapper
         {
             Id = message.Id,
             Content = message.MessageContent,
+            Images = ImageMapper.ToImageDtos(message.Images),
             SentAt = message.CreatedAt,
             Sender = new MinimalUserDto
             {

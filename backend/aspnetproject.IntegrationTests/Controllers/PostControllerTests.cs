@@ -1,6 +1,5 @@
 ﻿using System.Net;
 using System.Net.Http.Json;
-using aspnetproject.Common.Domain;
 using aspnetproject.Common.ProjectConstants;
 using aspnetproject.Infrastructure.Dtos.Images;
 using aspnetproject.Infrastructure.Dtos.Posts;
@@ -140,8 +139,8 @@ public class PostControllerTests : IAsyncLifetime
         await LoginAsync("alice");
         var allIds = await ReadFeedIdsAsync();
 
-        var firstPage  = await ReadListAsync(await _client.GetAsync("api/posts/feed?pageNumber=1&pageSize=4"));
-        var secondPage = await ReadListAsync(await _client.GetAsync("api/posts/feed?pageNumber=2&pageSize=4"));
+        var firstPage  = await ResponseReader.ReadListAsync<StandardPostDisplayDto>(await _client.GetAsync("api/posts/feed?pageNumber=1&pageSize=4"));
+        var secondPage = await ResponseReader.ReadListAsync<StandardPostDisplayDto>(await _client.GetAsync("api/posts/feed?pageNumber=2&pageSize=4"));
 
         Assert.Equal(allIds.Take(8), firstPage.Concat(secondPage).Select(post => post.Id));
     }
@@ -168,7 +167,7 @@ public class PostControllerTests : IAsyncLifetime
         var response = await _client.GetAsync($"api/posts/feed?pageNumber={Constants.MaxPageNumber}&pageSize={Constants.MaxPageSize}");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Empty(await ReadListAsync(response));
+        Assert.Empty(await ResponseReader.ReadListAsync<StandardPostDisplayDto>(response));
     }
 
     // ---------- GET /posts/mine ----------
@@ -201,7 +200,7 @@ public class PostControllerTests : IAsyncLifetime
         int olderId = await CreatePostAsync("Bob Older Post");
         int newerId = await CreatePostAsync("Bob Newer Post");
 
-        var posts = await ReadListAsync(await _client.GetAsync("api/posts/mine"));
+        var posts = await ResponseReader.ReadListAsync<StandardPostDisplayDto>(await _client.GetAsync("api/posts/mine"));
 
         // 2 and 6 are bob's seeded posts; 2 is created at seed time, 6 at a fixed past time.
         Assert.Equal([newerId, olderId, 2, 6], posts.Select(post => post.Id));
@@ -297,7 +296,7 @@ public class PostControllerTests : IAsyncLifetime
         int newerId = await CreatePostAsync("Bob Newer Post");
         _client.DefaultRequestHeaders.Authorization = null;
 
-        var posts = await ReadListAsync(await _client.GetAsync("api/posts/user/3"));
+        var posts = await ResponseReader.ReadListAsync<StandardPostDisplayDto>(await _client.GetAsync("api/posts/user/3"));
 
         // 2 and 6 are bob's seeded posts; 2 is created at seed time, 6 at a fixed past time.
         Assert.Equal([newerId, olderId, 2, 6], posts.Select(post => post.Id));
@@ -320,11 +319,11 @@ public class PostControllerTests : IAsyncLifetime
         await LoginAsync("diana");
 
         var response = await _client.PostAsync("api/posts", PostForm.Create("Diana's Album", "Three photos",
-            Png(1), Jpeg(2), WebP(3)));
+            ImageFormFiles.Png(1), ImageFormFiles.Jpeg(2), ImageFormFiles.WebP(3)));
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
 
-        var post = await ReadDataAsync<StandardPostDisplayDto>(response);
+        var post = await ResponseReader.ReadDataAsync<StandardPostDisplayDto>(response);
         Assert.Equal([0, 1, 2], post.Images.Select(image => image.OrderIndex));
         Assert.All(post.Images, image =>
         {
@@ -339,8 +338,8 @@ public class PostControllerTests : IAsyncLifetime
     {
         await LoginAsync("diana");
         var response = await _client.PostAsync("api/posts", PostForm.Create("Diana's Album", "Two photos",
-            Png(1), Jpeg(2)));
-        var post = await ReadDataAsync<StandardPostDisplayDto>(response);
+            ImageFormFiles.Png(1), ImageFormFiles.Jpeg(2)));
+        var post = await ResponseReader.ReadDataAsync<StandardPostDisplayDto>(response);
 
         _client.DefaultRequestHeaders.Authorization = null;
         var firstPhoto  = await _client.GetByteArrayAsync(post.Images[0].Address);
@@ -388,10 +387,10 @@ public class PostControllerTests : IAsyncLifetime
     {
         await LoginAsync("diana");
 
-        var response = await _client.PostAsync("api/posts", PostForm.Create("Just a picture", null, Jpeg(1)));
+        var response = await _client.PostAsync("api/posts", PostForm.Create("Just a picture", null, ImageFormFiles.Jpeg(1)));
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var post = await ReadDataAsync<StandardPostDisplayDto>(response);
+        var post = await ResponseReader.ReadDataAsync<StandardPostDisplayDto>(response);
         Assert.Single(post.Images);
     }
 
@@ -403,7 +402,7 @@ public class PostControllerTests : IAsyncLifetime
         var response = await _client.PostAsync("api/posts", PostForm.Create("Words only", "No pictures here"));
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var post = await ReadDataAsync<StandardPostDisplayDto>(response);
+        var post = await ResponseReader.ReadDataAsync<StandardPostDisplayDto>(response);
         Assert.Empty(post.Images);
     }
 
@@ -415,7 +414,7 @@ public class PostControllerTests : IAsyncLifetime
         var response = await _client.PostAsync("api/posts", PostForm.Create("Empty post", "   "));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal(ResponseMessages.TextOrImageRequired, await ReadMessageAsync(response));
+        Assert.Equal(ResponseMessages.TextOrImageRequired, await ResponseReader.ReadMessageAsync(response));
     }
 
     [Fact]
@@ -423,7 +422,7 @@ public class PostControllerTests : IAsyncLifetime
     {
         await LoginAsync("diana");
 
-        var response = await _client.PostAsync("api/posts", PostForm.Create(null, "Content", Jpeg(1)));
+        var response = await _client.PostAsync("api/posts", PostForm.Create(null, "Content", ImageFormFiles.Jpeg(1)));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
     }
@@ -432,12 +431,12 @@ public class PostControllerTests : IAsyncLifetime
     public async Task Create_WithScriptNamedAndTypedAsJpeg_ReturnsBadRequest()
     {
         await LoginAsync("diana");
-        var disguisedScript = new PostFormFile(TestImages.NotAnImage(), "photo.jpg", TestImages.JpegContentType);
+        var disguisedScript = new ImageFormFile(TestImages.NotAnImage(), "photo.jpg", TestImages.JpegContentType);
 
         var response = await _client.PostAsync("api/posts", PostForm.Create("Sneaky", "Content", disguisedScript));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal(ResponseMessages.ImageFormatNotAccepted, await ReadMessageAsync(response));
+        Assert.Equal(ResponseMessages.ImageFormatNotAccepted, await ResponseReader.ReadMessageAsync(response));
     }
 
     [Fact]
@@ -450,31 +449,31 @@ public class PostControllerTests : IAsyncLifetime
         });
         using var client = factory.CreateClient();
         AuthTestHelper.AttachToken(client, await AuthTestHelper.LoginAsync(client, "diana", TestDataSeeder.SharedPlaintextPassword));
-        var oversizedPhoto = new PostFormFile(TestImages.JpegOfSize(1025), "big.jpg", TestImages.JpegContentType);
+        var oversizedPhoto = new ImageFormFile(TestImages.JpegOfSize(1025), "big.jpg", TestImages.JpegContentType);
 
         var response = await client.PostAsync("api/posts", PostForm.Create("Too big", "Content", oversizedPhoto));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal("Each image must be 0.001 MB or smaller", await ReadMessageAsync(response));
+        Assert.Equal("Each image must be 0.001 MB or smaller", await ResponseReader.ReadMessageAsync(response));
     }
 
     [Fact]
     public async Task Create_WithElevenPhotos_ReturnsBadRequestWithLimit()
     {
         await LoginAsync("diana");
-        var photos = Enumerable.Range(1, 11).Select(marker => Jpeg((byte)marker)).ToArray();
+        var photos = Enumerable.Range(1, 11).Select(marker => ImageFormFiles.Jpeg((byte)marker)).ToArray();
 
         var response = await _client.PostAsync("api/posts", PostForm.Create("Too many", "Content", photos));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
-        Assert.Equal("A post can have at most 10 images", await ReadMessageAsync(response));
+        Assert.Equal("A post can have at most 10 images", await ResponseReader.ReadMessageAsync(response));
     }
 
     [Fact]
     public async Task Create_WithTenPhotos_ReturnsCreated()
     {
         await LoginAsync("diana");
-        var photos = Enumerable.Range(1, 10).Select(marker => Jpeg((byte)marker)).ToArray();
+        var photos = Enumerable.Range(1, 10).Select(marker => ImageFormFiles.Jpeg((byte)marker)).ToArray();
 
         var response = await _client.PostAsync("api/posts", PostForm.Create("Ten photos", "Content", photos));
 
@@ -485,9 +484,9 @@ public class PostControllerTests : IAsyncLifetime
     public async Task Create_WhenOneFileIsRefused_SavesNoPostAndStoresNoFile()
     {
         await LoginAsync("diana");
-        var script = new PostFormFile(TestImages.NotAnImage(), "photo.png", TestImages.PngContentType);
+        var script = new ImageFormFile(TestImages.NotAnImage(), "photo.png", TestImages.PngContentType);
 
-        var response = await _client.PostAsync("api/posts", PostForm.Create("Half good", "Content", Png(1), script));
+        var response = await _client.PostAsync("api/posts", PostForm.Create("Half good", "Content", ImageFormFiles.Png(1), script));
 
         Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
         var mineBody = await (await _client.GetAsync("api/posts/mine")).Content.ReadAsStringAsync();
@@ -504,7 +503,7 @@ public class PostControllerTests : IAsyncLifetime
         int postId = await CreateBobsPhotoPostAsync();
         _client.DefaultRequestHeaders.Authorization = null;
 
-        var post = await ReadDataAsync<FullPostDisplayDto>(await _client.GetAsync($"api/posts/{postId}"));
+        var post = await ResponseReader.ReadDataAsync<FullPostDisplayDto>(await _client.GetAsync($"api/posts/{postId}"));
 
         AssertBobsPhotosInOrder(post.Images);
     }
@@ -515,7 +514,7 @@ public class PostControllerTests : IAsyncLifetime
         await CreateBobsPhotoPostAsync();
         await LoginAsync("alice");
 
-        var posts = await ReadListAsync(await _client.GetAsync("api/posts/feed"));
+        var posts = await ResponseReader.ReadListAsync<StandardPostDisplayDto>(await _client.GetAsync("api/posts/feed"));
 
         AssertBobsPhotosInOrder(posts.Single(post => post.Title == BobsPhotoPostTitle).Images);
     }
@@ -526,7 +525,7 @@ public class PostControllerTests : IAsyncLifetime
         await CreateBobsPhotoPostAsync();
         _client.DefaultRequestHeaders.Authorization = null;
 
-        var posts = await ReadListAsync(await _client.GetAsync("api/posts/user/3"));
+        var posts = await ResponseReader.ReadListAsync<StandardPostDisplayDto>(await _client.GetAsync("api/posts/user/3"));
 
         AssertBobsPhotosInOrder(posts.Single(post => post.Title == BobsPhotoPostTitle).Images);
     }
@@ -536,7 +535,7 @@ public class PostControllerTests : IAsyncLifetime
     {
         await CreateBobsPhotoPostAsync();
 
-        var posts = await ReadListAsync(await _client.GetAsync("api/posts/mine"));
+        var posts = await ResponseReader.ReadListAsync<StandardPostDisplayDto>(await _client.GetAsync("api/posts/mine"));
 
         AssertBobsPhotosInOrder(posts.Single(post => post.Title == BobsPhotoPostTitle).Images);
     }
@@ -549,7 +548,7 @@ public class PostControllerTests : IAsyncLifetime
     [Fact]
     public async Task GetById_AsGuest_ReturnsCountsAndNotLikedByCaller()
     {
-        var post = await ReadDataAsync<FullPostDisplayDto>(await _client.GetAsync("api/posts/2"));
+        var post = await ResponseReader.ReadDataAsync<FullPostDisplayDto>(await _client.GetAsync("api/posts/2"));
 
         Assert.Equal(3, post.LikeCount);
         Assert.Equal(3, post.CommentCount);
@@ -561,7 +560,7 @@ public class PostControllerTests : IAsyncLifetime
     {
         await LoginAsync("alice");
 
-        var post = await ReadDataAsync<FullPostDisplayDto>(await _client.GetAsync("api/posts/2"));
+        var post = await ResponseReader.ReadDataAsync<FullPostDisplayDto>(await _client.GetAsync("api/posts/2"));
 
         Assert.True(post.LikedByCaller);
     }
@@ -571,7 +570,7 @@ public class PostControllerTests : IAsyncLifetime
     {
         await LoginAsync("bob");
 
-        var post = await ReadDataAsync<FullPostDisplayDto>(await _client.GetAsync("api/posts/2"));
+        var post = await ResponseReader.ReadDataAsync<FullPostDisplayDto>(await _client.GetAsync("api/posts/2"));
 
         Assert.False(post.LikedByCaller);
     }
@@ -582,7 +581,7 @@ public class PostControllerTests : IAsyncLifetime
         await LoginAsync("diana");
         await _client.PostAsync("api/posts/2/likes", null);
 
-        var post = await ReadDataAsync<FullPostDisplayDto>(await _client.GetAsync("api/posts/2"));
+        var post = await ResponseReader.ReadDataAsync<FullPostDisplayDto>(await _client.GetAsync("api/posts/2"));
 
         Assert.Equal(4, post.LikeCount);
         Assert.True(post.LikedByCaller);
@@ -591,7 +590,7 @@ public class PostControllerTests : IAsyncLifetime
     [Fact]
     public async Task GetPostsByUser_AsGuest_ReturnsCountsAndNotLikedByCaller()
     {
-        var posts = await ReadListAsync(await _client.GetAsync("api/posts/user/3"));
+        var posts = await ResponseReader.ReadListAsync<StandardPostDisplayDto>(await _client.GetAsync("api/posts/user/3"));
 
         var post = posts.Single(post => post.Id == 2);
         Assert.Equal(3, post.LikeCount);
@@ -604,7 +603,7 @@ public class PostControllerTests : IAsyncLifetime
     {
         await LoginAsync("alice");
 
-        var posts = await ReadListAsync(await _client.GetAsync("api/posts/user/3"));
+        var posts = await ResponseReader.ReadListAsync<StandardPostDisplayDto>(await _client.GetAsync("api/posts/user/3"));
 
         Assert.True(posts.Single(post => post.Id == 2).LikedByCaller);
     }
@@ -614,7 +613,7 @@ public class PostControllerTests : IAsyncLifetime
     {
         await LoginAsync("alice");
 
-        var posts = await ReadListAsync(await _client.GetAsync("api/posts/feed"));
+        var posts = await ResponseReader.ReadListAsync<StandardPostDisplayDto>(await _client.GetAsync("api/posts/feed"));
 
         var post = posts.Single(post => post.Id == 2);
         Assert.Equal(3, post.LikeCount);
@@ -627,7 +626,7 @@ public class PostControllerTests : IAsyncLifetime
     {
         await LoginAsync("alice");
 
-        var posts = await ReadListAsync(await _client.GetAsync("api/posts/mine"));
+        var posts = await ResponseReader.ReadListAsync<StandardPostDisplayDto>(await _client.GetAsync("api/posts/mine"));
 
         var post = posts.Single(post => post.Id == 1);
         Assert.Equal(1, post.LikeCount);
@@ -640,7 +639,7 @@ public class PostControllerTests : IAsyncLifetime
     {
         await LoginAsync("diana");
 
-        var post = await ReadDataAsync<StandardPostDisplayDto>(
+        var post = await ResponseReader.ReadDataAsync<StandardPostDisplayDto>(
             await _client.PostAsync("api/posts", PostForm.Create("Diana's New Post", "Fresh content")));
 
         Assert.Equal(0, post.LikeCount);
@@ -654,7 +653,7 @@ public class PostControllerTests : IAsyncLifetime
         await LoginAsync("bob");
         await _client.PostAsync("api/posts/2/likes", null); // bob likes his own post
 
-        var post = await ReadDataAsync<FullPostDisplayDto>(await _client.PutAsJsonAsync("api/posts/2", new
+        var post = await ResponseReader.ReadDataAsync<FullPostDisplayDto>(await _client.PutAsJsonAsync("api/posts/2", new
         {
             Title = "Bob Post Updated",
             Content = "Updated content"
@@ -815,8 +814,8 @@ public class PostControllerTests : IAsyncLifetime
     private async Task<int> CreateBobsPhotoPostAsync()
     {
         await LoginAsync("bob");
-        var response = await _client.PostAsync("api/posts", PostForm.Create(BobsPhotoPostTitle, "Holiday", WebP(7), Png(8)));
-        var post = await ReadDataAsync<StandardPostDisplayDto>(response);
+        var response = await _client.PostAsync("api/posts", PostForm.Create(BobsPhotoPostTitle, "Holiday", ImageFormFiles.WebP(7), ImageFormFiles.Png(8)));
+        var post = await ResponseReader.ReadDataAsync<StandardPostDisplayDto>(response);
         return post.Id;
     }
 
@@ -824,7 +823,7 @@ public class PostControllerTests : IAsyncLifetime
     private async Task<int> CreatePostAsync(string title)
     {
         var response = await _client.PostAsync("api/posts", PostForm.Create(title, "Text"));
-        var post = await ReadDataAsync<StandardPostDisplayDto>(response);
+        var post = await ResponseReader.ReadDataAsync<StandardPostDisplayDto>(response);
         return post.Id;
     }
 
@@ -838,29 +837,7 @@ public class PostControllerTests : IAsyncLifetime
     // One page large enough to hold every candidate, so the whole ranking is visible.
     private async Task<List<int>> ReadFeedIdsAsync()
     {
-        var posts = await ReadListAsync(await _client.GetAsync($"api/posts/feed?pageSize={Constants.MaxPageSize}"));
+        var posts = await ResponseReader.ReadListAsync<StandardPostDisplayDto>(await _client.GetAsync($"api/posts/feed?pageSize={Constants.MaxPageSize}"));
         return posts.Select(post => post.Id).ToList();
     }
-
-    private static async Task<List<StandardPostDisplayDto>> ReadListAsync(HttpResponseMessage response)
-    {
-        var body = await response.Content.ReadFromJsonAsync<ListResponse<StandardPostDisplayDto>>();
-        return body!.Data;
-    }
-
-    private static async Task<string?> ReadMessageAsync(HttpResponseMessage response)
-    {
-        var body = await response.Content.ReadFromJsonAsync<ApplicationResponse>();
-        return body!.Message;
-    }
-
-    private static async Task<T> ReadDataAsync<T>(HttpResponseMessage response)
-    {
-        var body = await response.Content.ReadFromJsonAsync<ApplicationResponse<T>>();
-        return body!.Data!;
-    }
-
-    private static PostFormFile Jpeg(byte marker) => new(TestImages.Jpeg(marker), "photo.jpg", TestImages.JpegContentType);
-    private static PostFormFile Png(byte marker)  => new(TestImages.Png(marker), "photo.png", TestImages.PngContentType);
-    private static PostFormFile WebP(byte marker) => new(TestImages.WebP(marker), "photo.webp", TestImages.WebPContentType);
 }

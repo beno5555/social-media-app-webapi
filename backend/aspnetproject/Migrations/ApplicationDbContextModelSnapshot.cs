@@ -307,6 +307,38 @@ namespace aspnetproject.Migrations
                         });
                 });
 
+            modelBuilder.Entity("aspnetproject.Data.Models.MessageImage", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<string>("Address")
+                        .IsRequired()
+                        .HasMaxLength(200)
+                        .HasColumnType("nvarchar(200)");
+
+                    b.Property<DateTime>("CreatedAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<DateTime?>("LastUpdatedAt")
+                        .HasColumnType("datetime2(3)");
+
+                    b.Property<int>("MessageId")
+                        .HasColumnType("int");
+
+                    b.Property<int>("OrderIndex")
+                        .HasColumnType("int");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("MessageId");
+
+                    b.ToTable("MessageImages", (string)null);
+                });
+
             modelBuilder.Entity("aspnetproject.Data.Models.Post", b =>
                 {
                     b.Property<int>("Id")
@@ -839,6 +871,17 @@ namespace aspnetproject.Migrations
                     b.Navigation("SenderUser");
                 });
 
+            modelBuilder.Entity("aspnetproject.Data.Models.MessageImage", b =>
+                {
+                    b.HasOne("aspnetproject.Data.Models.Message", "Message")
+                        .WithMany("Images")
+                        .HasForeignKey("MessageId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Message");
+                });
+
             modelBuilder.Entity("aspnetproject.Data.Models.Post", b =>
                 {
                     b.HasOne("aspnetproject.Data.Models.User", "User")
@@ -904,6 +947,11 @@ namespace aspnetproject.Migrations
                     b.Navigation("Role");
 
                     b.Navigation("User");
+                });
+
+            modelBuilder.Entity("aspnetproject.Data.Models.Message", b =>
+                {
+                    b.Navigation("Images");
                 });
 
             modelBuilder.Entity("aspnetproject.Data.Models.Post", b =>

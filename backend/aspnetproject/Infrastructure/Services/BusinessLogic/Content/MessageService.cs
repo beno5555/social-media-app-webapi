@@ -9,6 +9,7 @@ using aspnetproject.Infrastructure.Dtos.Users.Friends;
 using aspnetproject.Infrastructure.Mappers;
 using aspnetproject.Infrastructure.Services.BusinessLogic.Base;
 using aspnetproject.Infrastructure.Services.Logging;
+using aspnetproject.Infrastructure.Services.Storage;
 using Microsoft.AspNetCore.SignalR;
 using Constants = aspnetproject.Common.ProjectConstants.Constants;
 
@@ -20,12 +21,14 @@ public class MessageService : BaseService
     private readonly UserRepository       _userRepository;
     private readonly FriendshipRepository _friendshipRepository;
     private readonly IHubContext<MessageHub> _hubContext;
+    private readonly ImageStorage            _imageStorage;
 
     public MessageService(
         MessageRepository    messageRepository,
         UserRepository       userRepository,
         FriendshipRepository friendshipRepository,
         IHubContext<MessageHub> hubContext,
+        ImageStorage            imageStorage,
         DatabaseLogger          dbLogger
             ) : base(dbLogger)
     {
@@ -33,18 +36,22 @@ public class MessageService : BaseService
         _userRepository = userRepository;
         _friendshipRepository = friendshipRepository;
         _hubContext = hubContext;
+        _imageStorage = imageStorage;
     }
 
     public async Task<ApplicationResponse<SentMessageDto>> SendMessageAsync(int senderId, int receiverId, CreateMessageDto createMessageDto)
     {
         var response = new ApplicationResponse<SentMessageDto>();
-        
-        var friendshipCheck = await ValidFriendship(senderId, receiverId);
-        
-        if (friendshipCheck.Succeeded)
+
+        var newMessageCheck = await CheckNewMessageAsync(senderId, receiverId, createMessageDto);
+
+        if (newMessageCheck.Succeeded)
         {
-            var messageToAdd = MessageMapper.ToEntity(senderId, receiverId, createMessageDto);
-            var message      = await _messageRepository.AddMessageAsync(messageToAdd);
+            var message = await _imageStorage.SaveWithOwnerAsync(newMessageCheck.Data!, imageAddresses =>
+            {
+                var messageToAdd = MessageMapper.ToEntity(senderId, receiverId, createMessageDto, imageAddresses);
+                return _messageRepository.AddMessageAsync(messageToAdd);
+            });
 
             var pushMessageDto = MessageMapper.ToPush(message);
             await _hubContext.Clients.Group(receiverId.ToString()).SendAsync("ReceiveMessage", pushMessageDto);
@@ -54,8 +61,37 @@ public class MessageService : BaseService
         }
         else
         {
-            response.Fail(friendshipCheck.Message);
+            response.Fail(newMessageCheck.Message);
             await LogResultAsync(response.Succeeded, nameof(SendMessageAsync), nameof(Message), $"Could not send a message: {response.Message}", null);
+        }
+
+        return response;
+    }
+
+    // Every rule a new message must meet, images included. Nothing is stored until all of them pass.
+    private async Task<ApplicationResponse<List<CheckedImage>>> CheckNewMessageAsync(int senderId, int receiverId, CreateMessageDto createMessageDto)
+    {
+        var response = new ApplicationResponse<List<CheckedImage>>();
+
+        var friendshipCheck = await ValidFriendship(senderId, receiverId);
+
+        bool hasText   = !string.IsNullOrWhiteSpace(createMessageDto.Content);
+        bool hasImages = createMessageDto.Images.Count > 0;
+
+        if (friendshipCheck.Succeeded)
+        {
+            if (hasText || hasImages)
+            {
+                response = await _imageStorage.CheckMessageImagesAsync(createMessageDto.Images);
+            }
+            else
+            {
+                response.Fail(ResponseMessages.MessageTextOrImageRequired);
+            }
+        }
+        else
+        {
+            response.Fail(friendshipCheck.Message);
         }
 
         return response;
@@ -221,14 +257,18 @@ public class MessageService : BaseService
     {
         var response = new ApplicationResponse();
         
-        var message = await _messageRepository.GetByIdAsync(id);
+        var message = await _messageRepository.GetMessageByIdAsync(id);
 
         if (message is not null)
         {
             bool belongsToCaller = message.SenderUserId == userId;
             if (belongsToCaller)
             {
+                var imageAddresses = message.Images.Select(image => image.Address).ToList();
+
                 await _messageRepository.DeleteAsync(message);
+                await _imageStorage.DeleteAsync(imageAddresses);
+
                 response.Ok(ResponseMessages.MessageDeleted);
                 await LogResultAsync(response.Succeeded, nameof(DeleteMessage), nameof(Message), null, id);
             }

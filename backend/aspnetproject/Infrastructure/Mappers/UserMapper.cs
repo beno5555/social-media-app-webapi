@@ -109,7 +109,8 @@ public static class UserMapper
             LastMessageContent = friend.LastMessageContent,
             LastMessageSenderId = friend.LastMessageSenderId,
             LastMessageSentAt = friend.LastMessageSentAt,
-            
+            LastMessageImageCount = friend.LastMessageImageCount,
+
             UnreadCount = friend.UnreadCount
         };
     }

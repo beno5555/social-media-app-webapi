@@ -83,13 +83,15 @@ Policy name: `OriginPolicy` (`CorsExtensions.AddCorsPolicies`), applied globally
 
 | DTO | Used for | Notes |
 |---|---|---|
-| `SentMessageDto` | Sender's own REST confirmation | Id, Content, SentAt |
-| `PushMessageDto` | Receiver's live hub arrival (`ReceiveMessage`) | Id, Content, Sender, SentAt |
-| `StandardMessageDto` | Full conversation history (`GetConversation`) | Id, Content, Sender, ReceiverId, SentAt, Seen, SeenAt, IsEdited |
+| `SentMessageDto` | Sender's own REST confirmation | Id, Content, Images, SentAt |
+| `PushMessageDto` | Receiver's live hub arrival (`ReceiveMessage`) | Id, Content, Images, Sender, SentAt |
+| `StandardMessageDto` | Full conversation history (`GetConversation`) | Id, Content, Images, Sender, ReceiverId, SentAt, Seen, SeenAt, IsEdited |
 | `MessageEditedDto` | Edit push (`MessageEdited`) | Id, Content |
 | `NotifyCommentDto` | Live comment push (`ReceiveComment`) | Id, AuthorUsername, Content |
 | `UserTypingDto` | Typing signal (`UserTyping`) | UserId (the sender) |
 | `PostLikedDto` | Like push (`PostLiked`) | PostId, LikedBy (`MinimalUserDto`: Id, Username), LikeCount (the post's count after the like) |
+
+`Images` on the three message DTOs is a list of `ImageDto` (`Id`, `Address`, `OrderIndex`) in upload order, empty for a text-only message. The addresses are relative (`/api/images/{name}`) and served as static files without a token, so the receiver can show a photo as soon as `ReceiveMessage` arrives. `MessageEditedDto` carries no images, because the photos of a sent message cannot be changed.
 
 ## Hub events (server → client push)
 

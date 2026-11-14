@@ -179,7 +179,9 @@ public static class ResponseMessages
 
     public const string DoNotHavePermissionToEditMessage = $"You do not have Permission to {Edit} this Message";
     public const string DeleteRequestDeclined            = $"{Delete} Request Declined";
-    
+
+    public const string MessageTextOrImageRequired = $"Message Text or at least one Image {IsRequired}";
+
     #endregion
 
     #region Images
@@ -189,7 +191,8 @@ public static class ResponseMessages
     public static readonly Func<double, string> ImageTooLarge =
         maxSizeInMegabytes => $"Each image must be {maxSizeInMegabytes:0.###} MB or smaller";
 
-    public static readonly Func<int, string> TooManyPostImages = maxImageCount => $"A post can have at most {maxImageCount} images";
+    public static readonly Func<int, string> TooManyPostImages    = maxImageCount => $"A post can have at most {maxImageCount} images";
+    public static readonly Func<int, string> TooManyMessageImages = maxImageCount => $"A message can have at most {maxImageCount} images";
 
     #endregion
 

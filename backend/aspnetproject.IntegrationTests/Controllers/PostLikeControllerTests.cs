@@ -47,7 +47,7 @@ public class PostLikeControllerTests : IAsyncLifetime
         var response = await _client.PostAsync("api/posts/3/likes", null); // charlie's post
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal(ResponseMessages.PostLiked, await ReadMessageAsync(response));
+        Assert.Equal(ResponseMessages.PostLiked, await ResponseReader.ReadMessageAsync(response));
     }
 
     [Fact]
@@ -59,7 +59,7 @@ public class PostLikeControllerTests : IAsyncLifetime
         var likers   = await GetLikersAsync("api/posts/2/likes");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal(ResponseMessages.PostLiked, await ReadMessageAsync(response));
+        Assert.Equal(ResponseMessages.PostLiked, await ResponseReader.ReadMessageAsync(response));
         Assert.Equal([6, 4, 2], likers.Select(liker => liker.Id));
     }
 
@@ -86,7 +86,7 @@ public class PostLikeControllerTests : IAsyncLifetime
         var response = await _client.PostAsync("api/posts/9999/likes", null);
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        Assert.Equal(ResponseMessages.PostNotFound, await ReadMessageAsync(response));
+        Assert.Equal(ResponseMessages.PostNotFound, await ResponseReader.ReadMessageAsync(response));
     }
 
     [Fact]
@@ -108,7 +108,7 @@ public class PostLikeControllerTests : IAsyncLifetime
         var likers   = await GetLikersAsync("api/posts/2/likes");
 
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
-        Assert.Equal(ResponseMessages.PostUnliked, await ReadMessageAsync(response));
+        Assert.Equal(ResponseMessages.PostUnliked, await ResponseReader.ReadMessageAsync(response));
         Assert.DoesNotContain(likers, liker => liker.Id == 2);
     }
 
@@ -120,7 +120,7 @@ public class PostLikeControllerTests : IAsyncLifetime
         var response = await _client.DeleteAsync("api/posts/2/likes");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        Assert.Equal(ResponseMessages.PostNotLiked, await ReadMessageAsync(response));
+        Assert.Equal(ResponseMessages.PostNotLiked, await ResponseReader.ReadMessageAsync(response));
     }
 
     [Fact]
@@ -131,7 +131,7 @@ public class PostLikeControllerTests : IAsyncLifetime
         var response = await _client.DeleteAsync("api/posts/9999/likes");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        Assert.Equal(ResponseMessages.PostNotFound, await ReadMessageAsync(response));
+        Assert.Equal(ResponseMessages.PostNotFound, await ResponseReader.ReadMessageAsync(response));
     }
 
     [Fact]
@@ -205,7 +205,7 @@ public class PostLikeControllerTests : IAsyncLifetime
         var response = await _client.GetAsync("api/posts/9999/likes");
 
         Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
-        Assert.Equal(ResponseMessages.PostNotFound, await ReadMessageAsync(response));
+        Assert.Equal(ResponseMessages.PostNotFound, await ResponseReader.ReadMessageAsync(response));
     }
 
     // ---------- helpers ----------
@@ -215,19 +215,12 @@ public class PostLikeControllerTests : IAsyncLifetime
         var response = await _client.GetAsync(url);
         response.EnsureSuccessStatusCode();
 
-        var body = await response.Content.ReadFromJsonAsync<ListResponse<MinimalUserDto>>();
-        return body!.Data;
+        return await ResponseReader.ReadListAsync<MinimalUserDto>(response);
     }
 
     private async Task LoginAsync(string username)
     {
         var token = await AuthTestHelper.LoginAsync(_client, username, TestDataSeeder.SharedPlaintextPassword);
         AuthTestHelper.AttachToken(_client, token);
-    }
-
-    private static async Task<string?> ReadMessageAsync(HttpResponseMessage response)
-    {
-        var body = await response.Content.ReadFromJsonAsync<ApplicationResponse>();
-        return body!.Message;
     }
 }

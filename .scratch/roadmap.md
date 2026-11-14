@@ -82,7 +82,7 @@ The owner expects to lose more than a day, which is more than the buffer. The ba
 
 ### Last in line
 
-If time runs short, these are finished last, in this order from the end: the weekly digest, birthday notifications, grouping of repeated exception alerts, automatic hiding after several reports, the mutual-friends tier of the feed ranking, the activity part of the statistics page.
+If time runs short, these are finished last, in this order from the end: the orphan-photo cleanup job (`.scratch/orphan-image-cleanup/`, a backstop the document does not promise), the weekly digest, birthday notifications, grouping of repeated exception alerts, automatic hiding after several reports, the mutual-friends tier of the feed ranking, the activity part of the statistics page.
 
 ## What the document promises and the backend lacks
 

@@ -1,5 +1,7 @@
-﻿using aspnetproject.Common.Domain;
+﻿using System.Net.Mime;
+using aspnetproject.Common.Domain;
 using aspnetproject.Controllers.Base;
+using aspnetproject.Controllers.Filters;
 using aspnetproject.Extensions;
 using aspnetproject.Infrastructure.Dtos.Messages;
 using aspnetproject.Infrastructure.Dtos.Users.Friends;
@@ -24,8 +26,10 @@ public class MessageController : BaseController
     
     [HttpPost]
     [Route("{receiverId:int}")]
+    [Consumes(MediaTypeNames.Multipart.FormData)]
+    [TypeFilter(typeof(MessageUploadRequestSizeFilter))]
     [EnableRateLimiting(RateLimitConfig.Policies.SendMessage)]
-    public async Task<ActionResult<ApplicationResponse<SentMessageDto>>> SendMessage(int receiverId, [FromBody] CreateMessageDto createMessageDto)
+    public async Task<ActionResult<ApplicationResponse<SentMessageDto>>> SendMessage(int receiverId, [FromForm] CreateMessageDto createMessageDto)
     {
         var userId   = GetUserId();
         var response = await _messageService.SendMessageAsync(userId, receiverId, createMessageDto);

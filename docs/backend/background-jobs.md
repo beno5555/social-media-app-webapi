@@ -69,7 +69,9 @@ Each cycle (`UserRepository.DeleteSoftDeletedUsersBatchAsync`):
 3. Deletes the user batch itself (`IgnoreQueryFilters()` again).
 4. Repeats until a batch of users comes back empty.
 
-Result accumulation: `SoftDeleteCleanupResult` (Users/Posts/Messages/Friendships/Likes deleted counts) with an `operator +` for combining per-batch results into a cycle total, logged once at the end if anything was deleted.
+**Message photo files.** Before the messages go, each batch reads the addresses of their photos; the `MessageImages` rows cascade with the messages. After each batch, `RunCycleAsync` passes the addresses to `ImageStorage.DeleteAsync`, best effort (a file that cannot be removed is logged to `SystemLogger`). This step has no integration test, because the job is removed from the test host; it was verified by one manual run, recorded on ticket 06.
+
+Result accumulation: `SoftDeleteCleanupResult` (Users/Posts/Messages/Friendships/Likes deleted counts, plus `MessageImageAddresses`) with an `operator +` for combining per-batch results into a cycle total, logged once at the end if anything was deleted.
 
 **Why `Comment.CommenterUserId` isn't touched here**: it's the one nullable, `SetNull` FK to `User` (see `data.md`) — a comment from a purged user just shows an orphaned/anonymized author, no explicit cleanup step needed. Everything else (messages, friendships, posts, likes given) has no such "show it anyway" case, hence the explicit pre-delete. The like step has no integration test, because the job is removed from the test host.
 

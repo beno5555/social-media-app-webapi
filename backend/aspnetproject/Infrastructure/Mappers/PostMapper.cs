@@ -1,7 +1,6 @@
 ﻿using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories.Dtos;
 using aspnetproject.Infrastructure.Dtos.Comments;
-using aspnetproject.Infrastructure.Dtos.Images;
 using aspnetproject.Infrastructure.Dtos.Posts;
 using aspnetproject.Infrastructure.Dtos.Users;
 
@@ -16,9 +15,7 @@ public static class PostMapper
             UserId = userId,
             PostTitle = createPostDto.PostTitle,
             PostContent = createPostDto.PostContent ?? string.Empty,
-            Images = imageAddresses
-                .Select((address, index) => new PostImage { Address = address, OrderIndex = index })
-                .ToList()
+            Images = ImageMapper.ToEntities<PostImage>(imageAddresses)
         };
     }
 
@@ -39,7 +36,7 @@ public static class PostMapper
 
             PostContent = post.PostContent,
             UploadedAt = post.CreatedAt,
-            Images = ToImageDtos(post),
+            Images = ImageMapper.ToImageDtos(post.Images),
 
             LikeCount = postWithStats.LikeCount,
             CommentCount = postWithStats.CommentCount,
@@ -76,7 +73,7 @@ public static class PostMapper
 
             PostContent = post.PostContent,
             UploadedAt = post.CreatedAt,
-            Images = ToImageDtos(post),
+            Images = ImageMapper.ToImageDtos(post.Images),
 
             LikeCount = postWithStats.LikeCount,
             CommentCount = postWithStats.CommentCount,
@@ -99,18 +96,5 @@ public static class PostMapper
             UserId = post.UserId,
             UploadedAt = post.CreatedAt,
         };
-    }
-
-    private static List<ImageDto> ToImageDtos(Post post)
-    {
-        return post.Images
-            .OrderBy(image => image.OrderIndex)
-            .Select(image => new ImageDto
-            {
-                Id = image.Id,
-                Address = image.Address,
-                OrderIndex = image.OrderIndex
-            })
-            .ToList();
     }
 }

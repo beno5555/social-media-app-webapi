@@ -13,14 +13,14 @@ For the earlier, API-only state of this repository and the history behind it, se
 - Comment on posts and edit own comments; delete a comment as its author, as the post's author, or as an administrator; live `ReceiveComment` push to the post's author
 - Like and unlike posts, once per user per post; list a post's likers, newest first; live `PostLiked` push to the post's author
 - Send, accept, decline and remove friend requests; view friends, pending and sent requests; search users by username
-- Send, edit and delete messages between friends; live push (`ReceiveMessage`, `MessageEdited`, `MessageSeen`) over SignalR; paginated conversations and read receipts. A message can be edited for 20 minutes after it is sent, and the receiver sees the edit live
+- Send, edit and delete messages between friends, with up to 5 photos per message (the same checks as post photos); live push (`ReceiveMessage`, `MessageEdited`, `MessageSeen`) over SignalR; paginated conversations and read receipts. A message can be edited for 20 minutes after it is sent, and the receiver sees the edit live
 - Presence: `UserOnline` / `UserOffline` broadcast to friends when a user's first connection opens or last connection closes
 - Typing indicator: a client calls `SendTyping` while its user writes to a friend, and the friend receives `UserTyping`. Only accepted friends get it; nothing is stored or logged
 - View a user's profile; edit own profile
 - Roles (`User`, `Administrator`): an administrator can create, update, deactivate, reactivate and soft-delete other users' accounts, delete any post or comment, and assign or remove the `Administrator` role
 - Admin reads (`api/admin`): an administrator reads the `Logs` table page by page, newest first, filtered by user, authorized or not, succeeded or not, entity, action and date range, and lists accounts in any state (active, deactivated, soft-deleted), filtered by state and username
 - Deactivate own account; reactivate it through an emailed activation token
-- Soft-delete own account; a background job later purges soft-deleted accounts and their messages, friendships, posts and likes once a retention window has passed
+- Soft-delete own account; a background job later purges soft-deleted accounts and their messages (with their photo files), friendships, posts and likes once a retention window has passed
 - Outcome logging of service calls to the `Logs` table, plus a file log for unhandled exceptions
 - Rate limiting: a named policy on every endpoint except logout, and a global limiter over everything
 
@@ -99,7 +99,7 @@ CLAUDE.md
     /Content
         CommentController.cs, MessageController.cs, PostController.cs, PostLikeController.cs
     /Filters
-        PostUploadRequestSizeFilter.cs
+        ImageUploadRequestSizeFilter.cs, MessageUploadRequestSizeFilter.cs, PostUploadRequestSizeFilter.cs
     /Users
         AccountActivationController.cs, AccountManagementController.cs,
         AuthController.cs, FriendshipController.cs, UserController.cs
@@ -109,8 +109,8 @@ CLAUDE.md
         UserConfiguration.cs
         ...
     /Models
-        BaseEntity.cs
-        Comment.cs, Friendship.cs, Log.cs, Message.cs, Post.cs, PostImage.cs, PostLike.cs,
+        BaseEntity.cs, BaseImage.cs
+        Comment.cs, Friendship.cs, Log.cs, Message.cs, MessageImage.cs, Post.cs, PostImage.cs, PostLike.cs,
         RefreshToken.cs, Role.cs, User.cs, UserRole.cs
     /Repositories
         /Base
@@ -173,7 +173,7 @@ dotnet run --project aspnetproject
 dotnet test aspnetproject.IntegrationTests
 ```
 
-`appsettings.json`, `appsettings.Development.json` and `appsettings.Testing.json` are gitignored and there is no example template, so a fresh clone does not run until they exist in `backend/aspnetproject/`. The application reads `ConnectionStrings:DefaultConnection`, `Jwt`, `EmailConfiguration`, `PasswordConfiguration:ResetTokenMinutes`, `CleanupConfiguration:{OldLogs,RefreshTokens,SoftDeletedUsers}` and `Cors:AllowedOrigins`, and optionally `ImageStorage:{UploadFolder,MaxFileSizeBytes,MaxImagesPerPost}` (defaults: `Uploads/` under the project, 5 MB, 10). Uploaded photos are written to the upload folder, which is gitignored.
+`appsettings.json`, `appsettings.Development.json` and `appsettings.Testing.json` are gitignored and there is no example template, so a fresh clone does not run until they exist in `backend/aspnetproject/`. The application reads `ConnectionStrings:DefaultConnection`, `Jwt`, `EmailConfiguration`, `PasswordConfiguration:ResetTokenMinutes`, `CleanupConfiguration:{OldLogs,RefreshTokens,SoftDeletedUsers}` and `Cors:AllowedOrigins`, and optionally `ImageStorage:{UploadFolder,MaxFileSizeBytes,MaxImagesPerPost,MaxImagesPerMessage}` (defaults: `Uploads/` under the project, 5 MB, 10, 5). Uploaded photos, of posts and of messages, are written to the upload folder, which is gitignored.
 
 The integration tests need a real SQL Server database. On Linux, `scripts/test-linux.sh` (run from the repository root) starts one in Docker and runs the same tests; CI uses that script.
 

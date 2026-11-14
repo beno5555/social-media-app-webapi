@@ -117,6 +117,8 @@ public class UserRepository : BaseEntityRepository<User>
                 lm.MessageContent AS LastMessageContent,
                 lm.CreatedAt AS LastMessageSentAt,
                 lm.SenderUserId AS LastMessageSenderId,
+                (SELECT COUNT(*) FROM MessageImages mi
+                WHERE mi.MessageId = lm.Id) AS LastMessageImageCount,
                 (SELECT COUNT(*) FROM Messages um
                 WHERE um.SenderUserId = u.Id AND um.ReceiverUserId = @userId AND um.Seen = 0) AS UnreadCount
            FROM Users u
@@ -124,7 +126,7 @@ public class UserRepository : BaseEntityRepository<User>
                 ON (f.AddresseeUserId = @userId AND f.RequesterUserId = u.Id)
                 OR (f.RequesterUserId = @userId AND f.AddresseeUserId = u.Id)
            CROSS APPLY (
-                SELECT TOP 1 m.MessageContent, m.CreatedAt, m.SenderUserId
+                SELECT TOP 1 m.Id, m.MessageContent, m.CreatedAt, m.SenderUserId
                 FROM Messages m
                 WHERE (m.SenderUserId = @userId AND m.ReceiverUserId = u.Id)
                     OR (m.ReceiverUserId = @userId AND m.SenderUserId = u.Id)
@@ -275,7 +277,7 @@ public class UserRepository : BaseEntityRepository<User>
 
         if (userIds.Count > 0)
         {
-            result.MessagesDeletedCount += await DeleteUsersMessagesAsync(userIds, config.NestedBatchSize, cancellationToken);
+            result.MessagesDeletedCount += await DeleteUsersMessagesAsync(userIds, config.NestedBatchSize, result.MessageImageAddresses, cancellationToken);
             result.FriendshipsDeletedCount += await DeleteUsersFriendshipsAsync(userIds, config.NestedBatchSize, cancellationToken);
             result.PostsDeletedCount += await DeleteUsersPostsAsync(userIds, config.NestedBatchSize, cancellationToken);
             result.LikesDeletedCount += await DeleteUsersLikesAsync(userIds, config.NestedBatchSize, cancellationToken);
@@ -289,7 +291,14 @@ public class UserRepository : BaseEntityRepository<User>
         return result;
     }
 
-    private async Task<int> DeleteUsersMessagesAsync(List<int> userIds, int batchSize, CancellationToken cancellationToken)
+    // Adds the addresses of the deleted messages' images to deletedImageAddresses, so the caller can remove the files.
+    // The image rows go with their messages (cascade).
+    private async Task<int> DeleteUsersMessagesAsync(
+        List<int> userIds,
+        int batchSize,
+        List<string> deletedImageAddresses,
+        CancellationToken cancellationToken
+        )
     {
         int totalDeleted = 0;
         int deletedThisBatch = 0;
@@ -302,6 +311,12 @@ public class UserRepository : BaseEntityRepository<User>
                 .Take(batchSize)
                 .Select(message => message.Id)
                 .ToListAsync(cancellationToken);
+
+            var imageAddresses = await _dbContext.MessageImages
+                .Where(image => messageIds.Contains(image.MessageId))
+                .Select(image => image.Address)
+                .ToListAsync(cancellationToken);
+            deletedImageAddresses.AddRange(imageAddresses);
 
             deletedThisBatch = await _dbContext.Messages
                 .Where(message => messageIds.Contains(message.Id))

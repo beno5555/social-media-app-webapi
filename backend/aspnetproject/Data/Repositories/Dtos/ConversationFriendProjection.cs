@@ -12,5 +12,7 @@ public class ConversationFriendProjection
     public DateTime LastMessageSentAt   { get; set; }
     public int      LastMessageSenderId { get; set; }
 
+    public int LastMessageImageCount { get; set; }
+
     public int UnreadCount { get; set; }
 }

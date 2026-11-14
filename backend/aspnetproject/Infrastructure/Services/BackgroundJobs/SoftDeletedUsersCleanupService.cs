@@ -4,6 +4,7 @@ using aspnetproject.Infrastructure.Services.BackgroundJobs.Base;
 using aspnetproject.Infrastructure.Services.BackgroundJobs.Common;
 using aspnetproject.Infrastructure.Services.BackgroundJobs.Configuration;
 using aspnetproject.Infrastructure.Services.Logging;
+using aspnetproject.Infrastructure.Services.Storage;
 using Microsoft.Extensions.Options;
 
 namespace aspnetproject.Infrastructure.Services.BackgroundJobs;
@@ -21,6 +22,7 @@ public class SoftDeletedUsersCleanupService : PeriodicHostedService
     {
         var repo = serviceProvider.GetRequiredService<UserRepository>();
         var dbLogger =  serviceProvider.GetRequiredService<DatabaseLogger>();
+        var imageStorage = serviceProvider.GetRequiredService<ImageStorage>();
 
         var cutoff = DateTime.UtcNow.AddDays(-_config.RetentionDays);
 
@@ -31,6 +33,9 @@ public class SoftDeletedUsersCleanupService : PeriodicHostedService
         {
             batchResult = await repo.DeleteSoftDeletedUsersBatchAsync(cutoff, _config, stoppingToken);
             totalResult += batchResult;
+
+            // After the rows are gone, and best effort: a file that cannot be removed is logged by the storage.
+            await imageStorage.DeleteAsync(batchResult.MessageImageAddresses);
         }
         while(batchResult.UsersDeletedCount > 0 && !stoppingToken.IsCancellationRequested);
         
@@ -38,7 +43,7 @@ public class SoftDeletedUsersCleanupService : PeriodicHostedService
         {
             await LogResultAsync(dbLogger, true, nameof(User),
                 $"Removed {totalResult.UsersDeletedCount} soft deleted users past retention. " +
-                $"(Messages: {totalResult.MessagesDeletedCount}, Friendships: {totalResult.FriendshipsDeletedCount}, Posts: {totalResult.PostsDeletedCount}, Likes: {totalResult.LikesDeletedCount})");
+                $"(Messages: {totalResult.MessagesDeletedCount}, Message images: {totalResult.MessageImageAddresses.Count}, Friendships: {totalResult.FriendshipsDeletedCount}, Posts: {totalResult.PostsDeletedCount}, Likes: {totalResult.LikesDeletedCount})");
         }
     }
 }

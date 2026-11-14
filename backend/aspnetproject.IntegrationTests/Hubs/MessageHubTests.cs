@@ -1,6 +1,5 @@
 using System.Net;
 using System.Net.Http.Json;
-using aspnetproject.Common.Domain;
 using aspnetproject.Infrastructure.Dtos.DatabaseLogs;
 using aspnetproject.Infrastructure.Dtos.Messages;
 using aspnetproject.Infrastructure.Dtos.WebsocketsTransfer;
@@ -40,18 +39,33 @@ public class MessageHubTests : IAsyncLifetime
         var token = await AuthTestHelper.LoginAsync(_client, "alice", TestDataSeeder.SharedPlaintextPassword);
         AuthTestHelper.AttachToken(_client, token);
 
-        var response = await _client.PostAsJsonAsync("api/messages/3", new CreateMessageDto // to bob
-        {
-            Content = "Bob, this one arrives live."
-        });
+        var response = await _client.PostAsync("api/messages/3", MessageForm.Create("Bob, this one arrives live.")); // to bob
         var pushed = await bob.WaitForEventAsync<PushMessageDto>(HubEvents.ReceiveMessage);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
-        var body = await response.Content.ReadFromJsonAsync<ApplicationResponse<SentMessageDto>>();
-        Assert.Equal(body!.Data!.Id, pushed.Id);
+        var sent = await ResponseReader.ReadDataAsync<SentMessageDto>(response);
+        Assert.Equal(sent.Id, pushed.Id);
         Assert.Equal("Bob, this one arrives live.", pushed.Content);
         Assert.Equal(2, pushed.Sender.Id); // alice
         Assert.Equal("alice", pushed.Sender.Username);
+    }
+
+    [Fact]
+    public async Task SendMessage_WithPhotos_DeliversPhotosInOrderWithServedAddresses()
+    {
+        await using var bob = await HubTestClient.ConnectAsync(_factory, "bob");
+        var token = await AuthTestHelper.LoginAsync(_client, "alice", TestDataSeeder.SharedPlaintextPassword);
+        AuthTestHelper.AttachToken(_client, token);
+        var png  = new ImageFormFile(TestImages.Png(1), "first.png", TestImages.PngContentType);
+        var jpeg = new ImageFormFile(TestImages.Jpeg(2), "second.jpg", TestImages.JpegContentType);
+
+        var response = await _client.PostAsync("api/messages/3", MessageForm.Create(null, png, jpeg)); // to bob
+        var pushed   = await bob.WaitForEventAsync<PushMessageDto>(HubEvents.ReceiveMessage);
+
+        Assert.Equal(HttpStatusCode.Created, response.StatusCode);
+        Assert.Equal([0, 1], pushed.Images.Select(image => image.OrderIndex));
+        Assert.Equal(TestImages.Png(1), await _client.GetByteArrayAsync(pushed.Images[0].Address));
+        Assert.Equal(TestImages.Jpeg(2), await _client.GetByteArrayAsync(pushed.Images[1].Address));
     }
 
     [Fact]
@@ -62,10 +76,7 @@ public class MessageHubTests : IAsyncLifetime
         var token = await AuthTestHelper.LoginAsync(_client, "alice", TestDataSeeder.SharedPlaintextPassword);
         AuthTestHelper.AttachToken(_client, token);
 
-        var response = await _client.PostAsJsonAsync("api/messages/3", new CreateMessageDto // to bob
-        {
-            Content = "Only Bob should see this."
-        });
+        var response = await _client.PostAsync("api/messages/3", MessageForm.Create("Only Bob should see this.")); // to bob
         await bob.WaitForEventAsync<PushMessageDto>(HubEvents.ReceiveMessage);
 
         Assert.Equal(HttpStatusCode.Created, response.StatusCode);
@@ -283,7 +294,7 @@ public class MessageHubTests : IAsyncLifetime
         var response = await _client.GetAsync("api/admin/logs?pageSize=100");
         Assert.Equal(HttpStatusCode.OK, response.StatusCode);
 
-        var body = await response.Content.ReadFromJsonAsync<ListResponse<LogDisplayDto>>();
-        return body!.Data.Select(log => log.Id).ToList();
+        var logs = await ResponseReader.ReadListAsync<LogDisplayDto>(response);
+        return logs.Select(log => log.Id).ToList();
     }
 }

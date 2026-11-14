@@ -74,6 +74,17 @@ public class PostRepository : BaseEntityRepository<Post>
             .ToListAsync();
     }
 
+    // The moderation queue: every flagged post, oldest first. Id breaks ties between posts written in the same millisecond.
+    public async Task<List<Post>> GetFlaggedAsync(int pageNumber, int pageSize)
+    {
+        var query = Query(track: false)
+            .Where(post => post.ModerationStatus == ModerationStatus.Flagged)
+            .OrderBy(post => post.CreatedAt)
+            .ThenBy(post => post.Id);
+
+        return await Page(query, pageNumber, pageSize).ToListAsync();
+    }
+
     /// <summary>
     /// Ranks every post the caller did not write by the <see cref="FeedRanking"/> score, highest first.
     /// One query ranks and pages, returning only the page's ids; a second loads those posts with their stats.

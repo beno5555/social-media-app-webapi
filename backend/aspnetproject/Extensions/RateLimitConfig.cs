@@ -14,8 +14,10 @@ public static class RateLimitConfig
         public const string AdminReadLogs     = "AdminReadLogs";
         public const string AdminListAccounts = "AdminListAccounts";
 
-        public const string AdminModeratePost    = "AdminModeratePost";
-        public const string AdminModerateComment = "AdminModerateComment";
+        public const string AdminModeratePost        = "AdminModeratePost";
+        public const string AdminModerateComment     = "AdminModerateComment";
+        public const string AdminReadFlaggedPosts    = "AdminReadFlaggedPosts";
+        public const string AdminReadFlaggedComments = "AdminReadFlaggedComments";
         #endregion
 
         #region Auth
@@ -101,6 +103,12 @@ public static class RateLimitConfig
 
             options.AddPolicy(Policies.AdminModerateComment, httpContext =>
                 PerUserSlidingWindow(httpContext, 60, TimeSpan.FromMinutes(10)));
+
+            options.AddPolicy(Policies.AdminReadFlaggedPosts, httpContext =>
+                PerUserSlidingWindow(httpContext, 120, TimeSpan.FromMinutes(1)));
+
+            options.AddPolicy(Policies.AdminReadFlaggedComments, httpContext =>
+                PerUserSlidingWindow(httpContext, 120, TimeSpan.FromMinutes(1)));
             #endregion
 
             #region Auth (IP-based, pre-authentication)

@@ -93,7 +93,8 @@ public static class ResponseMessages
     public const string AccountsRetrieved = $"Accounts {Retrieved} {Successfully}";
     public const string InvalidDateRange  = "The start of the date range must not be after its end";
 
-    public const string ModerationStatusUpdated = $"Moderation status {Updated} {Successfully}";
+    public const string ModerationStatusUpdated  = $"Moderation status {Updated} {Successfully}";
+    public const string ModerationQueueRetrieved = $"Moderation queue {Retrieved} {Successfully}";
 
     #endregion
     

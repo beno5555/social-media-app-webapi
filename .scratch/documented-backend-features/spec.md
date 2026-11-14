@@ -188,7 +188,7 @@ n8n and everything it drives (webhooks, the API key, the internal endpoints, AI 
   - **Reject** sets this report to `REJECTED` and changes nothing else.
   - A report that is not pending, or a hide on a target that no longer exists, is refused.
 - **`PUT /api/admin/posts/{id}/moderation` and `PUT /api/admin/comments/{id}/moderation`:** administrator-only, set any of the three statuses. They do not touch reports. The n8n spec will later let its service identity call these two.
-- **`GET /api/admin/moderation-queue`:** administrator-only, paged, flagged content of one type per call (posts or comments, chosen by a query parameter), with the same target snapshot as the report list.
+- **`GET /api/admin/moderation-queue/posts` and `GET /api/admin/moderation-queue/comments`:** administrator-only, paged, one route per content type (owner's decision, 2026-11-15: two routes, not one route with a query parameter), with the same target snapshot as the report list. A comment's snapshot also carries its post's title.
 - **Reports are not cleaned up when their target is deleted.** They show a missing target and can be rejected.
 
 ## Testing Decisions

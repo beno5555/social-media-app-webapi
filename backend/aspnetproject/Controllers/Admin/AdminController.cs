@@ -90,4 +90,35 @@ public class AdminController : BaseController
 
         return NotFound(response);
     }
+
+    // The moderation queue is two routes, not one: posts and comments live in separate tables, so there is no single page across both.
+    [HttpGet]
+    [Route("moderation-queue/posts")]
+    [EnableRateLimiting(RateLimitConfig.Policies.AdminReadFlaggedPosts)]
+    public async Task<ActionResult<ListResponse<PostSnapshotDto>>> GetFlaggedPosts([FromQuery] PageQuery pageQuery)
+    {
+        var response = await _moderationService.GetFlaggedPostsAsync(pageQuery);
+
+        if (response.Succeeded)
+        {
+            return Ok(response);
+        }
+
+        return BadRequest(response);
+    }
+
+    [HttpGet]
+    [Route("moderation-queue/comments")]
+    [EnableRateLimiting(RateLimitConfig.Policies.AdminReadFlaggedComments)]
+    public async Task<ActionResult<ListResponse<CommentSnapshotDto>>> GetFlaggedComments([FromQuery] PageQuery pageQuery)
+    {
+        var response = await _moderationService.GetFlaggedCommentsAsync(pageQuery);
+
+        if (response.Succeeded)
+        {
+            return Ok(response);
+        }
+
+        return BadRequest(response);
+    }
 }

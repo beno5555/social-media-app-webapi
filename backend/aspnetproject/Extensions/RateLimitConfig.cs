@@ -102,7 +102,7 @@ public static class RateLimitConfig
                 PerIpSlidingWindow(httpContext, 5, TimeSpan.FromMinutes(60)));
 
             options.AddPolicy(Policies.Refresh, httpContext =>
-                PerIpSlidingWindow(httpContext, 5, TimeSpan.FromMinutes(10)));
+                PerIpSlidingWindow(httpContext, 60, TimeSpan.FromMinutes(10)));
 
             options.AddPolicy(Policies.RequestPasswordReset, httpContext =>
                 PerIpSlidingWindow(httpContext, 3, TimeSpan.FromMinutes(15)));

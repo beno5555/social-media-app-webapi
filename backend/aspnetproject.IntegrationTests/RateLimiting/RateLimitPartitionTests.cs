@@ -12,10 +12,6 @@ namespace aspnetproject.IntegrationTests.RateLimiting;
 [Collection("Database")]
 public class RateLimitPartitionTests : IAsyncLifetime
 {
-    // Comfortably above the SearchUsers policy's permit limit, so the loop always reaches a rejection,
-    // and far below the global limiter's, so only the policy under test can reject.
-    private const int MaxAttempts = 50;
-
     // SearchUsers is a per-user policy on an endpoint that also allows anonymous callers, and it only reads.
     private const string SearchUsersUrl = "api/users/search?username=a";
 
@@ -72,21 +68,6 @@ public class RateLimitPartitionTests : IAsyncLifetime
     }
 
     // Sends SearchUsers requests with the client's current token until one is rejected, and returns the last response.
-    private async Task<HttpResponseMessage> ExhaustSearchUsersAsync()
-    {
-        HttpResponseMessage response;
-        var attempts = 0;
-        bool stillAllowed;
-
-        do
-        {
-            response = await _client.GetAsync(SearchUsersUrl);
-            attempts++;
-
-            stillAllowed = response.StatusCode == HttpStatusCode.OK;
-        }
-        while (stillAllowed && attempts < MaxAttempts);
-
-        return response;
-    }
+    private Task<HttpResponseMessage> ExhaustSearchUsersAsync() =>
+        RateLimitExhaustHelper.ExhaustAsync(() => _client.GetAsync(SearchUsersUrl), HttpStatusCode.OK);
 }

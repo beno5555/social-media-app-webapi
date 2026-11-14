@@ -2,6 +2,7 @@ using System.Net;
 using System.Net.Http.Json;
 using aspnetproject.Common.Domain;
 using aspnetproject.Common.ProjectConstants;
+using aspnetproject.IntegrationTests.Helpers;
 
 namespace aspnetproject.IntegrationTests.RateLimiting;
 
@@ -12,8 +13,8 @@ namespace aspnetproject.IntegrationTests.RateLimiting;
 [Collection("Database")]
 public class RateLimitRejectionTests : IAsyncLifetime
 {
-    // Comfortably above the Refresh policy's permit limit, so the loop always reaches a rejection.
-    private const int MaxAttempts = 50;
+    // One more than the old limit of 5: six page reloads in a row must all get through.
+    private const int ReloadsInARow = 6;
 
     private readonly CustomWebApplicationFactory _factory;
     private readonly HttpClient _client;
@@ -38,23 +39,26 @@ public class RateLimitRejectionTests : IAsyncLifetime
     [Fact]
     public async Task Refresh_WhenPolicyIsExhausted_ReturnsTooManyRequestsEnvelope()
     {
-        HttpResponseMessage response;
-        var attempts = 0;
-        bool stillAllowed;
-
-        do
-        {
-            response = await _client.PostAsync("api/auth/refresh", null);
-            attempts++;
-
-            stillAllowed = response.StatusCode == HttpStatusCode.Unauthorized;
-        }
-        while (stillAllowed && attempts < MaxAttempts);
+        var response = await RateLimitExhaustHelper.ExhaustAsync(
+            () => _client.PostAsync("api/auth/refresh", null), HttpStatusCode.Unauthorized);
 
         Assert.Equal(HttpStatusCode.TooManyRequests, response.StatusCode);
 
         var body = await response.Content.ReadFromJsonAsync<ApplicationResponse>();
         Assert.False(body!.Succeeded);
         Assert.Equal(ResponseMessages.TooManyRequests, body.Message);
+    }
+
+    [Fact]
+    public async Task Refresh_OnSixthCallFromOneAddress_IsNotRejectedWithTooManyRequests()
+    {
+        HttpResponseMessage response = null!;
+
+        for (var reload = 0; reload < ReloadsInARow; reload++)
+        {
+            response = await _client.PostAsync("api/auth/refresh", null);
+        }
+
+        Assert.NotEqual(HttpStatusCode.TooManyRequests, response.StatusCode);
     }
 }

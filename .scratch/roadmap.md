@@ -13,7 +13,7 @@ Work merged to `master` while the owner was away. It passed the full integration
 - **Documented-backend-features ticket 02: a post can be created with photos** (gap A, first part), merged 2026-11-14. Look at:
   - the new `ImageStorage` (`backend/aspnetproject/Infrastructure/Services/Storage/`), the only code that touches files;
   - the contract change: `POST /api/posts` is now `multipart/form-data`, and every post read returns `Images`;
-  - the `AddPostImages` migration (one new table), which still has to be applied to the dev database;
+  - the `AddPostImages` migration (one new table), already applied to the dev database by the owner;
   - the open points at the bottom of the ticket, under Comments.
 
 ## Open decisions

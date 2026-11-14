@@ -46,7 +46,7 @@ public class PostController : BaseController
     public async Task<ActionResult<ListResponse<StandardPostDisplayDto>>> GetFeed([FromQuery] PageQuery query)
     {
         int userId = GetUserId();
-        var result = await _postService.GetFeedAsync(userId, query.PageNumber, query.PageSize);
+        var result = await _postService.GetFeedAsync(userId, IsAdministrator(), query.PageNumber, query.PageSize);
         return Ok(result);
     }
     
@@ -56,7 +56,7 @@ public class PostController : BaseController
     public async Task<ActionResult<ListResponse<StandardPostDisplayDto>>> GetOwnPosts([FromQuery] PageQuery query)
     {
         int userId   = GetUserId();
-        var response = await _postService.GetByUserIdAsync(userId, userId, query.PageNumber, query.PageSize);
+        var response = await _postService.GetByUserIdAsync(userId, userId, IsAdministrator(), query.PageNumber, query.PageSize);
 
         if (response.Succeeded)
         {
@@ -73,7 +73,7 @@ public class PostController : BaseController
     public async Task<ActionResult<ApplicationResponse<FullPostDisplayDto>>> GetPostById(int id)
     {
         var callerId = GetOptionalUserId();
-        var response = await _postService.GetPostByIdAsync(id, callerId);
+        var response = await _postService.GetPostByIdAsync(id, callerId, IsAdministrator());
 
         if (response.Succeeded)
         {
@@ -90,7 +90,7 @@ public class PostController : BaseController
     public async Task<ActionResult<ListResponse<StandardPostDisplayDto>>> GetPostsByUser(int userId, [FromQuery] PageQuery                                                                query)
     {
         var callerId = GetOptionalUserId();
-        var response = await _postService.GetByUserIdAsync(userId, callerId, query.PageNumber, query.PageSize);
+        var response = await _postService.GetByUserIdAsync(userId, callerId, IsAdministrator(), query.PageNumber, query.PageSize);
 
         if (response.Succeeded)
         {
@@ -106,7 +106,7 @@ public class PostController : BaseController
     public async Task<ActionResult<ApplicationResponse<FullPostDisplayDto>>> UpdatePost(int id, [FromBody] UpdatePostDto updatePostDto)
     {
         int userId   = GetUserId();
-        var response = await _postService.UpdatePost(id, userId, updatePostDto);
+        var response = await _postService.UpdatePost(id, userId, IsAdministrator(), updatePostDto);
 
         if (response.Succeeded)
         {

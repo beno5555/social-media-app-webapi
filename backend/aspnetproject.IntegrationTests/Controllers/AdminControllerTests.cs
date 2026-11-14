@@ -1,6 +1,7 @@
 using System.Net;
 using System.Net.Http.Json;
 using aspnetproject.Common.Domain;
+using aspnetproject.Common.ProjectConstants;
 using aspnetproject.Common.ProjectConstants.Enums;
 using aspnetproject.Infrastructure.Dtos.DatabaseLogs;
 using aspnetproject.Infrastructure.Dtos.Users;
@@ -236,6 +237,157 @@ public class AdminControllerTests : IAsyncLifetime
         var accounts = await GetAccountsAsync("pageNumber=2&pageSize=3");
 
         Assert.Equal([4, 5, 6], accounts.Select(account => account.Id));
+    }
+
+    // ---------- PUT /admin/posts/{id}/moderation ----------
+    // Seeded posts start visible. Post 1 is alice's; post 999 does not exist.
+
+    private Task<HttpResponseMessage> SetPostStatusAsync(int postId, string status)
+    {
+        return _client.PutAsJsonAsync($"api/admin/posts/{postId}/moderation", new { Status = status });
+    }
+
+    private Task<HttpResponseMessage> SetCommentStatusAsync(int commentId, string status)
+    {
+        return _client.PutAsJsonAsync($"api/admin/comments/{commentId}/moderation", new { Status = status });
+    }
+
+    [Fact]
+    public async Task SetPostStatus_WithoutToken_ReturnsUnauthorized()
+    {
+        var response = await SetPostStatusAsync(1, "Hidden");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SetPostStatus_AsOrdinaryUser_ReturnsForbidden()
+    {
+        await SignInAsync("alice");
+
+        var response = await SetPostStatusAsync(1, "Hidden");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("Hidden")]
+    [InlineData("Flagged")]
+    [InlineData("Visible")]
+    [InlineData("HIDDEN")]
+    public async Task SetPostStatus_AsAdministrator_ReturnsOk(string status)
+    {
+        await SignInAsync("sandro_beno");
+
+        var response = await SetPostStatusAsync(1, status);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SetPostStatus_ForNonexistentPost_ReturnsNotFound()
+    {
+        await SignInAsync("sandro_beno");
+
+        var response = await SetPostStatusAsync(999, "Hidden");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(ResponseMessages.PostNotFound, await ResponseReader.ReadMessageAsync(response));
+    }
+
+    [Theory]
+    [InlineData("Deleted")]
+    [InlineData("0")]
+    [InlineData("3")]
+    public async Task SetPostStatus_WithUnknownStatus_ReturnsBadRequest(string status)
+    {
+        await SignInAsync("sandro_beno");
+
+        var response = await SetPostStatusAsync(1, status);
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    // Only names are accepted: 3 is Hidden's underlying value, and must not set it.
+    [Fact]
+    public async Task SetPostStatus_WithStatusAsNumber_ReturnsBadRequest()
+    {
+        await SignInAsync("sandro_beno");
+
+        var response = await _client.PutAsJsonAsync("api/admin/posts/1/moderation", new { Status = 3 });
+
+        Assert.Equal(HttpStatusCode.BadRequest, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SetPostStatus_WhenStatusChanges_WritesLogRow()
+    {
+        await SignInAsync("sandro_beno");
+
+        await SetPostStatusAsync(1, "Hidden");
+
+        var logs = await GetLogsAsync("action=ModerationService.SetPostStatusAsync&entityId=1&succeeded=true");
+        var log  = Assert.Single(logs);
+        Assert.Equal("Post", log.EntityName);
+        Assert.Equal(1, log.UserId);
+    }
+
+    // ---------- PUT /admin/comments/{id}/moderation ----------
+    // Seeded comments start visible. Comment 1 is alice's; comment 999 does not exist.
+
+    [Fact]
+    public async Task SetCommentStatus_WithoutToken_ReturnsUnauthorized()
+    {
+        var response = await SetCommentStatusAsync(1, "Hidden");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SetCommentStatus_AsOrdinaryUser_ReturnsForbidden()
+    {
+        await SignInAsync("alice");
+
+        var response = await SetCommentStatusAsync(1, "Hidden");
+
+        Assert.Equal(HttpStatusCode.Forbidden, response.StatusCode);
+    }
+
+    [Theory]
+    [InlineData("Hidden")]
+    [InlineData("Flagged")]
+    [InlineData("Visible")]
+    public async Task SetCommentStatus_AsAdministrator_ReturnsOk(string status)
+    {
+        await SignInAsync("sandro_beno");
+
+        var response = await SetCommentStatusAsync(1, status);
+
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SetCommentStatus_ForNonexistentComment_ReturnsNotFound()
+    {
+        await SignInAsync("sandro_beno");
+
+        var response = await SetCommentStatusAsync(999, "Hidden");
+
+        Assert.Equal(HttpStatusCode.NotFound, response.StatusCode);
+        Assert.Equal(ResponseMessages.CommentNotFound, await ResponseReader.ReadMessageAsync(response));
+    }
+
+    [Fact]
+    public async Task SetCommentStatus_WhenStatusChanges_WritesLogRow()
+    {
+        await SignInAsync("sandro_beno");
+
+        await SetCommentStatusAsync(1, "Hidden");
+
+        var logs = await GetLogsAsync("action=ModerationService.SetCommentStatusAsync&entityId=1&succeeded=true");
+        var log  = Assert.Single(logs);
+        Assert.Equal("Comment", log.EntityName);
+        Assert.Equal(1, log.UserId);
     }
 
     // ---------- No Log row for a successful admin read ----------

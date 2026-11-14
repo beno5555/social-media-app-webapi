@@ -32,11 +32,11 @@ public class CommentService : BaseService
         _hubContext = hubContext;
     }
     
-    public async Task<ApplicationResponse<FullCommentDto>> GetCommentByIdAsync(int id)
+    public async Task<ApplicationResponse<FullCommentDto>> GetCommentByIdAsync(int id, int? callerId, bool isAdmin)
     {
         var response = new ApplicationResponse<FullCommentDto>();
         
-        var comment = await _commentRepository.GetCommentByIdAsync(id);
+        var comment = await _commentRepository.GetCommentByIdAsync(id, callerId, isAdmin);
 
         if (comment is not null)
         {
@@ -53,7 +53,7 @@ public class CommentService : BaseService
         return response;
     }
 
-    public async Task<ApplicationResponse<FullCommentDto>> AddCommentAsync(int commentAuthorId, int postId, CreateCommentDto createCommentDto)
+    public async Task<ApplicationResponse<FullCommentDto>> AddCommentAsync(int commentAuthorId, bool isAdmin, int postId, CreateCommentDto createCommentDto)
     {
         var response = new ApplicationResponse<FullCommentDto>();
 
@@ -61,7 +61,7 @@ public class CommentService : BaseService
         
         if (userExists)
         {
-            var post = await _postRepository.GetByIdAsync(postId);
+            var post = await _postRepository.GetReadablePostAsync(postId, commentAuthorId, isAdmin);
             
             if (post is not null)
             {
@@ -96,7 +96,7 @@ public class CommentService : BaseService
     {
         var response = new ApplicationResponse();
 
-        var comment = await _commentRepository.GetCommentWithCommenterUserAndPostById(id);
+        var comment = await _commentRepository.GetCommentWithCommenterUserAndPostById(id, userId, isAdmin);
 
         if (comment is not null)
         {
@@ -125,15 +125,15 @@ public class CommentService : BaseService
         return response;
     }
 
-    public async Task<ListResponse<StandardCommentDto>> GetByPostAsync(int postId, int? pageNumber, int? pageSize)
+    public async Task<ListResponse<StandardCommentDto>> GetByPostAsync(int postId, int? callerId, bool isAdmin, int? pageNumber, int? pageSize)
     {
         var response = new ListResponse<StandardCommentDto>();
 
-        var postExists = await _postRepository.ExistsByIdAsync(postId);
+        var postIsReadable = await _postRepository.IsReadableAsync(postId, callerId, isAdmin);
 
-        if (postExists)
+        if (postIsReadable)
         {
-            var comments    = await _commentRepository.GetByPostIdAsync(postId, pageNumber, pageSize);
+            var comments    = await _commentRepository.GetByPostIdAsync(postId, callerId, isAdmin, pageNumber, pageSize);
             var commentDtos = comments.Select(CommentMapper.ToStandardDisplay).ToList();
             
             response.Ok(commentDtos, ResponseMessages.PostCommentsRetrieved);
@@ -147,7 +147,7 @@ public class CommentService : BaseService
         return response;
     }
 
-    public async Task<ListResponse<StandardCommentDto>> GetByUserAsync(int userId, int? pageNumber, int? pageSize)
+    public async Task<ListResponse<StandardCommentDto>> GetByUserAsync(int userId, bool isAdmin, int? pageNumber, int? pageSize)
     {
         var response = new ListResponse<StandardCommentDto>();
 
@@ -155,7 +155,7 @@ public class CommentService : BaseService
 
         if (userExists)
         {
-            var comments    = await _commentRepository.GetByUserIdAsync(userId, pageNumber, pageSize);
+            var comments    = await _commentRepository.GetByUserIdAsync(userId, isAdmin, pageNumber, pageSize);
             var commentDtos = comments.Select(CommentMapper.ToStandardDisplay).ToList();
 
             response.Ok(commentDtos, ResponseMessages.UserCommentsRetrieved);
@@ -169,11 +169,11 @@ public class CommentService : BaseService
         return response;
     }
 
-    public async Task<ApplicationResponse<FullCommentDto>> EditCommentAsync(int userId, int id, EditCommentDto editCommentDto)
+    public async Task<ApplicationResponse<FullCommentDto>> EditCommentAsync(int userId, bool isAdmin, int id, EditCommentDto editCommentDto)
     {
         var response = new ApplicationResponse<FullCommentDto>();
         
-        var comment = await _commentRepository.GetCommentByIdAsync(id);
+        var comment = await _commentRepository.GetCommentByIdAsync(id, userId, isAdmin);
 
         if (comment is not null)
         {

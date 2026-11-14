@@ -29,11 +29,12 @@ public class PostLikeService : BaseService
         _hubContext = hubContext;
     }
 
-    public async Task<ApplicationResponse> LikePostAsync(int userId, int postId)
+    // Every action reads a hidden post the caller may not see as missing.
+    public async Task<ApplicationResponse> LikePostAsync(int userId, bool isAdmin, int postId)
     {
         var response = new ApplicationResponse();
 
-        var post = await _postRepository.GetByIdAsync(postId);
+        var post = await _postRepository.GetReadablePostAsync(postId, userId, isAdmin);
 
         if (post is not null)
         {
@@ -59,13 +60,13 @@ public class PostLikeService : BaseService
         return response;
     }
 
-    public async Task<ApplicationResponse> UnlikePostAsync(int userId, int postId)
+    public async Task<ApplicationResponse> UnlikePostAsync(int userId, bool isAdmin, int postId)
     {
         var response = new ApplicationResponse();
 
-        bool postExists = await _postRepository.ExistsByIdAsync(postId);
+        bool postIsReadable = await _postRepository.IsReadableAsync(postId, userId, isAdmin);
 
-        if (postExists)
+        if (postIsReadable)
         {
             bool wasLiked = await _postLikeRepository.DeleteLikeAsync(postId, userId);
 
@@ -88,13 +89,13 @@ public class PostLikeService : BaseService
         return response;
     }
 
-    public async Task<ListResponse<MinimalUserDto>> GetLikersAsync(int postId, int? pageNumber, int? pageSize)
+    public async Task<ListResponse<MinimalUserDto>> GetLikersAsync(int postId, int? callerId, bool isAdmin, int? pageNumber, int? pageSize)
     {
         var response = new ListResponse<MinimalUserDto>();
 
-        bool postExists = await _postRepository.ExistsByIdAsync(postId);
+        bool postIsReadable = await _postRepository.IsReadableAsync(postId, callerId, isAdmin);
 
-        if (postExists)
+        if (postIsReadable)
         {
             var likes  = await _postLikeRepository.GetByPostIdAsync(postId, pageNumber, pageSize);
             var likers = likes.Select(PostLikeMapper.ToLikerDisplay).ToList();

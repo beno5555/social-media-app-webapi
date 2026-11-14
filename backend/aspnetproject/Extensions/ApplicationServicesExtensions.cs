@@ -39,6 +39,7 @@ public static class ApplicationServicesExtensions
         services.AddScoped<CommentService>();
         services.AddScoped<FriendshipService>();
         services.AddScoped<MessageService>();
+        services.AddScoped<ModerationService>();
         services.AddScoped<PostService>();
         services.AddScoped<PostLikeService>();
         services.AddScoped<PresenceService>();

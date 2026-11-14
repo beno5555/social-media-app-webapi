@@ -12,4 +12,7 @@ public class FullCommentDto
 
     public DateTime  UploadedAt    { get; set; }
     public DateTime? LastUpdatedAt { get; set; }
+
+    // True only for the author or an administrator: nobody else is ever sent hidden content.
+    public bool IsHidden { get; set; }
 }

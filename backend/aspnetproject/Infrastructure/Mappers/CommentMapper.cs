@@ -27,7 +27,8 @@ public static class CommentMapper
                 Username = UsernameMapper.ResolveUsername(comment.CommenterUser, comment.CommenterUserId),
             },
             Content = comment.CommentContent,
-            UploadedAt = comment.CreatedAt
+            UploadedAt = comment.CreatedAt,
+            IsHidden = comment.IsHidden
         };
     }
 
@@ -46,7 +47,8 @@ public static class CommentMapper
             PostId = comment.PostId,
 
             UploadedAt = comment.CreatedAt,
-            LastUpdatedAt = comment.LastUpdatedAt
+            LastUpdatedAt = comment.LastUpdatedAt,
+            IsHidden = comment.IsHidden
         };
     }
 

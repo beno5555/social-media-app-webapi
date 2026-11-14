@@ -26,7 +26,7 @@ public class PostLikeController : BaseController
     public async Task<ActionResult<ApplicationResponse>> Like([FromRoute] int postId)
     {
         var userId   = GetUserId();
-        var response = await _postLikeService.LikePostAsync(userId, postId);
+        var response = await _postLikeService.LikePostAsync(userId, IsAdministrator(), postId);
 
         if (response.Succeeded)
         {
@@ -41,7 +41,7 @@ public class PostLikeController : BaseController
     public async Task<ActionResult<ApplicationResponse>> Unlike([FromRoute] int postId)
     {
         var userId   = GetUserId();
-        var response = await _postLikeService.UnlikePostAsync(userId, postId);
+        var response = await _postLikeService.UnlikePostAsync(userId, IsAdministrator(), postId);
 
         if (response.Succeeded)
         {
@@ -56,7 +56,7 @@ public class PostLikeController : BaseController
     [EnableRateLimiting(RateLimitConfig.Policies.ReadPostLikes)]
     public async Task<ActionResult<ListResponse<MinimalUserDto>>> GetLikers([FromRoute] int postId, [FromQuery] PageQuery query)
     {
-        var response = await _postLikeService.GetLikersAsync(postId, query.PageNumber, query.PageSize);
+        var response = await _postLikeService.GetLikersAsync(postId, GetOptionalUserId(), IsAdministrator(), query.PageNumber, query.PageSize);
 
         if (response.Succeeded)
         {

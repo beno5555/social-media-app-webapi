@@ -57,11 +57,11 @@ public class PostService : BaseService
     }
 
     // callerId is null for a guest.
-    public async Task<ApplicationResponse<FullPostDisplayDto>> GetPostByIdAsync(int id, int? callerId)
+    public async Task<ApplicationResponse<FullPostDisplayDto>> GetPostByIdAsync(int id, int? callerId, bool isAdmin)
     {
         var response = new ApplicationResponse<FullPostDisplayDto>();
 
-        var post = await _postRepository.GetPostByIdAsync(id, callerId);
+        var post = await _postRepository.GetPostByIdAsync(id, callerId, isAdmin);
         if (post is not null)
         {
             var postDisplay = PostMapper.ToFullDisplay(post);
@@ -75,11 +75,11 @@ public class PostService : BaseService
         return response;
     }
     
-    public async Task<ListResponse<StandardPostDisplayDto>> GetFeedAsync(int userId, int pageNumber, int pageSize)
+    public async Task<ListResponse<StandardPostDisplayDto>> GetFeedAsync(int userId, bool isAdmin, int pageNumber, int pageSize)
     {
         var response = new ListResponse<StandardPostDisplayDto>();
 
-        var posts    = await _postRepository.GetFeedAsync(userId, pageNumber, pageSize);
+        var posts    = await _postRepository.GetFeedAsync(userId, isAdmin, pageNumber, pageSize);
         var postDtos = posts.Select(PostMapper.ToStandardDisplay).ToList();
 
         response.Ok(postDtos, ResponseMessages.Feed);
@@ -88,7 +88,7 @@ public class PostService : BaseService
     }
     
     // callerId is null for a guest.
-    public async Task<ListResponse<StandardPostDisplayDto>> GetByUserIdAsync(int userId, int? callerId, int? pageNumber, int? pageSize)
+    public async Task<ListResponse<StandardPostDisplayDto>> GetByUserIdAsync(int userId, int? callerId, bool isAdmin, int? pageNumber, int? pageSize)
     {
         var response = new ListResponse<StandardPostDisplayDto>();
 
@@ -96,7 +96,7 @@ public class PostService : BaseService
 
         if (userExists)
         {
-            var posts    = await _postRepository.GetByUserIdAsync(userId, callerId, pageNumber, pageSize);
+            var posts    = await _postRepository.GetByUserIdAsync(userId, callerId, isAdmin, pageNumber, pageSize);
             var postDtos = posts.Select(PostMapper.ToStandardDisplay).ToList();
             
             response.Ok(postDtos, ResponseMessages.UserPostsRetrieved);
@@ -110,11 +110,11 @@ public class PostService : BaseService
         return  response;
     }
 
-    public async Task<ApplicationResponse<FullPostDisplayDto>> UpdatePost(int id, int userId, UpdatePostDto updatePostDto)
+    public async Task<ApplicationResponse<FullPostDisplayDto>> UpdatePost(int id, int userId, bool isAdmin, UpdatePostDto updatePostDto)
     {
         var response = new ApplicationResponse<FullPostDisplayDto>();
 
-        var postWithStats = await _postRepository.GetPostByIdAsync(id, userId);
+        var postWithStats = await _postRepository.GetPostByIdAsync(id, userId, isAdmin);
         if (postWithStats is not null)
         {
             var  post            = postWithStats.Post;
@@ -149,7 +149,7 @@ public class PostService : BaseService
     public async Task<ApplicationResponse> DeletePostAsync(int callerId, bool isAdmin, int id)
     {
         var response = new ApplicationResponse();
-        var post     = await _postRepository.GetByIdAsync(id);
+        var post     = await _postRepository.GetReadablePostAsync(id, callerId, isAdmin);
 
         if (post is not null)
         {

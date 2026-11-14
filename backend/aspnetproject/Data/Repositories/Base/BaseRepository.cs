@@ -24,7 +24,7 @@ public class BaseRepository<T> where T : class
         return await BuildWhereQuery(predicate, pageNumber, pageSize, orderBy, ignoreQueryFilters).ToListAsync();
     }
 
-    // The filtered, ordered and paged query behind GetWhereAsync, for callers that project it before reading.
+    // The filtered, ordered and paged query behind GetWhereAsync, for a subclass that needs to project it before reading.
     protected IQueryable<T> BuildWhereQuery(
         Expression<Func<T, bool>>? predicate,
         int? pageNumber = null,
@@ -49,6 +49,12 @@ public class BaseRepository<T> where T : class
             query = orderBy(query);
         }
 
+        return Page(query, pageNumber, pageSize);
+    }
+
+    // Pages only when both values are given; otherwise every row is returned.
+    protected IQueryable<T> Page(IQueryable<T> query, int? pageNumber, int? pageSize)
+    {
         if (pageNumber.HasValue && pageSize.HasValue)
         {
             query = query

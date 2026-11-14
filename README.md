@@ -109,7 +109,7 @@ CLAUDE.md
         UserConfiguration.cs
         ...
     /Models
-        BaseEntity.cs
+        BaseEntity.cs, BaseImage.cs
         Comment.cs, Friendship.cs, Log.cs, Message.cs, MessageImage.cs, Post.cs, PostImage.cs, PostLike.cs,
         RefreshToken.cs, Role.cs, User.cs, UserRole.cs
     /Repositories

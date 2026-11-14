@@ -1,11 +1,9 @@
-using System.Net.Http.Headers;
-
 namespace aspnetproject.IntegrationTests.Helpers;
 
 // Builds the multipart/form-data body of POST api/messages/{receiverId}.
 public static class MessageForm
 {
-    public static MultipartFormDataContent Create(string? content, params PostFormFile[] files)
+    public static MultipartFormDataContent Create(string? content, params ImageFormFile[] files)
     {
         var form = new MultipartFormDataContent();
 
@@ -14,12 +12,7 @@ public static class MessageForm
             form.Add(new StringContent(content), "Content");
         }
 
-        foreach (var file in files)
-        {
-            var fileContent = new ByteArrayContent(file.Bytes);
-            fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
-            form.Add(fileContent, "Images", file.FileName);
-        }
+        ImageFormFiles.AddTo(form, files);
 
         return form;
     }

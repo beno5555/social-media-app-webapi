@@ -47,7 +47,11 @@ public class MessageService : BaseService
 
         if (newMessageCheck.Succeeded)
         {
-            var message = await AddMessageWithImagesAsync(senderId, receiverId, createMessageDto, newMessageCheck.Data!);
+            var message = await _imageStorage.SaveWithOwnerAsync(newMessageCheck.Data!, imageAddresses =>
+            {
+                var messageToAdd = MessageMapper.ToEntity(senderId, receiverId, createMessageDto, imageAddresses);
+                return _messageRepository.AddMessageAsync(messageToAdd);
+            });
 
             var pushMessageDto = MessageMapper.ToPush(message);
             await _hubContext.Clients.Group(receiverId.ToString()).SendAsync("ReceiveMessage", pushMessageDto);
@@ -91,32 +95,6 @@ public class MessageService : BaseService
         }
 
         return response;
-    }
-
-    // Files are saved first so the message can store their addresses. If the message cannot be saved, they are removed again.
-    private async Task<Message> AddMessageWithImagesAsync(
-        int senderId,
-        int receiverId,
-        CreateMessageDto createMessageDto,
-        List<CheckedImage> images
-        )
-    {
-        var imageAddresses = await _imageStorage.SaveAsync(images);
-        var messageToAdd   = MessageMapper.ToEntity(senderId, receiverId, createMessageDto, imageAddresses);
-
-        Message message;
-
-        try
-        {
-            message = await _messageRepository.AddMessageAsync(messageToAdd);
-        }
-        catch (Exception)
-        {
-            await _imageStorage.DeleteAsync(imageAddresses);
-            throw;
-        }
-
-        return message;
     }
 
     public async Task<ListResponse<StandardMessageDto>> GetConversationAsync(

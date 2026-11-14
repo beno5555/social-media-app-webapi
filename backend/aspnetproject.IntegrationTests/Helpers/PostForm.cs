@@ -1,11 +1,9 @@
-using System.Net.Http.Headers;
-
 namespace aspnetproject.IntegrationTests.Helpers;
 
 // Builds the multipart/form-data body of POST api/posts.
 public static class PostForm
 {
-    public static MultipartFormDataContent Create(string? title, string? content, params PostFormFile[] files)
+    public static MultipartFormDataContent Create(string? title, string? content, params ImageFormFile[] files)
     {
         var form = new MultipartFormDataContent();
 
@@ -19,12 +17,7 @@ public static class PostForm
             form.Add(new StringContent(content), "PostContent");
         }
 
-        foreach (var file in files)
-        {
-            var fileContent = new ByteArrayContent(file.Bytes);
-            fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
-            form.Add(fileContent, "Images", file.FileName);
-        }
+        ImageFormFiles.AddTo(form, files);
 
         return form;
     }

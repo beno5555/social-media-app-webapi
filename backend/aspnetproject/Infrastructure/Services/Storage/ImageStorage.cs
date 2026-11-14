@@ -51,8 +51,34 @@ public class ImageStorage
         return await CheckWithinCountAsync(files, maxImageCount, ResponseMessages.TooManyMessageImages(maxImageCount));
     }
 
-    /// <summary>Saves checked images and returns their addresses in the same order. On failure, nothing is left behind.</summary>
-    public async Task<List<string>> SaveAsync(IReadOnlyList<CheckedImage> images)
+    /// <summary>
+    /// Saves checked images, then hands their addresses, in the same order, to <paramref name="addOwnerAsync"/>, which
+    /// saves the post or message that owns them. The files are written first because the owner stores their addresses,
+    /// and a file and a database row cannot share a transaction: if saving the owner throws, the files are removed again
+    /// and the exception goes on to <c>GlobalExceptionHandler</c>.
+    /// </summary>
+    public async Task<TOwner> SaveWithOwnerAsync<TOwner>(
+        IReadOnlyList<CheckedImage> images, Func<List<string>, Task<TOwner>> addOwnerAsync)
+    {
+        var imageAddresses = await SaveAsync(images);
+
+        TOwner owner;
+
+        try
+        {
+            owner = await addOwnerAsync(imageAddresses);
+        }
+        catch (Exception)
+        {
+            await DeleteAsync(imageAddresses);
+            throw;
+        }
+
+        return owner;
+    }
+
+    // Returns the addresses in the order of the images. On failure, nothing is left behind.
+    private async Task<List<string>> SaveAsync(IReadOnlyList<CheckedImage> images)
     {
         var savedFileNames = new List<string>();
         Directory.CreateDirectory(UploadFolderPath);

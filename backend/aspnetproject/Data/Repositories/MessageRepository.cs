@@ -1,4 +1,5 @@
-﻿using aspnetproject.Data.Models;
+﻿using System.Linq.Expressions;
+using aspnetproject.Data.Models;
 using aspnetproject.Data.Repositories.Base;
 using Microsoft.EntityFrameworkCore;
 
@@ -42,8 +43,7 @@ public class MessageRepository : BaseEntityRepository<Message>
         int? pageSize = null )
     {
         return await GetWhereAsync(
-            message => (message.SenderUserId == userA && message.ReceiverUserId == userB) ||
-                       (message.SenderUserId == userB && message.ReceiverUserId == userA),
+            InConversation(userA, userB),
             pageNumber,
             pageSize,
             orderBy: query => query.OrderByDescending(message => message.CreatedAt),
@@ -53,8 +53,7 @@ public class MessageRepository : BaseEntityRepository<Message>
     public async Task<List<string>> GetConversationImageAddressesAsync(int userA, int userB)
     {
         return await _dbSet
-            .Where(message => (message.SenderUserId == userA && message.ReceiverUserId == userB) ||
-                              (message.SenderUserId == userB && message.ReceiverUserId == userA))
+            .Where(InConversation(userA, userB))
             .SelectMany(message => message.Images)
             .Select(image => image.Address)
             .ToListAsync();
@@ -62,8 +61,7 @@ public class MessageRepository : BaseEntityRepository<Message>
 
     public async Task DeleteConversationAsync(int userA, int userB)
     {
-        await DeleteWhereAsync(message => (message.SenderUserId == userA && message.ReceiverUserId == userB) ||
-                                          (message.SenderUserId == userB && message.ReceiverUserId == userA));
+        await DeleteWhereAsync(InConversation(userA, userB));
     }
 
     public async Task<(bool marked, DateTime seenAt)> MarkConversationAsReadAsync(int readerId, int otherUserId)
@@ -72,8 +70,7 @@ public class MessageRepository : BaseEntityRepository<Message>
         var  seenAt       = DateTime.UtcNow;
         
         var lastMessage = await _dbSet
-            .Where(message => (message.SenderUserId == otherUserId && message.ReceiverUserId == readerId) ||
-                              (message.SenderUserId == readerId && message.ReceiverUserId == otherUserId))
+            .Where(InConversation(readerId, otherUserId))
             .OrderByDescending(message => message.CreatedAt)
             .FirstOrDefaultAsync();
         
@@ -107,5 +104,12 @@ public class MessageRepository : BaseEntityRepository<Message>
             .Select(message => message.SenderUserId)
             .Distinct()
             .CountAsync();
+    }
+
+    // Either direction between the two users.
+    private Expression<Func<Message, bool>> InConversation(int userA, int userB)
+    {
+        return message => (message.SenderUserId == userA && message.ReceiverUserId == userB) ||
+                          (message.SenderUserId == userB && message.ReceiverUserId == userA);
     }
 }

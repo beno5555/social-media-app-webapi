@@ -1,6 +1,4 @@
 using System.Net;
-using System.Net.Http.Json;
-using aspnetproject.Common.Domain;
 using aspnetproject.Infrastructure.Dtos.Messages;
 using aspnetproject.IntegrationTests.Fixtures;
 using aspnetproject.IntegrationTests.Helpers;
@@ -56,10 +54,9 @@ public class FriendshipControllerTests : IAsyncLifetime
         var token = await AuthTestHelper.LoginAsync(_client, sender, TestDataSeeder.SharedPlaintextPassword);
         AuthTestHelper.AttachToken(_client, token);
 
-        var file     = new PostFormFile(photo, "photo", TestImages.JpegContentType);
+        var file     = new ImageFormFile(photo, "photo", TestImages.JpegContentType);
         var response = await _client.PostAsync($"api/messages/{receiverId}", MessageForm.Create(null, file));
-        var body     = await response.Content.ReadFromJsonAsync<ApplicationResponse<SentMessageDto>>();
 
-        return body!.Data!;
+        return await ResponseReader.ReadDataAsync<SentMessageDto>(response);
     }
 }

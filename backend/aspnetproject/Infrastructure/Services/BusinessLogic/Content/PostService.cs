@@ -41,7 +41,12 @@ public class PostService : BaseService
 
         if (newPostCheck.Succeeded)
         {
-            var addedPost   = await AddPostWithImagesAsync(userId, createPostDto, newPostCheck.Data!);
+            var addedPost = await _imageStorage.SaveWithOwnerAsync(newPostCheck.Data!, imageAddresses =>
+            {
+                var postToAdd = PostMapper.ToEntity(userId, createPostDto, imageAddresses);
+                return _postRepository.AddPostAsync(postToAdd);
+            });
+
             var postDisplay = PostMapper.ToNewPostDisplay(addedPost);
             response.Ok(postDisplay, ResponseMessages.PostUploaded);
         }
@@ -218,24 +223,5 @@ public class PostService : BaseService
         }
 
         return response;
-    }
-
-    // Files are saved first so the post can store their addresses. If the post cannot be saved, they are removed again.
-    private async Task<Post> AddPostWithImagesAsync(int userId, CreatePostDto createPostDto, List<CheckedImage> images)
-    {
-        var imageAddresses = await _imageStorage.SaveAsync(images);
-        var post           = PostMapper.ToEntity(userId, createPostDto, imageAddresses);
-
-        try
-        {
-            post = await _postRepository.AddPostAsync(post);
-        }
-        catch (Exception)
-        {
-            await _imageStorage.DeleteAsync(imageAddresses);
-            throw;
-        }
-
-        return post;
     }
 }

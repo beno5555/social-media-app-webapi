@@ -1,5 +1,4 @@
 ﻿using aspnetproject.Data.Models;
-using aspnetproject.Infrastructure.Dtos.Images;
 using aspnetproject.Infrastructure.Dtos.Messages;
 using aspnetproject.Infrastructure.Dtos.Users;
 using aspnetproject.Infrastructure.Dtos.WebsocketsTransfer;
@@ -20,9 +19,7 @@ public static class MessageMapper
             SenderUserId = senderId,
             ReceiverUserId = receiverId,
             MessageContent = createMessageDto.Content ?? string.Empty,
-            Images = imageAddresses
-                .Select((address, index) => new MessageImage { Address = address, OrderIndex = index })
-                .ToList()
+            Images = ImageMapper.ToEntities<MessageImage>(imageAddresses)
         };
     }
 
@@ -32,7 +29,7 @@ public static class MessageMapper
         {
             Id = message.Id,
             Content = message.MessageContent,
-            Images = ToImageDtos(message),
+            Images = ImageMapper.ToImageDtos(message.Images),
 
             Sender = new MinimalUserDto
             {
@@ -56,7 +53,7 @@ public static class MessageMapper
             Id = message.Id,
             Content = message.MessageContent,
             SentAt = message.CreatedAt,
-            Images = ToImageDtos(message)
+            Images = ImageMapper.ToImageDtos(message.Images)
         };
     }
 
@@ -66,7 +63,7 @@ public static class MessageMapper
         {
             Id = message.Id,
             Content = message.MessageContent,
-            Images = ToImageDtos(message),
+            Images = ImageMapper.ToImageDtos(message.Images),
             SentAt = message.CreatedAt,
             Sender = new MinimalUserDto
             {
@@ -83,18 +80,5 @@ public static class MessageMapper
             Id = message.Id,
             Content = message.MessageContent,
         };
-    }
-
-    private static List<ImageDto> ToImageDtos(Message message)
-    {
-        return message.Images
-            .OrderBy(image => image.OrderIndex)
-            .Select(image => new ImageDto
-            {
-                Id = image.Id,
-                Address = image.Address,
-                OrderIndex = image.OrderIndex
-            })
-            .ToList();
     }
 }
